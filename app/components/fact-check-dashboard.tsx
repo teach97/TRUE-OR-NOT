@@ -9,7 +9,6 @@ import type { Claim } from './demo-state';
 import type { FactCheckResult } from '../lib/fact-check-contract';
 import { FactCheckError, readFactCheckStream, safeSourceUrl } from './fact-check-client';
 import { DEMO_FOCUS, DEMO_TEXT, demoPreview, documents } from './demo-fixture';
-import LensVisual from './lens-visual';
 import ParticlesLogo from './particles-logo';
 import {
   defaultParticleLogoControls,
@@ -525,10 +524,9 @@ export default function FactCheckDashboard() {
       <div className="sidebar-bottom"><div className="principle-card"><Icon name="shield"/><strong>결론보다, 근거를 먼저.</strong><p>확인된 내용과 아직 모르는 내용을 나란히 살펴보세요.</p><button onClick={() => setDialog('guide')}>우리의 검증 원칙 <Icon name="arrow" size={15}/></button></div><div className="local-status"><span/>{serviceLabel}</div><p className="sidebar-foot">FACTLENS / EVIDENCE WORKSPACE</p></div>
     </aside>
     <div className="main-shell">
-      <header className="topbar"><div className="breadcrumb"><span className="mobile-brand">FactLens</span><span className="desktop-crumb">워크스페이스 <b>/</b></span><strong>근거 살펴보기</strong></div><div className="topbar-actions"><span className="demo-tag">{snapshot?.demo ? 'DEMO' : 'LUNA · MAX'}</span><button className="text-button" aria-label="사용 가이드" onClick={() => setDialog('guide')}><Icon name="book"/><span>사용 가이드</span></button>{liquidLabEnabled && <button type="button" className={`text-button liquid-lab-trigger ${liquidLabOpen ? 'is-active' : ''}`} aria-expanded={liquidLabOpen} aria-controls="liquid-lab" onClick={() => setLiquidLabOpen(open => !open)}><Icon name="sliders"/><span>UI 조정</span></button>}<span className="profile-mark" aria-label="로컬 워크스페이스">F</span></div></header>
+      <header className="topbar"><div className="breadcrumb"><span className="mobile-brand">FactLens</span></div><div className="topbar-actions"><button className="text-button" aria-label="사용 가이드" onClick={() => setDialog('guide')}><Icon name="book"/><span>사용 가이드</span></button>{liquidLabEnabled && <button type="button" className={`text-button liquid-lab-trigger ${liquidLabOpen ? 'is-active' : ''}`} aria-expanded={liquidLabOpen} aria-controls="liquid-lab" onClick={() => setLiquidLabOpen(open => !open)}><Icon name="sliders"/><span>UI 조정</span></button>}<span className="profile-mark" aria-label="로컬 워크스페이스">F</span></div></header>
       <main id="workspace-main" className="page-content">
-        <section className="intro"><ParticlesLogo settings={particles}/><div className="intro-copy-block"><p className="eyebrow"><span className="tiny-line"/>더 선명한 판단의 시작</p><h1>그 주장,<br className="mobile-break"/> <span>근거까지 보이나요?</span></h1><p className="intro-copy">단정 대신 맥락을, 숫자 대신 출처를.<br/>원문 속 주장과 근거를 한곳에서 비교해 보세요.</p></div><LensVisual settings={lens}/></section>
-        <div className="demo-notice"><span className="demo-tag">{snapshot?.demo ? 'DEMO' : 'LUNA · MAX'}</span><p>{snapshot?.demo ? '합성 예시 화면입니다. 주장·문서·판정은 실제 검증 결과가 아닙니다.' : '직접 입력한 원문은 동의 후 OpenAI와 웹 검색으로 검증합니다. AI의 결론은 원출처와 함께 확인해 주세요.'}</p><button onClick={() => setDialog('about')} aria-label="검증 및 예시 안내 자세히 보기"><Icon name="arrow" size={17}/></button></div>
+        <section className="intro"><ParticlesLogo settings={particles}/></section>
         <LiquidPanel as="section" className="composer" glassPadding="22px 25px 0" aria-labelledby="composer-heading" liquid={liquid}>
           <div className="section-heading"><div><span className="step-label">01 / 문서 입력</span><h2 id="composer-heading">어떤 내용을 확인하고 싶으세요?</h2></div><button className="text-button" aria-label="초기화" onClick={reset}><Icon name="reset" size={16}/><span>초기화</span></button></div>
           <form onSubmit={submit}>
