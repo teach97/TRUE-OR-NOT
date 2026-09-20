@@ -1,6 +1,62 @@
 # 팩트체크 에이전트 UI MVP 작업 인계서
 
-## 다음 작업자용 실행 인계 — 6-B 완료, 6-C·7 남음
+## 최종 실행 인계 — 6단계 핵심 및 7단계 고정 범위 완료
+
+### 최종 7단계 회귀 결과 (이 절이 아래 과거 체크포인트보다 우선)
+
+- **완료:** Python 전체 101 passed(기존 Starlette/AnyIO deprecation 1건), Node 전체 5개 파일 20 passed, `uv lock --check`, `npm run typecheck`, `npm run build` 통과. 빌드는 Next.js 16.3.5 기본 Turbopack production build입니다.
+- **브라우저 통과:** 설치된 Chrome headless, 데스크톱 1440×1000 / 모바일 390×844 각각 실제 Next → test-only FastAPI 스트림 POST 200. 첫 주장 인용·HTTPS 출처·불확실성, 둘째 주장 선택 시 이전 인용 제거·근거 없음, JSON 결과 export의 demo=false 및 claim/source/evidence 참조를 확인했습니다. 별도 새 문서에서 데모 3개 주장·근거·근거 없는 주장·demo=true JSON export를 확인했고 데모 POST 및 backend 실행 증가가 없었습니다. 측정 복제본 대신 `.liquid-panel-live:visible` 사용. 가로 overflow 및 pageerror 0개입니다.
+- **기본 개발 번들러 통과:** `next dev --hostname 127.0.0.1 --port <자동 빈 포트>`에 webpack 옵션 없이 실행하고 로그의 `Next.js 16.3.5 (Turbopack)` 및 실제 페이지/API/browser smoke를 확인했습니다. 기존 3000 서버/lock을 건드리지 않도록 scratch 복제본을 사용했습니다. node_modules junction을 해결하기 위해 **scratch의 next.config.ts만** 설치된 Next 문서에 따라 두 경로의 공통 부모를 `turbopack.root`로 지정했습니다. 원본 config 변경 없음. 원본 루트의 기존 3000 프로세스 자체를 재검증한 것은 아닙니다.
+- **증거:** `C:/Users/rlagn/AppData/Local/hermes/cache/scratch/factlens-stage7-p80au0mu/`의 `browser-evidence.json`, `cleanup.json`, `next.log`, `backend.log`, `browser.stdout`, `browser.stderr`, `desktop-result.png`, `desktop-second-claim.png`, `desktop-demo.png`, `mobile-result.png`, `mobile-second-claim.png`, `mobile-demo.png`, 양 viewport의 `*-result.json`/`*-demo.json`. 모바일 결과/데스크톱 데모 스크린샷 직접 확인. 소유 포트 14181/14182 종료 및 browser Node exit 0 확인. 서버 exit 1은 runner의 Windows taskkill 종료 결과이며 실행 실패가 아닙니다.
+- **변경 범위:** 운영 코드·UI·의존성 수정 없음. 시작 시 이미 있던 `scripts/probe-stage7.py`, `scripts/probe-stage7.mjs`를 실행했습니다. `HANDOFF.md`에 최종 결과를 추가했습니다. 시작 시 있던 `scripts/__pycache__/`와 다른 변경은 보존했습니다. 커밋/푸시는 부모 작업자 담당입니다.
+
+### 정확한 로컬 실행 / 회귀 명령 (Windows Git Bash)
+
+기존 설치 환경에서 두 터미널로 실행합니다. 처음 설치할 때만 루트 `npm ci`, backend `uv sync --locked`를 수행합니다. 아래 포트가 사용 중이면 소유자를 확인하거나 다른 빈 포트와 backend URL을 함께 선택하고 알 수 없는 서버를 종료하지 않습니다.
+
+```bash
+# 터미널 1: 실제 backend (사용자 backend/.env, 실제 검증 제출 시 비용 발생 가능)
+cd C:/Users/rlagn/Desktop/Develop/frontend_tools/React/my-app/backend
+uv run uvicorn main:app --host 127.0.0.1 --port 8010
+
+# 터미널 2: 기본 Turbopack frontend
+cd C:/Users/rlagn/Desktop/Develop/frontend_tools/React/my-app
+FACTLENS_BACKEND_URL=http://127.0.0.1:8010 npm run dev -- --port 3000
+# 브라우저: http://127.0.0.1:3000
+```
+
+유료 호출 없는 이번 회귀 재현:
+
+```bash
+cd C:/Users/rlagn/Desktop/Develop/frontend_tools/React/my-app
+(cd backend && uv run pytest -q && uv lock --check)
+node --experimental-strip-types --test app/lib/server/*.test.mjs app/components/*.test.mjs
+npm run typecheck
+npm run build
+PLAYWRIGHT_MODULE='C:/Users/rlagn/AppData/Local/npm-cache/_npx/31e32ef8478fbf80/node_modules/playwright/index.mjs' backend/.venv/Scripts/python.exe scripts/probe-stage7.py
+git diff --check
+```
+
+브라우저 probe는 설치된 Chrome 및 위 Playwright 경로가 필요합니다(다른 PC는 설치 경로로 교체). test-only backend를 자동 기동·복구 모드 설정하고 자식 API_KEY/TOKEN/SECRET 환경변수를 제거하며 frontend에 .env를 복사하지 않습니다. 종료 시 소유 browser/server만 정리합니다.
+
+### 알려진 한계 / 마감 상태
+
+- 6단계 핵심 및 **7단계의 합의된 고정 범위 완료**. 아래 역사 기록의 미완료·다음 6-C·7단계 확대 제안은 현재 TODO가 아닙니다. 새 기능/리디자인/추가 provider 호출 없이 여기서 마감합니다.
+- 이번 결과는 명시적 TEST ONLY fixture의 비데모 UI 경로이며 실제 사실 검증 품질 증거가 아닙니다. 이전 유료 전체 결과/export 성공 기록을 유지하고 이번에는 유료 provider를 호출하지 않았습니다.
+- `next.log`에 React Fragment의 `id` prop 경고와 reduced-motion 안내가 있습니다. 화면의 Next 개발 issue badge도 남습니다. pageerror 0은 console 경고 0이라는 뜻이 아닙니다. 기능 smoke를 차단하지 않아 이 고정 범위에서 디자인/의존성 수정으로 확대하지 않았습니다.
+- 브라우저 smoke는 reduced-motion/headless Chrome이며 모든 브라우저·애니메이션·접근성 감사가 아닙니다. 실제 provider 내부 취소/과금 중단, 모든 실행 중 서버 강제 종료 조건, 공개 배포·인증·영속 저장은 보장하지 않습니다.
+- production build 성공은 production 유료 요청 허용을 의미하지 않습니다. `next start`의 POST 차단은 유지된 의도적 정책입니다.
+
+## 이전 단계 마감 기준 및 검증 이력
+
+### 단계 마감 기준 확정
+
+- 6단계 완료 범위: Next.js–FastAPI 스트림 연결, 실제 요청 결과/내보내기, 상세 근거 표시, 오류 안내, 브라우저 취소/문서 이탈의 Python 작업 정리, 처리 오류 복구와 실제 서버 재시작 후 같은 화면 재시도입니다. 각 항목의 실제/테스트 전용 검증 차이는 아래 기록을 따릅니다.
+- 관련 수정 및 probe는 `12d4681`, `94a34d9`, `48e64b7`, `ba33820`에 반영되었습니다. 이전 절의 미커밋/6-C 미완료 표현은 당시 기록이며 이 마감 기준이 우선합니다.
+- 7단계 고정 범위: 전체 Python/Node 테스트·타입 검사·빌드, 모바일/데스크톱 결과와 데모 회귀, 기본 Turbopack 개발 경로 점검, 최종 실행 절차·알려진 한계 인계. 새로운 기능 추가나 검증 항목을 무한히 늘리지 않습니다.
+- 이미 성공한 유료 실제 전체 요청은 기존 증거를 사용하고 불필요하게 재호출하지 않습니다. 실제 provider 내부 취소/과금 중단, 실행 중 서버 강제 종료의 모든 조건, 공용 배포는 보장하지 않습니다. 미검증은 명시하며 완료 범위를 과장하지 않습니다.
+- 다음 작업은 7단계 최종 회귀입니다. 6-C 세부 작업을 더 추가하지 않습니다.
+
 
 ### 최신 체크포인트: 6-C 한정 — 실제 backend 프로세스 종료·재시작 / 같은 페이지 재시도
 
