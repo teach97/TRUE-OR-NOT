@@ -2,6 +2,18 @@
 
 ## 다음 작업자용 실행 인계 — 6-B 완료, 6-C·7 남음
 
+### 최신 검증 체크포인트: 6-C 한정 — 브라우저 취소/화면 이탈 → Python 정리 확인
+
+- **범위:** 실제 브라우저 → 변경 없는 Next proxy → 기존 FastAPI StreamingResponse → 실제 컴파일된 LangGraph의 취소 전파만 검증했습니다. 운영 코드 결함은 발견하지 않았고 운영 코드 수정·커밋·푸시는 하지 않았습니다. 6-C 전체 완료가 아닙니다.
+- 추가: `backend/tests/cancellation_probe_app.py`, `scripts/probe-cancellation.py`, `scripts/probe-cancellation.mjs`. 테스트 전용 프로세스에서 `main.app.dependency_overrides[main.get_workflow]`로 그래프를 주입합니다. extracting 어댑터는 Event에서 무기한 대기하며 CancelledError/ finally 및 그래프 iterator finally를 계측합니다. 판정/결과를 만들지 않고 유료 provider를 호출하지 않습니다. 설정 sentinel과 계측 GET도 이 테스트 엔트리포인트에만 존재합니다. 새 기본 앱 프로세스에서 override 없음·`/__test__` route 없음도 확인했습니다.
+- 실제 설치 Next.js 16.3.5 **webpack 개발 서버**, Google Chrome headless, Uvicorn을 별도 loopback 포트와 scratch 프론트엔드 복제본으로 실행했습니다. `.env`는 복사하지 않았고 provider 환경변수를 자식에서 제거했습니다. 기존 3000 서버와 기존 작업 파일은 건드리지 않았습니다. 공유 node_modules junction을 사용하므로 **기본 Turbopack 검증으로 간주하지 않습니다.**
+- **독립 실행 2회 통과:** 브라우저 POST 상태 `[200, 429, 200, 200]`. 첫 요청이 대기 중일 때 추가 요청은 `429 BUSY`; UI 취소 직후 서버 상태 폴링/인위적 대기 없이 UI 재시작하여 두 번째 200. 재시작 체크포인트는 graph started=2/finalized=1, adapter cancelled=1/finalized=1, active=1. `about:blank` 실제 문서 이동 뒤 started=2/finalized=2, adapter cancelled=2/finalized=2, active=0. 복귀 후 세 번째 요청도 200, 마지막 UI 취소 뒤 started=finalized=adapter_started=adapter_finalized=adapter_cancelled=3, active=0, max_active=1. 모든 정리는 서버 종료 **전** 관찰했습니다.
+- 원시 JSON 이벤트/monotonic 타임스탬프 및 양 서버 로그: `C:/Users/rlagn/AppData/Local/hermes/cache/scratch/factlens-cancellation-cbsf56_0/`와 `factlens-cancellation-fzew6hfm/`의 `browser-evidence.json`, `backend.log`, `next.log`. 두 번째 실행의 소유 포트 13883/13884는 종료 후 연결 불가를 확인했습니다. 각 실행의 브라우저도 닫았습니다.
+- 재현(저장소 루트, 설치된 Chrome 및 Playwright 필요): `PLAYWRIGHT_MODULE='C:/Users/rlagn/AppData/Local/npm-cache/_npx/31e32ef8478fbf80/node_modules/playwright/index.mjs' backend/.venv/Scripts/python.exe scripts/probe-cancellation.py`. 다른 환경에서는 PLAYWRIGHT_MODULE을 설치된 Playwright index.mjs로 지정합니다. repo 의존성은 추가하지 않았습니다. probe는 실패 시 nonzero로 종료하고 계측 결과를 기록합니다.
+- 검증: `cd backend && uv run pytest -q` **101 passed**, 기존 Starlette/AnyIO 경고 1건; `uv lock --check` 통과. 루트 `node --experimental-strip-types --test app/lib/server/*.test.mjs app/components/*.test.mjs` **20 passed**, `npm run typecheck`, `git diff --check` 통과. 빌드는 이번 한정 작업에서 재실행하지 않았습니다.
+- 준비 단계 시행착오: Playwright 전용 headless-shell 미설치 → 설치된 Chrome 채널 사용; 잘못된 버튼 이름 `검증 시작` → 실제 `팩트 검증 시작`으로 수정. 이 실패들은 앱 취소 결함의 RED가 아니며 성공 검증으로 계산하지 않았습니다. 초기 TMPDIR가 시스템 Temp를 가리킨 것을 확인하고 runner의 Windows scratch 경로를 Hermes cache로 고정했습니다. Next 로그의 기존 Three.js deprecation/중복 import 경고는 범위 밖입니다.
+- **남은 6-C:** 장애 복구 후 재시도, 상세 근거 표시, 기본 Turbopack/기존 3000 서버 경로 재검증 및 최종 빌드/7단계 전체 회귀. 이번 결과는 대기 중 extracting 노드와 문서 이탈에 한정되며 모든 provider 라이브러리 내부 취소·모든 단계·SPA unmount·즉시 재시도 경합 전체를 보장하지 않습니다. 기존 `next-env.d.ts` 및 `.playwright-cli` 미커밋 산출물을 보존했습니다.
+
 ### 최신 수정 체크포인트: 6-C 한정 — loopback 별칭 LOCAL_ONLY 403 수정
 
 - 범위는 localhost/127.0.0.1 출처 불일치 하나입니다. 6-C 전체 완료가 아닙니다. 부모 작업자가 diff 검토 및 route 테스트 9개·타입 검사·Turbopack 프로덕션 빌드를 재실행하여 통과를 확인했습니다. 기본 개발 서버 재검증은 별도로 남습니다.
