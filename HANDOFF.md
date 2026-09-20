@@ -1,6 +1,18 @@
 # 팩트체크 에이전트 UI MVP 작업 인계서
 
-## 다음 작업자용 실행 인계 — 6-A 완료, 6-B/6-C·7 남음
+## 다음 작업자용 실행 인계 — 6-B 완료, 6-C·7 남음
+
+### 최신 체크포인트: 6-B Next.js → FastAPI 프록시
+
+- `app/api/fact-check/route.ts`의 GET은 FastAPI 상태를 조회하고 공개 필드만 반환합니다. POST는 `/api/fact-check/stream`으로 전달합니다. 기존 TypeScript runAgent 호출을 제거하여 provider 중복 호출을 피합니다. 입력 검증 유틸리티만 기존 모듈에서 재사용합니다.
+- `.env.example`을 서버 전용 `FACTLENS_BACKEND_URL=http://127.0.0.1:8010` 설정으로 갱신했습니다. 실제 키는 backend/.env에만 필요합니다. 프록시는 HTTP loopback IP 주소만 허용하고 리다이렉트를 거부합니다.
+- 로컬 동일 출처·본문 제한·프로세스별 동시 1건 제한을 유지합니다. upstream NDJSON을 전달하며 취소를 upstream fetch/reader에 전파합니다. 프록시 245초 제한, 응답 총 2MB 제한, 진단 정보 없는 HTTP 오류 매핑을 적용했습니다.
+- `app/lib/server/route.test.mjs`를 프록시 계약 테스트로 교체했습니다. 상태 필드 투영, 인증정보 미전달, 동시 요청 거부, reader/요청 취소 후 재시도, 외부 backend URL 거부, 입력/출처 차단을 검증했습니다.
+- 중단 후 검증을 재실행했습니다. 프론트엔드 테스트 파일 5개에서 **16 tests passed**, `npm run typecheck` 통과, `npm run build` 통과. route 단독 테스트는 5개 통과입니다. 이 기록은 실제 FastAPI 프로세스와 브라우저를 연결한 검증을 의미하지 않습니다.
+- **다음 6-C:** 실제 로컬 Next.js 개발 서버와 FastAPI를 실행하여 UI 상태/진행/결과/취소/오류/재시도를 확인합니다. 연결 해제 시 Python 작업 종료도 별도 검증해야 합니다. production POST 차단 정책은 유지되므로 `next start`에서 유료 검증이 차단되는 것을 버그로 오인하지 않습니다.
+- 프록시 경로만 변경했으며 화면 디자인은 수정하지 않았습니다. 6단계 전체 완료와 7단계 실서비스 전체 검증 완료로 표시하지 않습니다.
+
+
 
 ### 최신 추가 체크포인트: 6-A 백엔드 진행 스트림
 
