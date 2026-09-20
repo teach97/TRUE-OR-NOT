@@ -1,0 +1,114 @@
+- generic [active] [ref=f1e1]:
+  - generic [ref=f1e2]:
+    - link "본문으로 건너뛰기" [ref=f1e3] [cursor=pointer]:
+      - /url: "#workspace-main"
+    - generic [ref=f1e4]:
+      - banner [ref=f1e5]:
+        - generic [ref=f1e6]: FactLens
+        - generic [ref=f1e8]:
+          - generic [ref=f1e9]: DEMO
+          - button "사용 가이드" [ref=f1e10] [cursor=pointer]
+          - button [ref=f1e13] [cursor=pointer]
+      - main [ref=f1e19]:
+        - generic [ref=f1e21]:
+          - paragraph [ref=f1e22]: 더 선명한 판단의 시작
+          - heading "그 주장, 근거까지 보이나요?" [level=1] [ref=f1e24]
+          - paragraph [ref=f1e25]: 단정 대신 맥락을, 숫자 대신 출처를.원문 속 주장과 근거를 한곳에서 비교해 보세요.
+        - generic [ref=f1e26]:
+          - generic [ref=f1e27]: DEMO
+          - paragraph [ref=f1e28]:
+            - text: 화면 체험용 데모입니다.
+            - strong [ref=f1e29]: 주장·문서·판정은 합성 예시이며, 실제 검증 결과가 아닙니다.
+          - button "데모 안내 자세히 보기" [ref=f1e30] [cursor=pointer]
+        - region [ref=f1e33]:
+          - generic [ref=f1e40]:
+            - generic [ref=f1e41]:
+              - generic [ref=f1e42]:
+                - text: 01 / 문서 입력
+                - heading "어떤 내용을 확인하고 싶으세요?" [level=2] [ref=f1e43]
+              - button "초기화" [ref=f1e44] [cursor=pointer]
+            - generic [ref=f1e47]:
+              - group "입력 방식" [ref=f1e48]:
+                - button "텍스트 입력" [pressed] [ref=f1e49] [cursor=pointer]
+                - button "URL 입력 준비 중" [ref=f1e52] [cursor=pointer]:
+                  - text: URL 입력
+                  - generic [ref=f1e55]: 준비 중
+              - generic [ref=f1e56]:
+                - generic [ref=f1e57]: 확인할 원문
+                - textbox "확인할 원문" [ref=f1e58]:
+                  - /placeholder: 기사, 댓글, 궁금한 문장을 붙여넣어 주세요.
+                - generic [ref=f1e59]: 0 / 12,000
+              - generic [ref=f1e60]:
+                - generic [ref=f1e61]:
+                  - text: 확인 요청
+                  - generic [ref=f1e65]: 선택
+                - textbox "확인 요청 선택" [ref=f1e66]:
+                  - /placeholder: "예: 행사 일정과 무료 참여 조건이 궁금해요."
+              - generic [ref=f1e67]:
+                - paragraph [ref=f1e68]: 이 데모는 입력을 외부 서버로 전송하지 않습니다.
+                - button "주장 미리보기" [disabled] [ref=f1e73]
+            - generic [ref=f1e76]:
+              - generic [ref=f1e77]: 예시로 둘러보기
+              - button "가상 도시의 문화 행사" [ref=f1e78] [cursor=pointer]
+        - status [ref=f1e82]: 아래는 가상 ‘달빛시 가을빛 축제’ 예시입니다. 강조된 문장이나 주장 카드를 선택해 보세요.
+        - region [ref=f1e83]:
+          - generic [ref=f1e84]:
+            - generic [ref=f1e85]:
+              - text: 02 / 원문과 근거
+              - heading "흩어진 근거를, 한눈에." [level=2] [ref=f1e86]
+            - button "데모 내보내기" [ref=f1e87] [cursor=pointer]
+          - generic [ref=f1e91]:
+            - generic [ref=f1e92]: 가을빛 축제 안내 · 합성 예시
+            - generic [ref=f1e95]:
+              - generic [ref=f1e96]: 후보 3
+              - generic [ref=f1e97]: 예시 문서 2
+              - generic [ref=f1e98]: 원자료 그룹 1
+          - group "검토 화면 선택" [ref=f1e99]:
+            - button "원문" [ref=f1e100] [cursor=pointer]
+            - button "결과" [pressed] [ref=f1e101] [cursor=pointer]
+            - button "출처" [ref=f1e102] [cursor=pointer]
+          - generic [ref=f1e103]:
+            - generic "주장 후보 선택" [ref=f1e104]:
+              - button "주장 01 대체로 확인됨 달빛시의 가을빛 축제가 10월 12일부터 사흘간 열립니다. 근거 살펴보기" [ref=f1e105] [cursor=pointer]:
+                - generic [ref=f1e106]:
+                  - generic [ref=f1e107]: 주장 01
+                  - generic [ref=f1e108]:
+                    - generic [aria-hidden] [ref=f1e109]: ✓
+                    - text: 대체로 확인됨
+                - strong [ref=f1e110]: 달빛시의 가을빛 축제가 10월 12일부터 사흘간 열립니다.
+                - generic [ref=f1e111]: 근거 살펴보기
+              - button "주장 02 맥락이 생략됨 모든 프로그램은 예약 없이 무료로 참여할 수 있습니다. 선택한 주장" [pressed] [ref=f1e114] [cursor=pointer]:
+                - generic [ref=f1e115]:
+                  - generic [ref=f1e116]: 주장 02
+                  - generic [ref=f1e117]:
+                    - generic [aria-hidden] [ref=f1e118]: "!"
+                    - text: 맥락이 생략됨
+                - strong [ref=f1e119]: 모든 프로그램은 예약 없이 무료로 참여할 수 있습니다.
+                - generic [ref=f1e120]: 선택한 주장
+              - button "주장 03 검증 대상 아님 올해 방문객은 지난해보다 두 배 늘어날 전망입니다. 근거 살펴보기" [ref=f1e123] [cursor=pointer]:
+                - generic [ref=f1e124]:
+                  - generic [ref=f1e125]: 주장 03
+                  - generic [ref=f1e126]:
+                    - generic [aria-hidden] [ref=f1e127]: —
+                    - text: 검증 대상 아님
+                - strong [ref=f1e128]: 올해 방문객은 지난해보다 두 배 늘어날 전망입니다.
+                - generic [ref=f1e129]: 근거 살펴보기
+            - generic [ref=f1e139]:
+              - generic [ref=f1e140]:
+                - heading "주장별 근거" [level=3] [ref=f1e141]
+                - generic [ref=f1e145]: 예시 비교
+              - generic [ref=f1e147]:
+                - generic [ref=f1e148]: 선택한 주장 · 예시 판정
+                - heading "모든 프로그램은 예약 없이 무료로 참여할 수 있습니다." [level=3] [ref=f1e149]
+                - generic [ref=f1e150]:
+                  - generic [aria-hidden] [ref=f1e151]: "!"
+                  - text: 맥락이 생략됨
+                - paragraph [ref=f1e152]: 야외 전시와 공연은 무료이지만, 공예 체험에는 사전 예약과 재료비가 필요합니다.
+        - generic [ref=f1e153]:
+          - generic [ref=f1e154]:
+            - generic [ref=f1e155]: F
+            - text: FactLens
+            - generic [ref=f1e156]: /
+            - text: 판단을 대신하지 않고, 근거를 연결합니다.
+          - button "검증 원칙" [ref=f1e157] [cursor=pointer]
+  - button "Open Next.js Dev Tools" [ref=f1e165] [cursor=pointer]

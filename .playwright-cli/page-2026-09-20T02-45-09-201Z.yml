@@ -1,0 +1,532 @@
+- generic [ref=f1e1]:
+  - generic [ref=f1e2]:
+    - button "배경 움직임 끄기" [pressed] [ref=f1e183] [cursor=pointer]: 배경 모션 켬
+    - link "본문으로 건너뛰기" [ref=f1e3] [cursor=pointer]:
+      - /url: "#workspace-main"
+    - complementary [ref=f1e4]:
+      - link "팩트렌즈 홈" [ref=f1e5] [cursor=pointer]:
+        - /url: "#top"
+        - generic [ref=f1e10]:
+          - text: FactLens
+          - generic [ref=f1e11]: 팩트렌즈
+      - generic [ref=f1e12]:
+        - generic [ref=f1e13]: F
+        - generic [ref=f1e14]:
+          - text: 나의 워크스페이스
+          - generic [ref=f1e15]: 텍스트 검증 · 예시 체험
+      - paragraph [ref=f1e16]: 워크스페이스
+      - navigation "주요 메뉴" [ref=f1e17]:
+        - link "근거 워크스페이스" [ref=f1e18] [cursor=pointer]:
+          - /url: "#review"
+        - button "새 문서 시작" [ref=f1e25] [cursor=pointer]
+        - button "검증 가이드" [ref=f1e28] [cursor=pointer]
+      - generic [ref=f1e31]:
+        - generic [ref=f1e32]:
+          - strong [ref=f1e36]: 결론보다, 근거를 먼저.
+          - paragraph [ref=f1e37]: 확인된 내용과 아직 모르는 내용을 나란히 살펴보세요.
+          - button "우리의 검증 원칙" [ref=f1e38] [cursor=pointer]
+        - generic [ref=f1e41]: API 키 미설정
+        - paragraph [ref=f1e43]: FACTLENS / EVIDENCE WORKSPACE
+    - generic [ref=f1e44]:
+      - banner [ref=f1e45]:
+        - generic [ref=f1e46]:
+          - generic [ref=f1e47]: 워크스페이스 /
+          - strong [ref=f1e48]: 근거 살펴보기
+        - generic [ref=f1e49]:
+          - generic [ref=f1e50]: LUNA · MAX
+          - button "사용 가이드" [ref=f1e51] [cursor=pointer]
+          - button "UI 조정" [expanded] [active] [ref=f1e55] [cursor=pointer]
+          - generic "로컬 워크스페이스" [ref=f1e62]: F
+      - main [ref=f1e63]:
+        - generic [ref=f1e64]:
+          - generic [ref=f1e65]:
+            - paragraph [ref=f1e66]: 더 선명한 판단의 시작
+            - heading "그 주장, 근거까지 보이나요?" [level=1] [ref=f1e68]
+            - paragraph [ref=f1e69]: 단정 대신 맥락을, 숫자 대신 출처를.원문 속 주장과 근거를 한곳에서 비교해 보세요.
+          - generic [ref=f1e76]: 주장에서 근거로
+        - generic [ref=f1e79]:
+          - generic [ref=f1e80]: LUNA · MAX
+          - paragraph [ref=f1e81]: 직접 입력한 원문은 동의 후 OpenAI와 웹 검색으로 검증합니다. AI의 결론은 원출처와 함께 확인해 주세요.
+          - button "검증 및 예시 안내 자세히 보기" [ref=f1e82] [cursor=pointer]
+        - region [ref=f1e85]:
+          - generic [ref=f1e92]:
+            - generic [ref=f1e93]:
+              - generic [ref=f1e94]:
+                - text: 01 / 문서 입력
+                - heading "어떤 내용을 확인하고 싶으세요?" [level=2] [ref=f1e95]
+              - button "초기화" [ref=f1e96] [cursor=pointer]
+            - generic [ref=f1e100]:
+              - group "입력 방식" [ref=f1e101]:
+                - button "텍스트 입력" [pressed] [ref=f1e102] [cursor=pointer]
+                - button "URL 입력 준비 중" [ref=f1e105] [cursor=pointer]:
+                  - text: URL 입력
+                  - generic [ref=f1e108]: 준비 중
+              - generic [ref=f1e109]:
+                - generic [ref=f1e110]: 확인할 원문
+                - textbox "확인할 원문" [ref=f1e111]:
+                  - /placeholder: 기사, 댓글, 궁금한 문장을 붙여넣어 주세요.
+                - generic [ref=f1e112]: 0 / 12,000
+              - generic [ref=f1e113]:
+                - generic [ref=f1e114]:
+                  - text: 확인 요청
+                  - generic [ref=f1e118]: 선택
+                - textbox "확인 요청 선택" [ref=f1e119]:
+                  - /placeholder: "예: 행사 일정과 무료 참여 조건이 궁금해요."
+              - generic [ref=f1e121]:
+                - paragraph [ref=f1e122]: gpt-5.6-luna · reasoning max · 웹 검색 사용. 유료 요청이며 시간이 걸릴 수 있습니다.
+                - generic [ref=f1e123]:
+                  - checkbox "원문과 확인 요청을 서버·OpenAI에 보내고 웹 검색에 사용하는 데 동의합니다. 민감한 정보는 제외해 주세요." [ref=f1e124]
+                  - text: 원문과 확인 요청을 서버·OpenAI에 보내고 웹 검색에 사용하는 데 동의합니다. 민감한 정보는 제외해 주세요.
+                - paragraph [ref=f1e125]: 서버 설정이 필요합니다. 프로젝트의 .env.local에 OPENAI_API_KEY를 설정한 뒤 서버를 다시 시작해 주세요. 키를 화면이나 채팅에 입력하지 마세요.
+              - generic [ref=f1e126]:
+                - paragraph [ref=f1e127]: 동의한 검증 요청만 외부로 전송합니다.
+                - button "팩트 검증 시작" [disabled] [ref=f1e132]
+            - generic [ref=f1e135]:
+              - generic [ref=f1e136]: 예시로 둘러보기
+              - button "가상 도시의 문화 행사" [ref=f1e137] [cursor=pointer]
+              - generic [ref=f1e141]: 일정 · 참여 조건 · 예측
+        - status [ref=f1e142]: 서버 설정이 필요합니다. 프로젝트의 .env.local에 OPENAI_API_KEY를 설정한 뒤 서버를 다시 시작해 주세요. 키를 화면이나 채팅에 입력하지 마세요.
+        - region [ref=f1e143]:
+          - generic [ref=f1e144]:
+            - generic [ref=f1e145]:
+              - text: 02 / 원문과 근거
+              - heading "흩어진 근거를, 한눈에." [level=2] [ref=f1e146]
+            - button "결과 내보내기" [disabled] [ref=f1e147]
+          - generic [ref=f1e158]:
+            - heading "첫 번째 문서를 기다리고 있습니다." [level=3] [ref=f1e162]
+            - paragraph [ref=f1e163]: 원문을 붙여넣거나 예시를 불러와 근거 비교 화면을 둘러보세요.
+            - button "예시 불러오기" [ref=f1e164] [cursor=pointer]
+        - generic [ref=f1e167]:
+          - generic [ref=f1e168]:
+            - generic [ref=f1e169]: F
+            - text: FactLens
+            - generic [ref=f1e170]: /
+            - text: 판단을 대신하지 않고, 근거를 연결합니다.
+          - button "검증 원칙" [ref=f1e171] [cursor=pointer]
+      - complementary "UI 컴포넌트 조정" [ref=f1e366]:
+        - generic [ref=f1e367]:
+          - generic [ref=f1e368]:
+            - generic [ref=f1e369]: DEV TOOL
+            - heading "UI Component Lab" [level=2] [ref=f1e375]
+            - paragraph [ref=f1e376]: Glass, shader, lens, particle 설정을 실시간으로 조정합니다.
+          - button "UI 조정 닫기" [ref=f1e377] [cursor=pointer]
+        - generic [ref=f1e380]:
+          - region [ref=f1e381]:
+            - generic [ref=f1e382]:
+              - heading "Liquid Glass" [level=3] [ref=f1e383]
+              - generic [ref=f1e384]: 8개 설정
+            - generic [ref=f1e385]:
+              - generic [ref=f1e386]:
+                - generic [ref=f1e387]: 왜곡 강도
+                - status [ref=f1e388]: "46"
+                - slider "왜곡 강도" [ref=f1e389]: "46"
+              - generic [ref=f1e390]:
+                - generic [ref=f1e391]: 배경 블러
+                - status [ref=f1e392]: "0.140"
+                - slider "배경 블러" [ref=f1e393]: "0.14"
+              - generic [ref=f1e394]:
+                - generic [ref=f1e395]: 색상 채도
+                - status [ref=f1e396]: "160"
+                - slider "색상 채도" [ref=f1e397]: "160"
+              - generic [ref=f1e398]:
+                - generic [ref=f1e399]: 색수차
+                - status [ref=f1e400]: "1.60"
+                - slider "색수차" [ref=f1e401]: "1.6"
+              - generic [ref=f1e402]:
+                - generic [ref=f1e403]: 패널 투명도
+                - status [ref=f1e404]: 42%
+                - slider "패널 투명도" [ref=f1e405]: "0.42"
+              - generic [ref=f1e406]:
+                - generic [ref=f1e407]: 모서리 반경
+                - status [ref=f1e408]: "18"
+                - slider "모서리 반경" [ref=f1e409]: "18"
+              - generic [ref=f1e410]:
+                - generic [ref=f1e411]: 탄성
+                - status [ref=f1e412]: "0.00"
+                - slider "탄성" [ref=f1e413]: "0"
+              - generic [ref=f1e414]:
+                - generic [ref=f1e415]: 렌더 모드
+                - combobox "렌더 모드" [ref=f1e416]:
+                  - option "Standard" [selected]
+                  - option "Polar"
+                  - option "Prominent"
+                  - option "Shader"
+          - region [ref=f1e417]:
+            - generic [ref=f1e418]:
+              - heading "Shader Gradient" [level=3] [ref=f1e419]
+              - generic [ref=f1e420]: 전체 설정 · 자동 저장
+              - button "초기화" [ref=f1e421] [cursor=pointer]
+            - generic [ref=f1e422]:
+              - generic [ref=f1e423]:
+                - generic [ref=f1e424]:
+                  - generic [ref=f1e425]: 색상 1
+                  - status [ref=f1e426]: "#ffffff"
+                - textbox "셰이더 색상 1" [ref=f1e427] [cursor=pointer]: "#ffffff"
+              - generic [ref=f1e428]:
+                - generic [ref=f1e429]:
+                  - generic [ref=f1e430]: 색상 2
+                  - status [ref=f1e431]: "#575757"
+                - textbox "셰이더 색상 2" [ref=f1e432] [cursor=pointer]: "#575757"
+              - generic [ref=f1e433]:
+                - generic [ref=f1e434]:
+                  - generic [ref=f1e435]: 색상 3
+                  - status [ref=f1e436]: "#000000"
+                - textbox "셰이더 색상 3" [ref=f1e437] [cursor=pointer]: "#000000"
+            - generic [ref=f1e438]: 모션 · 형태
+            - generic [ref=f1e439]:
+              - generic [ref=f1e440]:
+                - generic [ref=f1e441]: 형태
+                - combobox "형태" [ref=f1e442]:
+                  - option "Plane"
+                  - option "Sphere"
+                  - option "Water Plane" [selected]
+              - generic [ref=f1e443]:
+                - generic [ref=f1e444]: 애니메이션
+                - combobox "애니메이션" [ref=f1e445]:
+                  - option "켜짐" [selected]
+                  - option "꺼짐"
+              - generic [ref=f1e446]:
+                - generic [ref=f1e447]: 범위
+                - combobox "범위" [ref=f1e448]:
+                  - option "사용 안 함" [selected]
+                  - option "사용"
+              - generic [ref=f1e449]:
+                - generic [ref=f1e450]: 루프
+                - combobox "루프" [ref=f1e451]:
+                  - option "꺼짐"
+                  - option "켜짐" [selected]
+            - generic [ref=f1e452]:
+              - generic [ref=f1e453]:
+                - generic [ref=f1e454]: 고정 시간
+                - status [ref=f1e455]: "16.2"
+                - slider "고정 시간" [ref=f1e456]: "16.2"
+              - generic [ref=f1e457]:
+                - generic [ref=f1e458]: 애니메이션 속도
+                - status [ref=f1e459]: "0.10"
+                - slider "애니메이션 속도" [ref=f1e460]: "0.1"
+              - generic [ref=f1e461]:
+                - generic [ref=f1e462]: 형태 강도
+                - status [ref=f1e463]: "2.1"
+                - slider "형태 강도" [ref=f1e464]: "2.1"
+              - generic [ref=f1e465]:
+                - generic [ref=f1e466]: 밀도
+                - status [ref=f1e467]: "1.4"
+                - slider "밀도" [ref=f1e468]: "1.4"
+              - generic [ref=f1e469]:
+                - generic [ref=f1e470]: 주파수
+                - status [ref=f1e471]: "2.5"
+                - slider "주파수" [ref=f1e472]: "2.5"
+              - generic [ref=f1e473]:
+                - generic [ref=f1e474]: 진폭
+                - status [ref=f1e475]: "1.60"
+                - slider "진폭" [ref=f1e476]: "1.6"
+              - generic [ref=f1e477]:
+                - generic [ref=f1e478]: 범위 시작
+                - status [ref=f1e479]: "0"
+                - slider "범위 시작" [ref=f1e480]: "0"
+              - generic [ref=f1e481]:
+                - generic [ref=f1e482]: 범위 끝
+                - status [ref=f1e483]: "37"
+                - slider "범위 끝" [ref=f1e484]: "37"
+              - generic [ref=f1e485]:
+                - generic [ref=f1e486]: 루프 시간
+                - status [ref=f1e487]: "8.0"
+                - slider "루프 시간" [ref=f1e488]: "8"
+            - generic [ref=f1e489]: 배치 · 카메라
+            - generic [ref=f1e490]:
+              - generic [ref=f1e491]:
+                - generic [ref=f1e492]: 위치 X
+                - status [ref=f1e493]: "-1.40"
+                - slider "위치 X" [ref=f1e494]: "-1.4"
+              - generic [ref=f1e495]:
+                - generic [ref=f1e496]: 위치 Y
+                - status [ref=f1e497]: "0.00"
+                - slider "위치 Y" [ref=f1e498]: "0"
+              - generic [ref=f1e499]:
+                - generic [ref=f1e500]: 위치 Z
+                - status [ref=f1e501]: "0.00"
+                - slider "위치 Z" [ref=f1e502]: "0"
+              - generic [ref=f1e503]:
+                - generic [ref=f1e504]: 회전 X
+                - status [ref=f1e505]: "0"
+                - slider "회전 X" [ref=f1e506]: "0"
+              - generic [ref=f1e507]:
+                - generic [ref=f1e508]: 회전 Y
+                - status [ref=f1e509]: "10"
+                - slider "회전 Y" [ref=f1e510]: "10"
+              - generic [ref=f1e511]:
+                - generic [ref=f1e512]: 회전 Z
+                - status [ref=f1e513]: "40"
+                - slider "회전 Z" [ref=f1e514]: "40"
+              - generic [ref=f1e515]:
+                - generic [ref=f1e516]: 카메라 방위각
+                - status [ref=f1e517]: "180"
+                - slider "카메라 방위각" [ref=f1e518]: "180"
+              - generic [ref=f1e519]:
+                - generic [ref=f1e520]: 카메라 극각
+                - status [ref=f1e521]: "90"
+                - slider "카메라 극각" [ref=f1e522]: "90"
+              - generic [ref=f1e523]:
+                - generic [ref=f1e524]: 카메라 거리
+                - status [ref=f1e525]: "3.6"
+                - slider "카메라 거리" [ref=f1e526]: "3.6"
+              - generic [ref=f1e527]:
+                - generic [ref=f1e528]: 카메라 줌
+                - status [ref=f1e529]: "1.00"
+                - slider "카메라 줌" [ref=f1e530]: "1"
+              - generic [ref=f1e531]:
+                - generic [ref=f1e532]: 반사
+                - status [ref=f1e533]: "0.00"
+                - slider "반사" [ref=f1e534]: "0"
+            - generic [ref=f1e535]: 조명 · 효과
+            - generic [ref=f1e536]:
+              - generic [ref=f1e537]:
+                - generic [ref=f1e538]: 조명 방식
+                - combobox "조명 방식" [ref=f1e539]:
+                  - option "3D Light" [selected]
+                  - option "Environment"
+              - generic [ref=f1e540]:
+                - generic [ref=f1e541]: 환경 프리셋
+                - combobox "환경 프리셋" [ref=f1e542]:
+                  - option "City" [selected]
+                  - option "Dawn"
+                  - option "Lobby"
+              - generic [ref=f1e543]:
+                - generic [ref=f1e544]: 그레인
+                - combobox "그레인" [ref=f1e545]:
+                  - option "꺼짐" [selected]
+                  - option "켜짐"
+            - generic [ref=f1e546]:
+              - generic [ref=f1e547]:
+                - generic [ref=f1e548]: 밝기
+                - status [ref=f1e549]: "0.90"
+                - slider "밝기" [ref=f1e550]: "0.9"
+              - generic [ref=f1e551]:
+                - generic [ref=f1e552]: 보간 시간
+                - status [ref=f1e553]: "0.00"
+                - slider "보간 시간" [ref=f1e554]: "0"
+              - generic [ref=f1e555]:
+                - generic [ref=f1e556]: 그레인 혼합
+                - status [ref=f1e557]: "0.30"
+                - slider "그레인 혼합" [ref=f1e558]: "0.3"
+            - generic [ref=f1e559]:
+              - generic [ref=f1e560]:
+                - generic [ref=f1e561]: 와이어프레임
+                - checkbox "와이어프레임" [ref=f1e562]
+              - generic [ref=f1e563]:
+                - generic [ref=f1e564]: 줌 아웃
+                - checkbox "줌 아웃" [ref=f1e565]
+              - generic [ref=f1e566]:
+                - generic [ref=f1e567]: 축 전환
+                - checkbox "축 전환" [ref=f1e568]
+              - generic [ref=f1e569]:
+                - generic [ref=f1e570]: 전환 효과
+                - checkbox "전환 효과" [ref=f1e571]
+              - generic [ref=f1e572]:
+                - generic [ref=f1e573]: 카메라 업데이트
+                - checkbox "카메라 업데이트" [ref=f1e574]
+            - generic [ref=f1e575]: 캔버스 · 렌더러
+            - generic [ref=f1e576]:
+              - generic [ref=f1e577]:
+                - generic [ref=f1e578]: 픽셀 밀도
+                - status [ref=f1e579]: "1.0"
+                - slider "픽셀 밀도" [ref=f1e580]: "1"
+              - generic [ref=f1e581]:
+                - generic [ref=f1e582]: 시야각
+                - status [ref=f1e583]: "45"
+                - slider "시야각" [ref=f1e584]: "45"
+              - generic [ref=f1e585]:
+                - generic [ref=f1e586]: 지연 로드 기준
+                - status [ref=f1e587]: "0.00"
+                - slider "지연 로드 기준" [ref=f1e588]: "0"
+            - generic [ref=f1e589]:
+              - generic [ref=f1e590]:
+                - generic [ref=f1e591]: 포인터 이벤트
+                - combobox "포인터 이벤트" [ref=f1e592]:
+                  - option "무시" [selected]
+                  - option "허용"
+              - generic [ref=f1e593]:
+                - generic [ref=f1e594]: GPU 선호
+                - combobox "GPU 선호" [ref=f1e595]:
+                  - option "저전력" [selected]
+                  - option "고성능"
+                  - option "기본"
+            - generic [ref=f1e596]:
+              - generic [ref=f1e597]:
+                - generic [ref=f1e598]: 지연 로드
+                - checkbox "지연 로드" [ref=f1e599]
+              - generic [ref=f1e600]:
+                - generic [ref=f1e601]: 버퍼 보존
+                - checkbox "버퍼 보존" [ref=f1e602]
+            - generic [ref=f1e603]:
+              - generic [ref=f1e604]: Intersection root margin
+              - textbox "Intersection root margin" [ref=f1e605]: 0px
+          - region [ref=f1e606]:
+            - generic [ref=f1e607]:
+              - heading "Lens Visual" [level=3] [ref=f1e608]
+              - generic [ref=f1e609]: 렌즈 코어 · 자동 저장
+              - button "초기화" [ref=f1e610] [cursor=pointer]
+            - generic [ref=f1e611]:
+              - generic [ref=f1e612]:
+                - generic [ref=f1e613]:
+                  - generic [ref=f1e614]: 색상 1
+                  - status [ref=f1e615]: "#14212e"
+                - textbox "렌즈 색상 1" [ref=f1e616] [cursor=pointer]: "#14212e"
+              - generic [ref=f1e617]:
+                - generic [ref=f1e618]:
+                  - generic [ref=f1e619]: 색상 2
+                  - status [ref=f1e620]: "#327e86"
+                - textbox "렌즈 색상 2" [ref=f1e621] [cursor=pointer]: "#327e86"
+              - generic [ref=f1e622]:
+                - generic [ref=f1e623]:
+                  - generic [ref=f1e624]: 색상 3
+                  - status [ref=f1e625]: "#534379"
+                - textbox "렌즈 색상 3" [ref=f1e626] [cursor=pointer]: "#534379"
+              - generic [ref=f1e627]:
+                - generic [ref=f1e628]:
+                  - generic [ref=f1e629]: 색상 4
+                  - status [ref=f1e630]: "#141a2b"
+                - textbox "렌즈 색상 4" [ref=f1e631] [cursor=pointer]: "#141a2b"
+            - generic [ref=f1e632]: 모션 · 왜곡
+            - generic [ref=f1e633]:
+              - generic [ref=f1e634]:
+                - generic [ref=f1e635]: 애니메이션 속도
+                - status [ref=f1e636]: "0.08"
+                - slider "애니메이션 속도" [ref=f1e637]: "0.08"
+              - generic [ref=f1e638]:
+                - generic [ref=f1e639]: 왜곡
+                - status [ref=f1e640]: "0.45"
+                - slider "왜곡" [ref=f1e641]: "0.45"
+              - generic [ref=f1e642]:
+                - generic [ref=f1e643]: 소용돌이
+                - status [ref=f1e644]: "0.20"
+                - slider "소용돌이" [ref=f1e645]: "0.2"
+              - generic [ref=f1e646]:
+                - generic [ref=f1e647]: 그레인 변형
+                - status [ref=f1e648]: "0.00"
+                - slider "그레인 변형" [ref=f1e649]: "0"
+              - generic [ref=f1e650]:
+                - generic [ref=f1e651]: 그레인 오버레이
+                - status [ref=f1e652]: "0.00"
+                - slider "그레인 오버레이" [ref=f1e653]: "0"
+            - generic [ref=f1e654]: 크기 · 배치
+            - generic [ref=f1e656]:
+              - generic [ref=f1e657]: 맞춤 방식
+              - combobox "맞춤 방식" [ref=f1e658]:
+                - option "Contain" [selected]
+                - option "Cover"
+                - option "None"
+            - generic [ref=f1e659]:
+              - generic [ref=f1e660]:
+                - generic [ref=f1e661]: 크기
+                - status [ref=f1e662]: "1.00"
+                - slider "크기" [ref=f1e663]: "1.01"
+              - generic [ref=f1e664]:
+                - generic [ref=f1e665]: 회전
+                - status [ref=f1e666]: "0"
+                - slider "회전" [ref=f1e667]: "0"
+              - generic [ref=f1e668]:
+                - generic [ref=f1e669]: 기준점 X
+                - status [ref=f1e670]: "0.50"
+                - slider "기준점 X" [ref=f1e671]: "0.5"
+              - generic [ref=f1e672]:
+                - generic [ref=f1e673]: 기준점 Y
+                - status [ref=f1e674]: "0.50"
+                - slider "기준점 Y" [ref=f1e675]: "0.5"
+              - generic [ref=f1e676]:
+                - generic [ref=f1e677]: 오프셋 X
+                - status [ref=f1e678]: "0.00"
+                - slider "오프셋 X" [ref=f1e679]: "0"
+              - generic [ref=f1e680]:
+                - generic [ref=f1e681]: 오프셋 Y
+                - status [ref=f1e682]: "0.00"
+                - slider "오프셋 Y" [ref=f1e683]: "0"
+              - generic [ref=f1e684]:
+                - generic [ref=f1e685]: 가상 너비
+                - status [ref=f1e686]: "0"
+                - slider "가상 너비" [ref=f1e687]: "0"
+              - generic [ref=f1e688]:
+                - generic [ref=f1e689]: 가상 높이
+                - status [ref=f1e690]: "0"
+                - slider "가상 높이" [ref=f1e691]: "0"
+          - region [ref=f1e692]:
+            - generic [ref=f1e693]:
+              - heading "TRUE OR NOT" [level=3] [ref=f1e694]
+              - generic [ref=f1e695]: 입자 로고 · 자동 저장
+              - button "초기화" [ref=f1e696] [cursor=pointer]
+            - generic [ref=f1e697]:
+              - generic [ref=f1e698]:
+                - generic [ref=f1e699]: 로고 텍스트
+                - textbox "로고 텍스트" [ref=f1e700]: FACTLENS
+              - generic [ref=f1e701]:
+                - generic [ref=f1e702]: 입자 기호
+                - textbox "입자 기호" [ref=f1e703]: •
+            - generic [ref=f1e704]:
+              - generic [ref=f1e705]:
+                - generic [ref=f1e706]: 입자 색상
+                - combobox "입자 색상" [ref=f1e707]:
+                  - option "원본 샘플"
+                  - option "Cyan"
+                  - option "Violet"
+                  - option "Mint"
+                  - option "직접 선택" [selected]
+              - generic [ref=f1e708]:
+                - generic [ref=f1e709]: 직접 색상
+                - textbox "직접 색상" [ref=f1e710] [cursor=pointer]: "#ff6688"
+                - status [ref=f1e711]: "#ff6688"
+            - generic [ref=f1e712]: 모양
+            - generic [ref=f1e713]:
+              - generic [ref=f1e714]:
+                - generic [ref=f1e715]: 입자 밀도
+                - status [ref=f1e716]: "4"
+                - slider "입자 밀도" [ref=f1e717]: "4"
+              - generic [ref=f1e718]:
+                - generic [ref=f1e719]: 입자 간격
+                - status [ref=f1e720]: "0.0032"
+                - slider "입자 간격" [ref=f1e721]: "0.0032"
+              - generic [ref=f1e722]:
+                - generic [ref=f1e723]: 입자 크기
+                - status [ref=f1e724]: "0.0110"
+                - slider "입자 크기" [ref=f1e725]: "0.011"
+              - generic [ref=f1e726]:
+                - generic [ref=f1e727]: 로고 투명도
+                - status [ref=f1e728]: "0.82"
+                - slider "로고 투명도" [ref=f1e729]: "0.82"
+            - generic [ref=f1e731]:
+              - generic [ref=f1e732]: 기울기 반응
+              - checkbox "기울기 반응" [ref=f1e733]
+            - generic [ref=f1e734]: 상호작용
+            - generic [ref=f1e735]:
+              - generic [ref=f1e736]:
+                - generic [ref=f1e737]: 기울기 강도
+                - status [ref=f1e738]: "0.08"
+                - slider "기울기 강도" [ref=f1e739]: "0.08"
+              - generic [ref=f1e740]:
+                - generic [ref=f1e741]: 기울기 속도
+                - status [ref=f1e742]: "0.040"
+                - slider "기울기 속도" [ref=f1e743]: "0.04"
+              - generic [ref=f1e744]:
+                - generic [ref=f1e745]: 밀어내기 힘
+                - status [ref=f1e746]: "0.72"
+                - slider "밀어내기 힘" [ref=f1e747]: "0.7"
+              - generic [ref=f1e748]:
+                - generic [ref=f1e749]: 밀어내기 반경
+                - status [ref=f1e750]: "0.18"
+                - slider "밀어내기 반경" [ref=f1e751]: "0.18"
+              - generic [ref=f1e752]:
+                - generic [ref=f1e753]: 속도 반영
+                - status [ref=f1e754]: "0.50"
+                - slider "속도 반영" [ref=f1e755]: "0.5"
+              - generic [ref=f1e756]:
+                - generic [ref=f1e757]: 복귀 속도
+                - status [ref=f1e758]: "0.050"
+                - slider "복귀 속도" [ref=f1e759]: "0.05"
+        - generic [ref=f1e760]:
+          - generic [ref=f1e761]: 브라우저에 저장됨
+          - generic [ref=f1e763]:
+            - button "프로젝트 저장" [ref=f1e764] [cursor=pointer]
+            - button "코드 복사" [ref=f1e765] [cursor=pointer]
+            - button "배경 기본값" [ref=f1e766] [cursor=pointer]
+            - button "글래스 기본값" [ref=f1e769] [cursor=pointer]
+  - button "Open Next.js Dev Tools" [ref=f1e179] [cursor=pointer]
+  - alert [ref=f1e188]

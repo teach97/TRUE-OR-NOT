@@ -1,0 +1,103 @@
+- generic [ref=e2]:
+  - link "본문으로 건너뛰기" [ref=e3] [cursor=pointer]:
+    - /url: "#workspace-main"
+  - complementary [ref=e4]:
+    - link "팩트렌즈 홈" [ref=e5] [cursor=pointer]:
+      - /url: "#top"
+      - generic [ref=e10]:
+        - text: FactLens
+        - generic [ref=e11]: 팩트렌즈
+    - generic [ref=e12]:
+      - generic [ref=e13]: F
+      - generic [ref=e14]:
+        - text: 나의 워크스페이스
+        - generic [ref=e15]: 텍스트 검증 · 예시 체험
+    - paragraph [ref=e16]: 워크스페이스
+    - navigation "주요 메뉴" [ref=e17]:
+      - link "근거 워크스페이스" [ref=e18] [cursor=pointer]:
+        - /url: "#review"
+      - button "새 문서 시작" [ref=e25] [cursor=pointer]
+      - button "검증 가이드" [ref=e28] [cursor=pointer]
+    - generic [ref=e31]:
+      - generic [ref=e32]:
+        - strong [ref=e36]: 결론보다, 근거를 먼저.
+        - paragraph [ref=e37]: 확인된 내용과 아직 모르는 내용을 나란히 살펴보세요.
+        - button "우리의 검증 원칙" [ref=e38] [cursor=pointer]
+      - generic [ref=e41]: 서버 설정 확인 중
+      - paragraph [ref=e43]: FACTLENS / EVIDENCE WORKSPACE
+  - generic [ref=e44]:
+    - banner [ref=e45]:
+      - generic [ref=e46]:
+        - generic [ref=e47]: 워크스페이스 /
+        - strong [ref=e48]: 근거 살펴보기
+      - generic [ref=e49]:
+        - generic [ref=e50]: LUNA · MAX
+        - button "사용 가이드" [ref=e51] [cursor=pointer]
+        - button "UI 조정" [ref=e55] [cursor=pointer]
+        - generic "로컬 워크스페이스" [ref=e62]: F
+    - main [ref=e63]:
+      - generic [ref=e64]:
+        - generic [ref=e65]:
+          - paragraph [ref=e66]: 더 선명한 판단의 시작
+          - heading "그 주장, 근거까지 보이나요?" [level=1] [ref=e68]
+          - paragraph [ref=e69]: 단정 대신 맥락을, 숫자 대신 출처를.원문 속 주장과 근거를 한곳에서 비교해 보세요.
+        - generic [ref=e76]: 주장에서 근거로
+      - generic [ref=e79]:
+        - generic [ref=e80]: LUNA · MAX
+        - paragraph [ref=e81]: 직접 입력한 원문은 동의 후 OpenAI와 웹 검색으로 검증합니다. AI의 결론은 원출처와 함께 확인해 주세요.
+        - button "검증 및 예시 안내 자세히 보기" [ref=e82] [cursor=pointer]
+      - region [ref=e85]:
+        - generic [ref=e92]:
+          - generic [ref=e93]:
+            - generic [ref=e94]:
+              - text: 01 / 문서 입력
+              - heading "어떤 내용을 확인하고 싶으세요?" [level=2] [ref=e95]
+            - button "초기화" [ref=e96] [cursor=pointer]
+          - generic [ref=e100]:
+            - group "입력 방식" [ref=e101]:
+              - button "텍스트 입력" [pressed] [ref=e102] [cursor=pointer]
+              - button "URL 입력 준비 중" [ref=e105] [cursor=pointer]:
+                - text: URL 입력
+                - generic [ref=e108]: 준비 중
+            - generic [ref=e109]:
+              - generic [ref=e110]: 확인할 원문
+              - textbox "확인할 원문" [ref=e111]:
+                - /placeholder: 기사, 댓글, 궁금한 문장을 붙여넣어 주세요.
+              - generic [ref=e112]: 0 / 12,000
+            - generic [ref=e113]:
+              - generic [ref=e114]:
+                - text: 확인 요청
+                - generic [ref=e118]: 선택
+              - textbox "확인 요청 선택" [ref=e119]:
+                - /placeholder: "예: 행사 일정과 무료 참여 조건이 궁금해요."
+            - generic [ref=e121]:
+              - paragraph [ref=e122]: gpt-5.6-luna · reasoning max · 웹 검색 사용. 유료 요청이며 시간이 걸릴 수 있습니다.
+              - generic [ref=e123]:
+                - checkbox "원문과 확인 요청을 서버·OpenAI에 보내고 웹 검색에 사용하는 데 동의합니다. 민감한 정보는 제외해 주세요." [ref=e124]
+                - text: 원문과 확인 요청을 서버·OpenAI에 보내고 웹 검색에 사용하는 데 동의합니다. 민감한 정보는 제외해 주세요.
+              - paragraph [ref=e125]: 서버 설정 확인 중
+            - generic [ref=e126]:
+              - paragraph [ref=e127]: 동의한 검증 요청만 외부로 전송합니다.
+              - button "팩트 검증 시작" [disabled] [ref=e132]
+          - generic [ref=e135]:
+            - generic [ref=e136]: 예시로 둘러보기
+            - button "가상 도시의 문화 행사" [ref=e137] [cursor=pointer]
+            - generic [ref=e141]: 일정 · 참여 조건 · 예측
+      - status [ref=e142]: 원문을 입력해 실제 검증을 시작하거나, 합성 예시를 선택해 둘러보세요.
+      - region [ref=e143]:
+        - generic [ref=e144]:
+          - generic [ref=e145]:
+            - text: 02 / 원문과 근거
+            - heading "흩어진 근거를, 한눈에." [level=2] [ref=e146]
+          - button "결과 내보내기" [disabled] [ref=e147]
+        - generic [ref=e158]:
+          - heading "첫 번째 문서를 기다리고 있습니다." [level=3] [ref=e162]
+          - paragraph [ref=e163]: 원문을 붙여넣거나 예시를 불러와 근거 비교 화면을 둘러보세요.
+          - button "예시 불러오기" [ref=e164] [cursor=pointer]
+      - generic [ref=e167]:
+        - generic [ref=e168]:
+          - generic [ref=e169]: F
+          - text: FactLens
+          - generic [ref=e170]: /
+          - text: 판단을 대신하지 않고, 근거를 연결합니다.
+        - button "검증 원칙" [ref=e171] [cursor=pointer]

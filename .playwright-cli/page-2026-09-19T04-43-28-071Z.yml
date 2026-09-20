@@ -1,0 +1,208 @@
+- generic [ref=f2e1]:
+  - generic [ref=f2e2]:
+    - button "배경 움직임 끄기" [active] [pressed] [ref=f2e308] [cursor=pointer]: 배경 모션 켬
+    - link "본문으로 건너뛰기" [ref=f2e3] [cursor=pointer]:
+      - /url: "#workspace-main"
+    - complementary [ref=f2e4]:
+      - link "팩트렌즈 홈" [ref=f2e5] [cursor=pointer]:
+        - /url: "#top"
+        - generic [ref=f2e10]:
+          - text: FactLens
+          - generic [ref=f2e11]: 팩트렌즈
+      - generic [ref=f2e12]:
+        - generic [ref=f2e13]: F
+        - generic [ref=f2e14]:
+          - text: 나의 워크스페이스
+          - generic [ref=f2e15]: 로컬 데모 환경
+      - paragraph [ref=f2e16]: 워크스페이스
+      - navigation "주요 메뉴" [ref=f2e17]:
+        - link "근거 워크스페이스" [ref=f2e18] [cursor=pointer]:
+          - /url: "#review"
+        - button "새 문서 시작" [ref=f2e25] [cursor=pointer]
+        - button "검증 가이드" [ref=f2e28] [cursor=pointer]
+      - generic [ref=f2e31]:
+        - generic [ref=f2e32]:
+          - strong [ref=f2e36]: 결론보다, 근거를 먼저.
+          - paragraph [ref=f2e37]: 확인된 내용과 아직 모르는 내용을 나란히 살펴보세요.
+          - button "우리의 검증 원칙" [ref=f2e38] [cursor=pointer]
+        - generic [ref=f2e41]: 데모 모드 · API 미연결
+        - paragraph [ref=f2e43]: FACTLENS / EVIDENCE WORKSPACE
+    - generic [ref=f2e44]:
+      - banner [ref=f2e45]:
+        - generic [ref=f2e46]:
+          - generic [ref=f2e47]: 워크스페이스 /
+          - strong [ref=f2e48]: 근거 살펴보기
+        - generic [ref=f2e49]:
+          - generic [ref=f2e50]: DEMO
+          - button "사용 가이드" [ref=f2e51] [cursor=pointer]
+          - button "글래스 조정" [ref=f2e55] [cursor=pointer]
+          - generic "로컬 워크스페이스" [ref=f2e62]: F
+      - main [ref=f2e63]:
+        - generic [ref=f2e64]:
+          - generic [ref=f2e65]:
+            - paragraph [ref=f2e66]: 더 선명한 판단의 시작
+            - heading "그 주장, 근거까지 보이나요?" [level=1] [ref=f2e68]
+            - paragraph [ref=f2e69]: 단정 대신 맥락을, 숫자 대신 출처를.원문 속 주장과 근거를 한곳에서 비교해 보세요.
+          - generic [ref=f2e76]: 주장에서 근거로
+        - generic [ref=f2e79]:
+          - generic [ref=f2e80]: DEMO
+          - paragraph [ref=f2e81]:
+            - text: 화면 체험용 데모입니다.
+            - strong [ref=f2e82]: 주장·문서·판정은 합성 예시이며, 실제 검증 결과가 아닙니다.
+          - button "데모 안내 자세히 보기" [ref=f2e83] [cursor=pointer]
+        - region [ref=f2e86]:
+          - generic [ref=f2e93]:
+            - generic [ref=f2e94]:
+              - generic [ref=f2e95]:
+                - text: 01 / 문서 입력
+                - heading "어떤 내용을 확인하고 싶으세요?" [level=2] [ref=f2e96]
+              - button "초기화" [ref=f2e97] [cursor=pointer]
+            - generic [ref=f2e101]:
+              - group "입력 방식" [ref=f2e102]:
+                - button "텍스트 입력" [pressed] [ref=f2e103] [cursor=pointer]
+                - button "URL 입력 준비 중" [ref=f2e106] [cursor=pointer]:
+                  - text: URL 입력
+                  - generic [ref=f2e109]: 준비 중
+              - generic [ref=f2e110]:
+                - generic [ref=f2e111]: 확인할 원문
+                - textbox "확인할 원문" [ref=f2e112]:
+                  - /placeholder: 기사, 댓글, 궁금한 문장을 붙여넣어 주세요.
+                - generic [ref=f2e113]: 0 / 12,000
+              - generic [ref=f2e114]:
+                - generic [ref=f2e115]:
+                  - text: 확인 요청
+                  - generic [ref=f2e119]: 선택
+                - textbox "확인 요청 선택" [ref=f2e120]:
+                  - /placeholder: "예: 행사 일정과 무료 참여 조건이 궁금해요."
+              - generic [ref=f2e121]:
+                - paragraph [ref=f2e122]: 이 데모는 입력을 외부 서버로 전송하지 않습니다.
+                - button "주장 미리보기" [disabled] [ref=f2e127]
+            - generic [ref=f2e130]:
+              - generic [ref=f2e131]: 예시로 둘러보기
+              - button "가상 도시의 문화 행사" [ref=f2e132] [cursor=pointer]
+              - generic [ref=f2e136]: 일정 · 참여 조건 · 예측
+        - status [ref=f2e137]: 아래는 가상 ‘달빛시 가을빛 축제’ 예시입니다. 강조된 문장이나 주장 카드를 선택해 보세요.
+        - region [ref=f2e138]:
+          - generic [ref=f2e139]:
+            - generic [ref=f2e140]:
+              - text: 02 / 원문과 근거
+              - heading "흩어진 근거를, 한눈에." [level=2] [ref=f2e141]
+            - button "데모 내보내기" [ref=f2e142] [cursor=pointer]
+          - generic [ref=f2e146]:
+            - generic [ref=f2e147]: 가을빛 축제 안내 · 합성 예시
+            - generic [ref=f2e150]:
+              - generic [ref=f2e151]: 후보 3
+              - generic [ref=f2e152]: 예시 문서 2
+              - generic [ref=f2e153]: 원자료 그룹 1
+          - generic [ref=f2e154]:
+            - generic "주장 후보 선택" [ref=f2e155]:
+              - button "주장 01 대체로 확인됨 달빛시의 가을빛 축제가 10월 12일부터 사흘간 열립니다. 근거 살펴보기" [ref=f2e156] [cursor=pointer]:
+                - generic [ref=f2e157]:
+                  - generic [ref=f2e158]: 주장 01
+                  - generic [ref=f2e159]:
+                    - generic [aria-hidden] [ref=f2e160]: ✓
+                    - text: 대체로 확인됨
+                - strong [ref=f2e161]: 달빛시의 가을빛 축제가 10월 12일부터 사흘간 열립니다.
+                - generic [ref=f2e162]: 근거 살펴보기
+              - button "주장 02 맥락이 생략됨 모든 프로그램은 예약 없이 무료로 참여할 수 있습니다. 선택한 주장" [pressed] [ref=f2e165] [cursor=pointer]:
+                - generic [ref=f2e166]:
+                  - generic [ref=f2e167]: 주장 02
+                  - generic [ref=f2e168]:
+                    - generic [aria-hidden] [ref=f2e169]: "!"
+                    - text: 맥락이 생략됨
+                - strong [ref=f2e170]: 모든 프로그램은 예약 없이 무료로 참여할 수 있습니다.
+                - generic [ref=f2e171]: 선택한 주장
+              - button "주장 03 검증 대상 아님 올해 방문객은 지난해보다 두 배 늘어날 전망입니다. 근거 살펴보기" [ref=f2e174] [cursor=pointer]:
+                - generic [ref=f2e175]:
+                  - generic [ref=f2e176]: 주장 03
+                  - generic [ref=f2e177]:
+                    - generic [aria-hidden] [ref=f2e178]: —
+                    - text: 검증 대상 아님
+                - strong [ref=f2e179]: 올해 방문객은 지난해보다 두 배 늘어날 전망입니다.
+                - generic [ref=f2e180]: 근거 살펴보기
+            - article [ref=f2e183]:
+              - generic [ref=f2e190]:
+                - generic [ref=f2e191]:
+                  - heading "원문 읽기" [level=3] [ref=f2e192]
+                  - generic [ref=f2e195]: 합성 문서
+                - generic [ref=f2e196]:
+                  - text: 문화 · 행사 / 가상의 사례
+                  - heading "달빛시 가을빛 축제, 알아두면 좋은 세 가지" [level=3] [ref=f2e197]
+                  - paragraph [ref=f2e198]: 팩트렌즈 예시 편집실 · 실제 기사 아님
+                  - generic [ref=f2e199]:
+                    - button "01달빛시의 가을빛 축제가 10월 12일부터 사흘간 열립니다." [ref=f2e200] [cursor=pointer]:
+                      - generic [ref=f2e201]: "01"
+                      - text: 달빛시의 가을빛 축제가 10월 12일부터 사흘간 열립니다.
+                    - button "02모든 프로그램은 예약 없이 무료로 참여할 수 있습니다." [pressed] [ref=f2e202] [cursor=pointer]:
+                      - generic [ref=f2e203]: "02"
+                      - text: 모든 프로그램은 예약 없이 무료로 참여할 수 있습니다.
+                    - button "03올해 방문객은 지난해보다 두 배 늘어날 전망입니다." [ref=f2e204] [cursor=pointer]:
+                      - generic [ref=f2e205]: "03"
+                      - text: 올해 방문객은 지난해보다 두 배 늘어날 전망입니다.
+                  - generic [ref=f2e206]: 노란 강조는 선택한 문장입니다. 판정 색상이 아닙니다.
+                  - generic [ref=f2e212]:
+                    - strong [ref=f2e213]: 확인하고 싶은 내용
+                    - paragraph [ref=f2e214]: 행사 일정과 무료 참여 조건을 확인하고 싶습니다.
+                    - generic [ref=f2e215]: 예시의 비교 범위를 보여드립니다.
+                - generic [ref=f2e216]: 실제 인물·지역·사건과 무관한 합성 예시입니다.
+            - generic [ref=f2e227]:
+              - generic [ref=f2e228]:
+                - heading "주장별 근거" [level=3] [ref=f2e229]
+                - generic [ref=f2e233]: 예시 비교
+              - generic [ref=f2e234]:
+                - generic [ref=f2e235]:
+                  - generic [ref=f2e236]: 선택한 주장 · 예시 판정
+                  - heading "모든 프로그램은 예약 없이 무료로 참여할 수 있습니다." [level=3] [ref=f2e237]
+                  - generic [ref=f2e238]:
+                    - generic [aria-hidden] [ref=f2e239]: "!"
+                    - text: 맥락이 생략됨
+                  - paragraph [ref=f2e240]: 야외 전시와 공연은 무료이지만, 공예 체험에는 사전 예약과 재료비가 필요합니다.
+                - generic [ref=f2e241]:
+                  - generic [ref=f2e242]:
+                    - heading "근거 문서 비교" [level=4] [ref=f2e243]
+                    - generic [ref=f2e244]: 2개 예시 문서
+                  - generic [ref=f2e245]:
+                    - generic [ref=f2e246]: A
+                    - paragraph [ref=f2e247]:
+                      - strong [ref=f2e248]: 같은 원자료를 공유합니다.
+                      - text: 문서 2개가 독립적인 근거 2개를 뜻하지 않습니다.
+                  - button "01 직접 안내 · 예시 가을빛 축제 운영 안내 가상 달빛시 문화과 · 가상 설정 · 2026.09.01 원자료 그룹 A 예시 문서 전문 보기" [ref=f2e249] [cursor=pointer]:
+                    - generic [ref=f2e250]:
+                      - generic [ref=f2e251]: "01"
+                      - generic [ref=f2e252]: 직접 안내 · 예시
+                    - strong [ref=f2e255]: 가을빛 축제 운영 안내
+                    - generic [ref=f2e256]: 가상 달빛시 문화과 · 가상 설정 · 2026.09.01
+                    - blockquote [ref=f2e257]: “공예 체험은 사전 예약이 필요하며 재료비 5,000원이 있습니다.”
+                    - generic [ref=f2e258]:
+                      - text: 원자료 그룹 A
+                      - generic [ref=f2e259]: 예시 문서 전문 보기
+                  - button "02 같은 안내 재인용 · 예시 축제 프로그램 소개 가상 달빛 문화소식 · 가상 설정 · 2026.09.03 원자료 그룹 A 예시 문서 전문 보기" [ref=f2e260] [cursor=pointer]:
+                    - generic [ref=f2e261]:
+                      - generic [ref=f2e262]: "02"
+                      - generic [ref=f2e263]: 같은 안내 재인용 · 예시
+                    - strong [ref=f2e266]: 축제 프로그램 소개
+                    - generic [ref=f2e267]: 가상 달빛 문화소식 · 가상 설정 · 2026.09.03
+                    - blockquote [ref=f2e268]: “공예 체험은 별도 예약과 재료비가 필요합니다.”
+                    - generic [ref=f2e269]:
+                      - text: 원자료 그룹 A
+                      - generic [ref=f2e270]: 예시 문서 전문 보기
+                  - paragraph [ref=f2e271]: 인용 표현은 아래 문서 전문에서 확인해 주세요. 모든 문서는 시연용으로 작성되었습니다.
+        - generic [ref=f2e272]:
+          - generic [ref=f2e273]:
+            - generic [ref=f2e274]: F
+            - text: FactLens
+            - generic [ref=f2e275]: /
+            - text: 판단을 대신하지 않고, 근거를 연결합니다.
+          - button "검증 원칙" [ref=f2e276] [cursor=pointer]
+  - generic [ref=f2e283] [cursor=pointer]:
+    - button "Open Next.js Dev Tools" [ref=f2e284]
+    - generic [ref=f2e293]:
+      - button "Open issues overlay" [ref=f2e294]:
+        - generic [ref=f2e305]:
+          - generic [aria-hidden] [ref=f2e306]: "3"
+          - generic [ref=f2e307]: "4"
+        - generic [ref=f2e298]:
+          - text: Issue
+          - generic [aria-hidden] [ref=f2e299]: s
+      - button "Collapse issues badge" [ref=f2e300]
+  - alert [ref=f2e303]
