@@ -1,0 +1,114 @@
+{
+  "title": "FactLens 검증 결과",
+  "disclaimer": "AI 검증에는 오류가 있을 수 있습니다. 원출처를 확인해 주세요.",
+  "text": "물은 수소와 산소로 이루어져 있다.",
+  "focus": "",
+  "demo": false,
+  "model": "gpt-5.6-luna",
+  "reasoning": "max",
+  "checkedAt": "2026-09-20T16:08:04.507833+00:00",
+  "claims": [
+    {
+      "id": "c1",
+      "quote": "물은 수소와 산소로 이루어져 있다.",
+      "start": 0,
+      "end": 19,
+      "kind": "fact",
+      "verdictCode": "mostly_supported",
+      "verdict": "대체로 확인됨",
+      "tone": "positive",
+      "summary": "물의 화학식이 H₂O로 제시되어 있어 수소와 산소로 이루어져 있다는 주장을 뒷받침한다.",
+      "confirmed": [
+        "물은 H₂O로 표시된다.",
+        "H₂O는 수소와 산소를 나타내는 화학식이다."
+      ],
+      "unresolved": [],
+      "warnings": [],
+      "evidenceIds": [
+        "e1"
+      ]
+    }
+  ],
+  "sources": [
+    {
+      "id": "s1",
+      "url": "https://pubchem.ncbi.nlm.nih.gov/compound/Water",
+      "title": "pubchem.ncbi.nlm.nih.gov",
+      "publisher": "pubchem.ncbi.nlm.nih.gov",
+      "publishedAt": null,
+      "retrievedAt": "2026-09-20T16:07:48.039668+00:00",
+      "accessStatus": "verified",
+      "sourceType": "유형 미확인",
+      "originGroupId": null
+    },
+    {
+      "id": "s2",
+      "url": "https://pubchem.ncbi.nlm.nih.gov/compound/22247451",
+      "title": "pubchem.ncbi.nlm.nih.gov",
+      "publisher": "pubchem.ncbi.nlm.nih.gov",
+      "publishedAt": null,
+      "retrievedAt": "2026-09-20T16:07:48.890764+00:00",
+      "accessStatus": "verified",
+      "sourceType": "유형 미확인",
+      "originGroupId": null
+    },
+    {
+      "id": "s3",
+      "url": "https://pubs.usgs.gov/fs/fs-027-01/",
+      "title": "pubs.usgs.gov",
+      "publisher": "pubs.usgs.gov",
+      "publishedAt": null,
+      "retrievedAt": "2026-09-20T16:07:49.203976+00:00",
+      "accessStatus": "verified",
+      "sourceType": "유형 미확인",
+      "originGroupId": null
+    },
+    {
+      "id": "s4",
+      "url": "https://pubs.usgs.gov/wsp/wsp2254/",
+      "title": "pubs.usgs.gov",
+      "publisher": "pubs.usgs.gov",
+      "publishedAt": null,
+      "retrievedAt": "2026-09-20T16:07:50.239650+00:00",
+      "accessStatus": "verified",
+      "sourceType": "유형 미확인",
+      "originGroupId": null
+    },
+    {
+      "id": "s5",
+      "url": "https://pubs.usgs.gov/circ/circ1156/circ1156.4A.html",
+      "title": "pubs.usgs.gov",
+      "publisher": "pubs.usgs.gov",
+      "publishedAt": null,
+      "retrievedAt": "2026-09-20T16:07:51.211510+00:00",
+      "accessStatus": "verified",
+      "sourceType": "유형 미확인",
+      "originGroupId": null
+    },
+    {
+      "id": "s6",
+      "url": "https://www.usgs.gov/mission-areas/water-resources/science/chloride-salinity-and-dissolved-solids",
+      "title": "www.usgs.gov",
+      "publisher": "www.usgs.gov",
+      "publishedAt": null,
+      "retrievedAt": "2026-09-20T16:07:52.265196+00:00",
+      "accessStatus": "verified",
+      "sourceType": "유형 미확인",
+      "originGroupId": null
+    }
+  ],
+  "evidence": [
+    {
+      "id": "e1",
+      "claimId": "c1",
+      "sourceId": "s1",
+      "quote": "Water | H2O | CID 962",
+      "quoteVerified": true,
+      "relation": "supports"
+    }
+  ],
+  "warnings": [
+    "최대 3개 주장·6개 출처를 대상으로 한 제한된 검증입니다.",
+    "출처 간 독립성과 원자료 계보는 확인되지 않았습니다."
+  ]
+}
