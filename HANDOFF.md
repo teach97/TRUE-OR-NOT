@@ -2,6 +2,18 @@
 
 ## 다음 작업자용 실행 인계 — 6-B 완료, 6-C·7 남음
 
+### 최신 체크포인트: 6-C 한정 — 장애 복구 재시도 / 실제 결과 상세 근거
+
+- 시작 시 `git status --short`는 깨끗했습니다. 쿼터 중단의 부분 수정은 없었습니다. 커밋/푸시하지 않았습니다.
+- **실제 결함:** dashboard의 근거 패널이 `selected && snapshot.demo`에서만 렌더링되어 비데모 결과의 인용·출처 링크·불확실성이 전혀 보이지 않았습니다. 브라우저 RED에서 실패→복구→재시도 완료까지 성공한 뒤 인용 표시 assertion만 timeout한 것을 확인하고 비데모 전용 패널을 추가했습니다. 기존 합성 예시·shader·CSS는 변경하지 않았습니다.
+- 추가: `backend/tests/recovery_probe_app.py`, `scripts/probe-recovery.py`, `scripts/probe-recovery.mjs`. 테스트 엔트리포인트에서만 dependency override와 결정적 오류/성공 LangGraph를 사용합니다. 기본 runtime fallback이 아니며 provider workflow는 명시적으로 금지합니다. 데이터·모델·출처·경고에 TEST ONLY를 표시하고 실제 네트워크 출처 검증 결과로 취급하지 않습니다. 스크래치 Next 복제본에 .env를 복사하지 않으며 자식 환경의 키/토큰/secret을 제거합니다.
+- **브라우저 GREEN:** 실제 Chrome → Next webpack proxy → FastAPI stream. 첫 실행은 HTTP 200 스트림 내부 AGENT_FAILED로 안전한 실패 문구, export 비활성, 시작 버튼 재활성, 내부 진단 미노출을 확인했습니다. 테스트 backend 복구 후 같은 화면에서 시작 버튼 재클릭 → 완료. backend attempts는 `[failure, success]`, POST 상태는 `[200, 200]`입니다. 프로세스 중단/재기동이 아니라 backend 어댑터 실패/복구입니다.
+- 첫 주장 선택 후 인용·안전한 HTTPS 출처 href·주장 불확실성/경고를 확인했습니다. 둘째 주장 선택 후 전 주장 인용이 사라지고 근거 없음·둘째 불확실성이 나타납니다. UI에는 요약, 근거 관계, 발행일 미확인, 확인 내용, 주장별 주의사항 및 전체 검증 한계도 표시합니다. 원문 링크 외부 방문은 하지 않았습니다.
+- 근거: `C:/Users/rlagn/AppData/Local/hermes/cache/scratch/factlens-recovery-1sjois50/`의 `browser-evidence.json`, `failure.png`, `details.png`, `backend.log`, `next.log`. details 스크린샷 직접 확인 완료. RED 근거는 `factlens-recovery-8zib4tyy/`. 중간 2회 실패는 LiquidGlass 숨김 측정 복제본/잘못된 live 클래스 선택자 문제였고 앱 실패로 계산하지 않았습니다. 최종 probe는 실제 `.liquid-panel-live`만 검사합니다.
+- 검증: 프론트엔드 Node 테스트 **20 passed**, `npm run typecheck`, Python **101 passed** (기존 AnyIO 경고 1건), `git diff --check` 통과. 브라우저 회귀 probe 최종 통과. 소유 서버 3745/3746 및 브라우저 종료, 포트 연결 불가 확인. 기존 3000 서버, `next-env.d.ts`, `.playwright-cli`는 건드리지 않았습니다.
+- 재현: 루트에서 `PLAYWRIGHT_MODULE='C:/Users/rlagn/AppData/Local/npm-cache/_npx/31e32ef8478fbf80/node_modules/playwright/index.mjs' backend/.venv/Scripts/python.exe scripts/probe-recovery.py`.
+- **한계/남음:** webpack 개발 경로만 검증했습니다. 기본 Turbopack, 실제 provider 재호출, 네트워크 연결 중단 후 backend 프로세스 재기동, 모바일/전체 데모 회귀, 최종 빌드·7단계는 이번 범위 밖입니다. 스크린샷에는 기존 개발 UI/셰이더 조정 패널이 보이며 재디자인하지 않았습니다. 6-C 전체 완료로 표시하지 않습니다.
+
 ### 최신 검증 체크포인트: 6-C 한정 — 브라우저 취소/화면 이탈 → Python 정리 확인
 
 - **범위:** 실제 브라우저 → 변경 없는 Next proxy → 기존 FastAPI StreamingResponse → 실제 컴파일된 LangGraph의 취소 전파만 검증했습니다. 운영 코드 결함은 발견하지 않았고 운영 코드 수정·커밋·푸시는 하지 않았습니다. 6-C 전체 완료가 아닙니다.
