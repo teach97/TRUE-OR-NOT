@@ -2,6 +2,21 @@
 
 ## 다음 작업자용 실행 인계 — 6-B 완료, 6-C·7 남음
 
+### 최신 수정 체크포인트: 로컬 요청 403 회귀 수정
+
+- Next.js가 주입하는 단일 loopback `x-forwarded-for` 값(127.0.0.1, ::1, ::ffff:127.0.0.1)을 허용했습니다. 외부 주소·복수 주소·빈 값은 계속 거부하며 Origin/Forwarded/production 제한을 유지합니다.
+- 헤더는 인증 수단이 아니므로 기본 `npm run dev`를 `next dev --hostname 127.0.0.1`로 제한했습니다. 이미 실행 중인 서버에는 소급 적용되지 않으므로 재시작이 필요합니다. 공용 인터페이스 바인딩 또는 프록시 공개는 지원하지 않습니다.
+- 회귀 테스트가 수정 전 403 != 200으로 실패하는 것을 확인한 후 수정했습니다. route 테스트 6개, 타입 검사, 프로덕션 빌드 통과. 브라우저 재검증 및 전체 6-C는 아직 미완료입니다.
+- 기존 shader-settings-config.ts 변경은 다른 작업으로 간주하여 수정/커밋 대상에서 제외했습니다.
+
+### 최신 실행 체크포인트: 6-C 브라우저 연결 검사 — 차단 원인 발견, 미완료
+
+- FastAPI를 loopback 8010 포트에서 실행한 뒤 실제 Next.js 3000의 GET /api/fact-check가 configured=true를 반환하는 것을 확인했습니다.
+- Playwright 실제 브라우저에서 원문 입력·외부 전송 동의·검증 시작을 수행했습니다. POST가 LOCAL_ONLY 403으로 거부되어 UI에 안전한 오류와 재시도 가능한 시작 버튼이 표시되었습니다. 모델 검증 결과는 얻지 못했습니다.
+- 원인: route.ts가 x-forwarded-for 헤더의 존재만으로 요청을 차단하지만, 설치된 Next.js의 node_modules/next/dist/server/base-server.js는 이 헤더가 없는 직접 요청에도 socket.remoteAddress를 자동으로 채웁니다. 단위 테스트 Request에는 이 자동 주입이 없어 이전 16개 테스트가 놓쳤습니다.
+- 다음 작업: Next.js가 주입한 단일 loopback 주소와 외부/복수 전달 주소를 구분하는 정책을 회귀 테스트로 먼저 정의하고 수정합니다. 헤더는 위조 가능하므로 인증 수단으로 취급하지 않으며 개발 서버의 loopback 바인딩도 확인해야 합니다. 보안 검사를 통째로 제거하지 않습니다.
+- 이번에는 원인 확인까지만 수행했고 애플리케이션 코드는 변경하지 않았습니다. 진행/완료/취소 전파 검증은 여전히 미완료입니다. FastAPI 실행 세션: proc_f18af0d8a601. 기존 3000 서버는 다른 세션 소유일 수 있으므로 종료하지 않았습니다.
+
 ### 최신 체크포인트: 6-B Next.js → FastAPI 프록시
 
 - `app/api/fact-check/route.ts`의 GET은 FastAPI 상태를 조회하고 공개 필드만 반환합니다. POST는 `/api/fact-check/stream`으로 전달합니다. 기존 TypeScript runAgent 호출을 제거하여 provider 중복 호출을 피합니다. 입력 검증 유틸리티만 기존 모듈에서 재사용합니다.

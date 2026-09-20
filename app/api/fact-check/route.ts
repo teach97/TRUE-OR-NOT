@@ -27,8 +27,12 @@ export async function GET() {
 export async function POST(req: Request) {
   const url=new URL(req.url);
   // Local development only; these checks do not replace deployment authentication.
+  // Headers are not authentication: run the development server on loopback only.
+  // Next injects the socket address into x-forwarded-for even without a proxy.
+  const forwardedFor = req.headers.get('x-forwarded-for');
+  const unsafeForwarding = forwardedFor !== null && !['127.0.0.1','::1','::ffff:127.0.0.1'].includes(forwardedFor);
   if(process.env.NODE_ENV==='production' || !['localhost','127.0.0.1','[::1]'].includes(url.hostname) ||
-    req.headers.get('origin')!==url.origin || req.headers.has('forwarded') || req.headers.has('x-forwarded-for') ||
+    req.headers.get('origin')!==url.origin || req.headers.has('forwarded') || unsafeForwarding ||
     (req.headers.get('sec-fetch-site') && !['same-origin','none'].includes(req.headers.get('sec-fetch-site')!))) {
     return error(403,'LOCAL_ONLY','로컬 개발 환경의 동일 출처 요청만 허용됩니다.');
   }

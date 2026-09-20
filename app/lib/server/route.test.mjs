@@ -58,5 +58,18 @@ test('invalid bodies and foreign origins never reach backend',async()=>{
  const {POST}=await import('../../api/fact-check/route.ts');
  assert.equal((await POST(make({...input,consent:false}))).status,400);
  assert.equal((await POST(make(input,{origin:'https://evil.test'}))).status,403);
- assert.equal((await POST(make(input,{'x-forwarded-for':'127.0.0.1'}))).status,403);
+ for(const address of ['192.168.1.2','127.0.0.1, 1.2.3.4','unknown','']) {
+  assert.equal((await POST(make(input,{'x-forwarded-for':address}))).status,403);
+ }
+});
+
+test('Next injected single loopback addresses allow local requests',async()=>{
+ const {POST}=await import('../../api/fact-check/route.ts');const saved=globalThis.fetch;
+ globalThis.fetch=async()=>new Response('{"type":"stage"}\n',{headers:{'Content-Type':'application/x-ndjson'}});
+ try {
+  for(const address of ['127.0.0.1','::1','::ffff:127.0.0.1']) {
+   const response=await POST(make(input,{'x-forwarded-for':address}));
+   assert.equal(response.status,200);await response.text();
+  }
+ } finally {globalThis.fetch=saved;}
 });
