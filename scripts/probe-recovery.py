@@ -5,6 +5,9 @@ installed Playwright index.mjs (uses installed Google Chrome, headless). No paid
 copying, no production test switches. Uses isolated scratch Next copy + webpack
 because Turbopack cannot follow the shared node_modules junction outside its root.
 Logs/evidence stay in the printed scratch directory. Stops only owned processes.
+Add --network-restart for actual backend termination, offline UI requests, and
+same-document retries after restarting the fixture on the same port. Without
+this flag the existing adapter-failure/detail-panel scenario is unchanged.
 """
 import json
 import os
@@ -41,7 +44,22 @@ def ready(url, process):
     raise TimeoutError(f'Readiness deadline: {url}')
 
 
+def stop_owned(process):
+    if process.poll() is None:
+        if os.name == 'nt':
+            subprocess.run(['taskkill', '/PID', str(process.pid), '/T', '/F'], check=True, capture_output=True)
+        else:
+            process.terminate()
+        process.wait(timeout=15)
+
+
+def port_closed(port):
+    with socket.socket() as sock:
+        return sock.connect_ex(('127.0.0.1', port)) != 0
+
+
 def run():
+    network_restart = '--network-restart' in sys.argv
     if not os.environ.get('PLAYWRIGHT_MODULE'):
         raise RuntimeError('Set PLAYWRIGHT_MODULE to installed playwright/index.mjs')
     scratch_root = Path.home()/'AppData/Local/hermes/cache/scratch' if os.name == 'nt' else Path(os.environ['TMPDIR'])
@@ -80,7 +98,43 @@ def run():
             processes.append(subprocess.Popen(command,cwd=cwd,env=env,stdout=log,stderr=subprocess.STDOUT))
         ready(env['PROBE_BACKEND']+'/__test__/recovery', processes[0])
         ready(env['PROBE_FRONTEND']+'/api/fact-check', processes[1])
-        result = subprocess.run(['node', str(ROOT/'scripts/probe-recovery.mjs')],env=env,cwd=ROOT,capture_output=True,text=True,encoding='utf-8',timeout=240)
+        if network_restart:
+            browser_out = (scratch/'browser.stdout').open('w', encoding='utf-8')
+            browser_err = (scratch/'browser.stderr').open('w', encoding='utf-8')
+            logs.extend([browser_out, browser_err])
+            browser_process = subprocess.Popen(['node', str(ROOT/'scripts/probe-network-restart.mjs')], env=env, cwd=ROOT, stdout=browser_out, stderr=browser_err)
+            processes.append(browser_process)
+            completed = set()
+            deadline = time.monotonic() + 240
+            while browser_process.poll() is None:
+                if time.monotonic() > deadline:
+                    raise TimeoutError('Network restart browser deadline')
+                for action in ('stop', 'restart'):
+                    if action in completed or not (scratch/f'{action}.request').exists():
+                        continue
+                    if action == 'stop':
+                        stop_owned(processes[0])
+                        assert port_closed(backend_port), 'Backend port must close before UI request'
+                        detail = dict(pid=processes[0].pid, exitCode=processes[0].returncode, port=backend_port, portClosed=True)
+                    else:
+                        assert 'stop' in completed
+                        log = (scratch/'backend-restarted.log').open('w', encoding='utf-8')
+                        logs.append(log)
+                        restarted = subprocess.Popen([sys.executable, '-m', 'uvicorn', 'recovery_probe_app:app', '--app-dir', str(ROOT/'backend/tests'), '--host', '127.0.0.1', '--port', str(backend_port)], cwd=ROOT/'backend', env=env, stdout=log, stderr=subprocess.STDOUT)
+                        processes.append(restarted)
+                        ready(env['PROBE_BACKEND']+'/__test__/recovery', restarted)
+                        detail = dict(pid=restarted.pid, port=backend_port, ready=True)
+                    detail['monotonic'] = time.monotonic()
+                    temporary = scratch/f'{action}.tmp'
+                    temporary.write_text(json.dumps(detail), encoding='utf-8')
+                    temporary.replace(scratch/f'{action}.done')
+                    completed.add(action)
+                time.sleep(.05)
+            browser_out.close()
+            browser_err.close()
+            result = subprocess.CompletedProcess(browser_process.args, browser_process.returncode, (scratch/'browser.stdout').read_text(encoding='utf-8'), (scratch/'browser.stderr').read_text(encoding='utf-8'))
+        else:
+            result = subprocess.run(['node', str(ROOT/'scripts/probe-recovery.mjs')],env=env,cwd=ROOT,capture_output=True,text=True,encoding='utf-8',timeout=240)
         (scratch/'browser-evidence.json').write_text(result.stdout or result.stderr,encoding='utf-8')
         if result.returncode == 0:
             evidence = json.loads(result.stdout)
@@ -91,18 +145,14 @@ def run():
         return result.returncode
     finally:
         for process in reversed(processes):
-            if process.poll() is None:
-                if os.name == 'nt':
-                    subprocess.run(['taskkill','/PID',str(process.pid),'/T','/F'],capture_output=True)
-                else:
-                    process.terminate()
-                process.wait(timeout=15)
+            stop_owned(process)
         for log in logs:
             log.close()
         for port in (backend_port,frontend_port):
-            with socket.socket() as sock:
-                assert sock.connect_ex(('127.0.0.1',port)) != 0, f'Owned port still listening: {port}'
-        print(json.dumps({'ownedServersStopped':True,'ports':[backend_port,frontend_port]}),flush=True)
+            assert port_closed(port), f'Owned port still listening: {port}'
+        cleanup = dict(ownedServersStopped=True, ports=[backend_port,frontend_port], processes=[dict(pid=p.pid, exitCode=p.returncode) for p in processes])
+        (scratch/'cleanup.json').write_text(json.dumps(cleanup, indent=2), encoding='utf-8')
+        print(json.dumps(cleanup),flush=True)
 
 
 if __name__ == '__main__':

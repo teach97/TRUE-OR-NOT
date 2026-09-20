@@ -2,7 +2,18 @@
 
 ## 다음 작업자용 실행 인계 — 6-B 완료, 6-C·7 남음
 
-### 최신 체크포인트: 6-C 한정 — 장애 복구 재시도 / 실제 결과 상세 근거
+### 최신 체크포인트: 6-C 한정 — 실제 backend 프로세스 종료·재시작 / 같은 페이지 재시도
+
+- 시작 Git 상태는 깨끗했습니다. **운영 코드 결함 없이 브라우저 probe 통과**, 운영 코드·UI·의존성·fixture 변경 없음. 커밋/푸시는 부모 검토 대상으로 남겼습니다.
+- 수정 `scripts/probe-recovery.py`: `--network-restart` 옵션, 소유 FastAPI 프로세스 종료/동일 포트 재기동, scratch 파일 IPC, PID/종료 코드/포트 정리 증거 저장. 추가 `scripts/probe-network-restart.mjs`: 실제 Chrome → 기존 Next proxy → 명시적 test-only FastAPI fixture 경로. 기존 `backend/tests/recovery_probe_app.py`를 재사용하며 production mock이나 provider 호출을 추가하지 않았습니다.
+- **실제 장애:** UI 로딩·입력·동의 후 FastAPI PID 6688을 종료하고 10260 포트 연결 불가를 먼저 확인했습니다. 백엔드가 없는 동안 UI 시작 버튼으로 연속 두 요청을 보내 **503 BACKEND_UNAVAILABLE 두 번**을 확인했습니다. “검증 실패: 검증 백엔드에 연결할 수 없습니다. 다시 시도하실 수 있습니다.”, 주장 카드 0개, 내보내기 비활성, 시작 버튼 재활성을 assertion 및 스크린샷으로 확인했습니다. 어댑터 오류 모드 전환을 네트워크 장애로 계산하지 않았습니다.
+- **복구:** 같은 포트에 새 FastAPI PID 3192를 시작하고 명시적 테스트 fixture 성공 모드를 설정했습니다. 새 프로세스 attempts=[]를 확인한 뒤 **기존 문서에서** 시작 버튼으로 재시도 성공, 다시 한 번 성공했습니다. POST 상태 `[503,503,200,200]`, 재시작 backend attempts=`[success,success]`. 문서별 UUID·입력값·동의를 유지하여 reload/새 페이지 없이 복구했음을 검증했습니다. 연속 실패·성공 요청이 429 BUSY에 걸리지 않아 proxy concurrency가 고착되지 않았음을 확인했습니다. backend 내부 active/finally 계측이나 실행 중 stream 강제 단절을 새로 검증한 것은 아닙니다.
+- 근거: `C:/Users/rlagn/AppData/Local/hermes/cache/scratch/factlens-recovery-i4m8ipzz/`의 `browser-evidence.json`, `network-error.png`, `restart-success.png`, `stop.done`, `restart.done`, `cleanup.json`, `backend.log`, `backend-restarted.log`, `next.log`. 두 스크린샷 직접 확인 완료. 소유 서버 포트 10260/10261 연결 불가, 브라우저 close 및 Node 정상 종료 확인. 기존 3000 서버는 건드리지 않았습니다.
+- 기존 어댑터 복구/상세 근거 probe도 재실행 통과(`[200,200]`), 근거 `factlens-recovery-vd7iilsl/`. 소유 포트 1760/1761 종료 확인. 프론트엔드 **20 tests passed**, `npm run typecheck`, Python **101 passed**(기존 AnyIO 경고 1건), `uv lock --check`, `git diff --check` 통과.
+- 재현: 루트에서 `PLAYWRIGHT_MODULE='C:/Users/rlagn/AppData/Local/npm-cache/_npx/31e32ef8478fbf80/node_modules/playwright/index.mjs' backend/.venv/Scripts/python.exe scripts/probe-recovery.py --network-restart`. 옵션 없이 기존 adapter-error probe도 유지합니다. .env를 복사하지 않고 자식 환경의 키/토큰/secret을 제거합니다.
+- **범위/한계:** 공유 node_modules junction이 있는 scratch Next의 **webpack 개발 경로**만 검증했습니다. 이번 빌드는 재실행하지 않았으며 이전 부모 검증의 Turbopack 프로덕션 빌드와 구분합니다. 기본 Turbopack 개발 경로, 실행 중 backend 강제 종료, 실제 provider 재호출, 모바일 및 전체 7단계 회귀는 남습니다. 6-C 전체 완료로 표시하지 않습니다. 기존 셰이더 조정 패널/화면 디자인도 보존했습니다.
+
+### 이전 체크포인트: 6-C 한정 — 장애 복구 재시도 / 실제 결과 상세 근거
 
 - 시작 시 `git status --short`는 깨끗했습니다. 쿼터 중단의 부분 수정은 없었습니다. 커밋/푸시하지 않았습니다.
 - **실제 결함:** dashboard의 근거 패널이 `selected && snapshot.demo`에서만 렌더링되어 비데모 결과의 인용·출처 링크·불확실성이 전혀 보이지 않았습니다. 브라우저 RED에서 실패→복구→재시도 완료까지 성공한 뒤 인용 표시 assertion만 timeout한 것을 확인하고 비데모 전용 패널을 추가했습니다. 기존 합성 예시·shader·CSS는 변경하지 않았습니다.
