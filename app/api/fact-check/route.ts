@@ -31,8 +31,16 @@ export async function POST(req: Request) {
   // Next injects the socket address into x-forwarded-for even without a proxy.
   const forwardedFor = req.headers.get('x-forwarded-for');
   const unsafeForwarding = forwardedFor !== null && !['127.0.0.1','::1','::ffff:127.0.0.1'].includes(forwardedFor);
-  if(process.env.NODE_ENV==='production' || !['localhost','127.0.0.1','[::1]'].includes(url.hostname) ||
-    req.headers.get('origin')!==url.origin || req.headers.has('forwarded') || unsafeForwarding ||
+  // Next reconstructs req.url and NextURL normalizes loopback IPs to localhost.
+  // Require the exact local Host authority; loopback aliases are NOT same-origin.
+  const host = req.headers.get('host') ?? '';
+  const localHost = /^(localhost|127\.0\.0\.1|\[::1\])(?::[1-9][0-9]{0,4})?$/.test(host);
+  const unsafeForwardedAuthority =
+    (req.headers.has('x-forwarded-host') && req.headers.get('x-forwarded-host') !== host) ||
+    (req.headers.has('x-forwarded-proto') && req.headers.get('x-forwarded-proto') !== 'http') ||
+    (req.headers.has('x-forwarded-port') && req.headers.get('x-forwarded-port') !== (host.match(/:([0-9]+)$/)?.[1] ?? '80'));
+  if(process.env.NODE_ENV==='production' || url.protocol!=='http:' || !['localhost','127.0.0.1','[::1]'].includes(url.hostname) || !localHost ||
+    req.headers.get('origin')!==`http://${host}` || req.headers.has('forwarded') || unsafeForwarding || unsafeForwardedAuthority ||
     (req.headers.get('sec-fetch-site') && !['same-origin','none'].includes(req.headers.get('sec-fetch-site')!))) {
     return error(403,'LOCAL_ONLY','로컬 개발 환경의 동일 출처 요청만 허용됩니다.');
   }

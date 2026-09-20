@@ -2,6 +2,18 @@
 
 ## 다음 작업자용 실행 인계 — 6-B 완료, 6-C·7 남음
 
+### 최신 수정 체크포인트: 6-C 한정 — loopback 별칭 LOCAL_ONLY 403 수정
+
+- 범위는 localhost/127.0.0.1 출처 불일치 하나입니다. 6-C 전체 완료가 아닙니다. 부모 작업자가 diff 검토 및 route 테스트 9개·타입 검사·Turbopack 프로덕션 빌드를 재실행하여 통과를 확인했습니다. 기본 개발 서버 재검증은 별도로 남습니다.
+- 수정 전 기존 3000 서버에 동의 없는 JSON을 실제 POST하여 localhost는 **400 INVALID_REQUEST**, 127.0.0.1은 **403 LOCAL_ONLY**를 재현했습니다.
+- 설치된 Next.js 16.3.5의 `next-server.js:1275-1281`은 서버 hostname으로 initURL을 구성합니다. 더 직접적인 원인은 `server/web/next-url.js:15-20`의 loopback → localhost 정규화이며, `spec-extension/request.js:43-50`이 정규화된 NextURL을 Request.url에 사용합니다. 실제 설치된 NextRequest 실행에서도 127.0.0.1/[::1] URL은 localhost가 되고 Host/Origin은 원래 값으로 남는 것을 확인했습니다.
+- `app/api/fact-check/route.ts`: 엄격하게 허용한 로컬 Host authority와 Origin을 정확히 비교합니다. localhost↔127.0.0.1을 동일 출처로 취급하지 않으며 포트·scheme 불일치도 거부합니다. production 차단, URL loopback 제한, Forwarded 및 외부/복수 x-forwarded-for 차단, sec-fetch-site 제한을 유지했습니다. x-forwarded-host/proto/port 불일치도 거부합니다. 헤더는 인증이 아니므로 기존 `npm run dev`의 `--hostname 127.0.0.1` 바인딩을 그대로 유지합니다.
+- `app/lib/server/route.test.mjs`: 회귀 테스트 RED에서 **403 !== 400**을 확인한 뒤 수정했습니다. 설치된 NextRequest를 사용하는 별칭 회귀, 교차 출처/전달 헤더, production 거부 테스트를 포함하여 route **9 passed**, 프론트엔드 5개 테스트 파일 전체 **20 passed**. `npm run typecheck`, `git diff --check` 통과(기존 Git CRLF 안내만 표시).
+- 실제 HTTP 재검증: 기존 3000 서버는 수정 후 요청이 30초 timeout되어 종료하지 않았습니다. 동일 루트에서 두 번째 Next 실행은 dev lock으로 차단되었고, scratch 복제본의 node_modules junction은 Turbopack filesystem 경계로 차단되어 **동일 설치 Next + webpack**, `127.0.0.1:3106` 별도 서버로 검증했습니다. localhost/127.0.0.1 각각 동의 없음·깨진 JSON **4건 모두 400 INVALID_REQUEST**; 교차 별칭·포트·외부 Origin/Host·Forwarded·외부/복수 XFF·전달 host/proto/port·cross-site **11건 모두 403 LOCAL_ONLY**. 유료 provider/백엔드 호출 없이 입력 경계만 검증했습니다.
+- 검증용 서버는 직접 시작한 프로세스만 종료했고 3106 연결 불가를 확인했습니다. 기존 3000 서버는 미종료이며 소유 세션에서 재시작/정리가 필요합니다. scratch 재현 스크립트: `C:/Users/rlagn/AppData/Local/hermes/cache/scratch/factlens-http-origin-check.py`.
+- **남은 6-C:** 서버 측 취소 정리 계측, 화면 이탈, 장애 복구 후 재시도, 상세 근거 표시 검증. 이번 변경의 기본 Turbopack/기존 3000 서버 재검증 및 전체 빌드·7단계 회귀는 미실행입니다. 기존 `.playwright-cli` 산출물은 보존했습니다.
+
+
 ### 최신 브라우저 검증 체크포인트: 실제 결과·내보내기·장애 표시 확인
 
 - localhost:3000에서 실제 FastAPI/모델 요청으로 “물은 수소와 산소로 이루어져 있다.”를 검증했습니다. 완료 화면에 후보 1개, 출처 6개, 판정 “대체로 확인됨”이 표시되었습니다. 이는 실행 결과이며 판정 품질 전체 보증은 아닙니다.

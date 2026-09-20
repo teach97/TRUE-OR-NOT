@@ -1,7 +1,55 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-const make=(body,headers={})=>new Request('http://localhost:3000/api/fact-check',{method:'POST',headers:{origin:'http://localhost:3000','content-type':'application/json',...headers},body:JSON.stringify(body)});
+const make=(body,headers={})=>new Request('http://localhost:3000/api/fact-check',{method:'POST',headers:{host:'localhost:3000',origin:'http://localhost:3000','content-type':'application/json',...headers},body:JSON.stringify(body)});
 const input={text:'claim',focus:'',consent:true};
+
+test('same-origin loopback Host survives Next server URL reconstruction',async()=>{
+ const {POST}=await import('../../api/fact-check/route.ts');
+ const {NextRequest}=await import('next/server.js');
+ for(const host of ['localhost:3000','127.0.0.1:3000','[::1]:3000']) {
+  const request=new NextRequest(`http://${host}/api/fact-check`,{method:'POST',headers:{host,origin:`http://${host}`,'content-type':'application/json'},body:JSON.stringify({...input,consent:false})});
+  assert.equal(new URL(request.url).hostname,'localhost');
+  const response=await POST(request);
+  assert.equal(response.status,400,host);
+  assert.equal((await response.json()).code,'INVALID_REQUEST');
+ }
+});
+
+test('local Host does not relax same-origin or hostile forwarding restrictions',async()=>{
+ const {POST}=await import('../../api/fact-check/route.ts');
+ const saved=globalThis.fetch;
+ globalThis.fetch=async()=>assert.fail('Rejected requests must not reach backend');
+ try {
+  for(const headers of [
+   {host:'127.0.0.1:3000'},
+   {origin:'http://localhost:3001'},
+   {origin:'https://localhost:3000'},
+   {origin:'null'},
+   {host:''},
+   {host:'evil.test:3000',origin:'http://evil.test:3000'},
+   {host:'localhost:3000@evil.test',origin:'http://localhost:3000@evil.test'},
+   {host:'localhost:3000,127.0.0.1:3000'},
+   {'x-forwarded-host':'evil.test'},
+   {'x-forwarded-host':'127.0.0.1:3000'},
+   {'x-forwarded-proto':'https'},
+   {'x-forwarded-port':'3001'},
+   {forwarded:'for=127.0.0.1'},
+   {'sec-fetch-site':'cross-site'},
+  ]) {
+   const response=await POST(make({...input,consent:false},headers));
+   assert.equal(response.status,403,JSON.stringify(headers));
+   assert.equal((await response.json()).code,'LOCAL_ONLY');
+  }
+ }finally{globalThis.fetch=saved;}
+});
+
+test('production remains blocked for both local authorities',async()=>{
+ const {POST}=await import('../../api/fact-check/route.ts');const saved=process.env.NODE_ENV;
+ try {
+  process.env.NODE_ENV='production';
+  for(const host of ['localhost:3000','127.0.0.1:3000'])assert.equal((await POST(make({...input,consent:false},{host,origin:`http://${host}`}))).status,403);
+ }finally{if(saved===undefined)delete process.env.NODE_ENV;else process.env.NODE_ENV=saved;}
+});
 
 test('status uses backend configuration and projects only safe fields',async()=>{
  const {GET}=await import('../../api/fact-check/route.ts');
@@ -35,7 +83,7 @@ test('request abort releases an idle proxy stream',async()=>{
  globalThis.fetch=async()=>new Response(new ReadableStream({start(c){c.enqueue(new Uint8Array([10]));}}),{headers:{'Content-Type':'application/x-ndjson'}});
  const controller=new AbortController();
  try {
-  const request=new Request('http://localhost:3000/api/fact-check',{method:'POST',headers:{origin:'http://localhost:3000','content-type':'application/json'},body:JSON.stringify(input),signal:controller.signal});
+  const request=new Request('http://localhost:3000/api/fact-check',{method:'POST',headers:{host:'localhost:3000',origin:'http://localhost:3000','content-type':'application/json'},body:JSON.stringify(input),signal:controller.signal});
   const response=await POST(request);controller.abort();
   globalThis.fetch=async()=>{throw new Error('unavailable');};
   assert.equal((await POST(make(input))).status,503);
