@@ -1,23 +1,32 @@
-// @ts-ignore -- explicit extension also supports Node 24's native TypeScript test runner.
-import { limitedText, runAgent, validateRequest } from '../../lib/server/agent.ts';
-import type { AgentStatus, FactCheckRequest } from '../../lib/fact-check-contract';
+// @ts-ignore -- Node native TypeScript tests require explicit extensions.
+import { limitedText, validateRequest } from '../../lib/server/agent.ts';
+import type { FactCheckRequest } from '../../lib/fact-check-contract';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 const headers = {'Cache-Control':'no-store'};
-// Process-local concurrency cap is not a public-service rate limiter.
 let active = 0;
-export async function GET() {
-  const status: AgentStatus = {configured:Boolean(process.env.OPENAI_API_KEY),model:'gpt-5.6-luna',reasoning:'max',webSearch:true};
-  return Response.json(status,{headers});
+function backend(path: string) {
+  const base = new URL(process.env.FACTLENS_BACKEND_URL || 'http://127.0.0.1:8010');
+  if (base.protocol !== 'http:' || !['127.0.0.1','[::1]'].includes(base.hostname) || base.username || base.password || base.pathname !== '/' || base.search || base.hash) throw new Error('INVALID_BACKEND');
+  return new URL(path, base).href;
 }
 function error(status: number, code: string, message: string) {
   return Response.json({code,message},{status,headers});
 }
+export async function GET() {
+  try {
+    const signal=AbortSignal.timeout(5000);
+    const response=await fetch(backend('/api/fact-check'),{signal,cache:'no-store',redirect:'error'});
+    if(!response.ok) {await response.body?.cancel();throw new Error('BACKEND');}
+    const value=JSON.parse(await limitedText(response,16000,signal));
+    if(typeof value.configured!=='boolean' || typeof value.webSearch!=='boolean')throw new Error('PROTOCOL');
+    return Response.json({configured:value.configured,model:typeof value.model==='string'?value.model:null,reasoning:value.reasoning==='max'?'max':null,webSearch:value.webSearch},{headers});
+  }catch{return error(503,'BACKEND_UNAVAILABLE','검증 백엔드에 연결할 수 없습니다.');}
+}
 export async function POST(req: Request) {
   const url=new URL(req.url);
-  // No paid unauthenticated deployment: production is disabled. Run development bound to loopback,
-  // not 0.0.0.0. Host/Origin checks alone cannot authenticate arbitrary non-browser remote clients.
+  // Local development only; these checks do not replace deployment authentication.
   if(process.env.NODE_ENV==='production' || !['localhost','127.0.0.1','[::1]'].includes(url.hostname) ||
     req.headers.get('origin')!==url.origin || req.headers.has('forwarded') || req.headers.has('x-forwarded-for') ||
     (req.headers.get('sec-fetch-site') && !['same-origin','none'].includes(req.headers.get('sec-fetch-site')!))) {
@@ -29,30 +38,48 @@ export async function POST(req: Request) {
     const signal=AbortSignal.any([req.signal,AbortSignal.timeout(5000)]);
     if(Number(req.headers.get('content-length'))>80000)throw new Error('BODY_TOO_LARGE');
     input=validateRequest(JSON.parse(await limitedText(new Response(req.body),80000,signal)));
-  } catch {return error(400,'INVALID_REQUEST','본문, 확인 요청 길이 및 외부 전송 동의를 확인해 주세요.');}
-  const key=process.env.OPENAI_API_KEY;
-  if(!key)return error(503,'NOT_CONFIGURED','서버의 OpenAI API 설정이 필요합니다.');
+  }catch{return error(400,'INVALID_REQUEST','본문, 확인 요청 길이 및 외부 전송 동의를 확인해 주세요.');}
   if(active>=1)return error(429,'BUSY','진행 중인 검증이 있습니다. 완료 후 다시 시도해 주세요.');
   if(req.signal.aborted)return error(400,'CANCELLED','요청이 취소되었습니다.');
   active++;
   const controller=new AbortController();
-  let closed=false,released=false;
-  const release=()=>{if(!released){released=true;active--;req.signal.removeEventListener('abort',abort);}};
-  const abort=()=>controller.abort();
+  let released=false,timedOut=false,closed=false;
+  let reader:ReadableStreamDefaultReader<Uint8Array>|undefined;
+  const abort=()=>{controller.abort();void reader?.cancel().catch(()=>{});};
+  const timer=setTimeout(()=>{timedOut=true;abort();},245000);
+  const release=()=>{if(!released){released=true;active--;clearTimeout(timer);req.signal.removeEventListener('abort',abort);}};
   req.signal.addEventListener('abort',abort,{once:true});
-  const encoder=new TextEncoder();
-  const stream=new ReadableStream<Uint8Array>({
-    async start(sink) {
-      try {
-        for await(const event of runAgent(input,key,controller.signal)) {
-          if(closed||controller.signal.aborted)break;
-          sink.enqueue(encoder.encode(`${JSON.stringify(event)}\n`));
+  if(req.signal.aborted)abort();
+  try {
+    const upstream=await fetch(backend('/api/fact-check/stream'),{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/x-ndjson'},body:JSON.stringify(input),signal:controller.signal,redirect:'error',cache:'no-store'});
+    if(!upstream.ok){
+      await upstream.body?.cancel();release();
+      const mapping:Record<number,[string,string]>={422:['INVALID_REQUEST','검증 입력을 확인해 주세요.'],429:['BUSY','검증이 진행 중입니다.'],503:['NOT_CONFIGURED','백엔드 API 설정을 확인해 주세요.']};
+      const mapped=mapping[upstream.status];
+      return error(mapped?upstream.status:502,...(mapped??['BACKEND_FAILED','백엔드 요청에 실패했습니다.'] as [string,string]));
+    }
+    if(!upstream.body || !upstream.headers.get('content-type')?.includes('application/x-ndjson')){await upstream.body?.cancel();throw new Error('PROTOCOL');}
+    reader=upstream.body.getReader();
+    const encoder=new TextEncoder();let bytes=0;
+    const stream=new ReadableStream<Uint8Array>({
+      async pull(sink){
+        try {
+          const part=await reader!.read();
+          if(closed)return;
+          if(controller.signal.aborted)throw new Error('ABORTED');
+          if(part.done){closed=true;sink.close();release();return;}
+          bytes+=part.value.byteLength;if(bytes>2_000_000)throw new Error('TOO_LARGE');
+          sink.enqueue(part.value);
+        }catch{
+          if(!closed){closed=true;if(!req.signal.aborted)sink.enqueue(encoder.encode(JSON.stringify({type:'error',code:timedOut?'TIMEOUT':'BACKEND_FAILED',message:timedOut?'검증 시간이 초과되었습니다.':'검증 연결이 종료되었습니다.'})+'\n'));sink.close();}
+          abort();release();
         }
-      } catch {
-        if(!closed&&!controller.signal.aborted)sink.enqueue(encoder.encode(`${JSON.stringify({type:'error',code:'AGENT_FAILED',message:'검증을 완료하지 못했습니다.'})}\n`));
-      } finally {if(!closed){closed=true;sink.close();}release();}
-    },
-    cancel() {closed=true;controller.abort();release();}
-  });
-  return new Response(stream,{headers:{...headers,'Content-Type':'application/x-ndjson; charset=utf-8','X-Accel-Buffering':'no','X-Content-Type-Options':'nosniff'}});
+      },
+      async cancel(){closed=true;abort();await reader?.cancel().catch(()=>{});release();}
+    });
+    return new Response(stream,{headers:{...headers,'Content-Type':'application/x-ndjson; charset=utf-8','X-Accel-Buffering':'no','X-Content-Type-Options':'nosniff'}});
+  }catch{
+    abort();release();
+    return error(timedOut?504:503,timedOut?'TIMEOUT':'BACKEND_UNAVAILABLE',timedOut?'검증 시간이 초과되었습니다.':'검증 백엔드에 연결할 수 없습니다.');
+  }
 }
