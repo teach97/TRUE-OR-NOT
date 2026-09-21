@@ -10,6 +10,7 @@ import type { FactCheckResult } from '../lib/fact-check-contract';
 import { FactCheckError, readFactCheckStream, safeSourceUrl } from './fact-check-client';
 import { DEMO_FOCUS, DEMO_TEXT, demoPreview, documents } from './demo-fixture';
 import ParticlesLogo from './particles-logo';
+import ScrambleText from './scramble-text';
 import {
   defaultParticleLogoControls,
   emitParticleLogoSettings,
@@ -517,7 +518,7 @@ export default function FactCheckDashboard() {
     <ShaderBackground settings={shader} />
     <a className="skip-link" href="#workspace-main">본문으로 건너뛰기</a>
     <aside className="sidebar">
-      <a className="brand" href="#top" aria-label="팩트렌즈 홈"><span className="brand-symbol"><Icon name="lens" size={25}/></span><span>FactLens<small>팩트렌즈</small></span></a>
+      <a className="brand" href="#top" aria-label="팩트렌즈 홈"><span className="brand-symbol"><Icon name="lens" size={25}/></span><span><ScrambleText>FactLens</ScrambleText><small>팩트렌즈</small></span></a>
       <div className="workspace-label"><span className="workspace-avatar">F</span><div>나의 워크스페이스<small>텍스트 검증 · 예시 체험</small></div></div>
       <p className="nav-caption">워크스페이스</p>
       <nav aria-label="주요 메뉴"><a className="nav-item active" href="#review"><Icon name="grid"/>근거 워크스페이스<span className="nav-indicator"/></a><button className="nav-item" onClick={reset}><Icon name="plus"/>새 문서 시작</button><button className="nav-item" onClick={() => setDialog('guide')}><Icon name="book"/>검증 가이드</button></nav>
@@ -528,7 +529,7 @@ export default function FactCheckDashboard() {
       <main id="workspace-main" className="page-content">
         <section className="intro"><ParticlesLogo settings={particles}/></section>
         <LiquidPanel as="section" className="composer" glassPadding="22px 25px 0" aria-labelledby="composer-heading" liquid={liquid}>
-          <div className="section-heading"><div><span className="step-label">01 / 문서 입력</span><h2 id="composer-heading">어떤 내용을 확인하고 싶으세요?</h2></div><button className="text-button" aria-label="초기화" onClick={reset}><Icon name="reset" size={16}/><span>초기화</span></button></div>
+          <div className="section-heading"><div><span className="step-label">01 / 문서 입력</span><h2 id="composer-heading"><ScrambleText>어떤 내용을 확인하고 싶으세요?</ScrambleText></h2></div><button className="text-button" aria-label="초기화" onClick={reset}><Icon name="reset" size={16}/><span>초기화</span></button></div>
           <form onSubmit={submit}>
             <div className="input-mode" role="group" aria-label="입력 방식"><button type="button" aria-pressed={mode === 'text'} onClick={() => setMode('text')}><Icon name="file" size={16}/>텍스트 입력</button><button type="button" aria-pressed={mode === 'url'} onClick={() => setMode('url')}><Icon name="link" size={16}/>URL 입력<span className="soon-label">준비 중</span></button></div>
             {mode === 'text' ? <div className="editor-wrap"><label htmlFor="document-text">확인할 원문 {sample && <span className="inline-demo">· 합성 예시</span>}</label><textarea ref={editor} id="document-text" value={draft} onChange={e => {setDraft(e.target.value); setSample(false);}} placeholder="기사, 댓글, 궁금한 문장을 붙여넣어 주세요." rows={3} maxLength={12000} onKeyDown={e => {if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {e.preventDefault(); e.currentTarget.form?.requestSubmit();}}}/><span className="character-count">{draft.length.toLocaleString()} / 12,000</span></div> : <div className="url-wrap"><label htmlFor="document-url">확인할 페이지 주소</label><input id="document-url" type="url" value={url} onChange={e => setUrl(e.target.value)} placeholder="https://…"/><p>URL 수집은 아직 연결되지 않았습니다. 원문을 복사해 <button type="button" className="inline-link" onClick={() => setMode('text')}>텍스트로 붙여넣어 주세요.</button></p></div>}
@@ -539,7 +540,7 @@ export default function FactCheckDashboard() {
         </LiquidPanel>
         <div className="notice-line" role="status" aria-live="polite">{notice || (configured === false ? configurationHelp : '원문을 입력해 실제 검증을 시작하거나, 합성 예시를 선택해 둘러보세요.')}</div>
         <section id="review" className="review-section" aria-labelledby="review-heading">
-          <div className="review-heading"><div><span className="step-label">02 / 원문과 근거</span><h2 id="review-heading">흩어진 근거를, 한눈에.</h2></div><button className="secondary-button export-button" disabled={!snapshot || busy} onClick={download}><Icon name="download" size={16}/><span>{snapshot?.demo ? '예시 내보내기' : '결과 내보내기'}</span></button></div>
+          <div className="review-heading"><div><span className="step-label">02 / 원문과 근거</span><h2 id="review-heading"><ScrambleText>흩어진 근거를, 한눈에.</ScrambleText></h2></div><button className="secondary-button export-button" disabled={!snapshot || busy} onClick={download}><Icon name="download" size={16}/><span>{snapshot?.demo ? '예시 내보내기' : '결과 내보내기'}</span></button></div>
           {snapshot ? <>
             <div className="review-meta"><span className="document-title"><Icon name="file" size={16}/>{snapshot.demo ? '가을빛 축제 안내 · 합성 예시' : '직접 입력한 문서 · 실제 검증'}</span><div><span>후보 <b>{snapshot.claims.length}</b></span><span>{snapshot.demo ? '예시 문서' : '수집 출처'} <b>{snapshot.demo ? documents.length : liveResult?.sources.length ?? 0}</b></span><span>원자료 그룹 <b>{snapshot.demo ? new Set(documents.map(d => d.group)).size : '관계별 확인'}</b></span></div></div>
             <div className="mobile-tabs" role="group" aria-label="검토 화면 선택">{[['original','원문'],['results','결과'],['sources','출처']].map(([value, label]) => <button key={value} aria-pressed={mobileTab === value} onClick={() => setMobileTab(value)}>{label}</button>)}</div>
