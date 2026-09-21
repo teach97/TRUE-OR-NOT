@@ -26,7 +26,7 @@ try {
   await page.getByRole('status').filter({hasText:'검증이 완료되었습니다'}).waitFor();
   observations.push({case:'ui_retry_success',backend:await (await fetch(`${backend}/__test__/recovery`)).json()});
   await page.locator('.claim-card').filter({hasText:'TEST ONLY first claim'}).click();
-  const details=page.locator('.evidence-panel .liquid-panel-live:visible');
+  const details=page.locator('.evidence-panel .glass-surface__content:visible');
   await details.getByText('TEST ONLY evidence quotation, not a factual finding.',{exact:false}).waitFor({timeout:10000});
   assert.equal(await details.getByRole('link',{name:'TEST ONLY source'}).getAttribute('href'),'https://example.org/test-only-source');
   assert.ok((await details.innerText()).includes('TEST ONLY uncertainty 0'));

@@ -1,9 +1,9 @@
 "use client";
 
 import { AnimatePresence, MotionConfig, motion, useReducedMotion } from 'motion/react';
-import { Children, cloneElement, isValidElement, useEffect, useReducer, useRef, useState } from 'react';
-import type { FormEvent, ReactElement, ReactNode } from 'react';
-import LiquidGlass from 'liquid-glass-react';
+import { useEffect, useReducer, useRef, useState } from 'react';
+import type { FormEvent, ReactNode } from 'react';
+import GlassSurface from './react-bits/GlassSurface';
 import { initialState, transition } from './demo-state';
 import type { Claim } from './demo-state';
 import type { FactCheckResult } from '../lib/fact-check-contract';
@@ -49,61 +49,39 @@ function Modal({open, title, onClose, children}: {open: boolean; title: string; 
     <h2 id="dialog-heading">{title}</h2>{children}<button className="secondary-button dialog-done" onClick={onClose}>확인했습니다</button>
   </dialog>;
 }
-type LiquidSettings = {
-  displacementScale: number;
-  blurAmount: number;
+type GlassSettings = {
+  distortionScale: number;
+  displace: number;
   saturation: number;
-  aberrationIntensity: number;
-  surfaceOpacity: number;
-  cornerRadius: number;
-  elasticity: number;
-  mode: 'standard' | 'polar' | 'prominent' | 'shader';
+  backgroundOpacity: number;
+  borderRadius: number;
 };
-
-const defaultLiquidSettings: LiquidSettings = {
-  displacementScale: 46,
-  blurAmount: 0.14,
-  saturation: 160,
-  aberrationIntensity: 1.6,
-  surfaceOpacity: 0.42,
-  cornerRadius: 18,
-  elasticity: 0,
-  mode: 'standard',
+const defaultGlassSettings: GlassSettings = {
+  distortionScale: -180, displace: 0.5, saturation: 1.6, backgroundOpacity: 0.3, borderRadius: 18,
 };
-const liquidSettingsStorageKey = 'factlens.liquid-settings.v1';
-
-function parseLiquidSettings(raw: string | null): LiquidSettings {
-  if (!raw) return {...defaultLiquidSettings};
+const glassSettingsStorageKey = 'factlens.glass-surface-settings.v1';
+function parseGlassSettings(raw: string | null): GlassSettings {
   try {
-    const parsed = JSON.parse(raw) as Partial<LiquidSettings>;
+    const parsed = JSON.parse(raw || '{}') as Partial<GlassSettings>;
     const number = (value: unknown, min: number, max: number, fallback: number) => typeof value === 'number' && Number.isFinite(value) ? Math.min(max, Math.max(min, value)) : fallback;
     return {
-      displacementScale: number(parsed.displacementScale, 0, 70, defaultLiquidSettings.displacementScale),
-      blurAmount: number(parsed.blurAmount, 0, 0.25, defaultLiquidSettings.blurAmount),
-      saturation: number(parsed.saturation, 80, 190, defaultLiquidSettings.saturation),
-      aberrationIntensity: number(parsed.aberrationIntensity, 0, 4, defaultLiquidSettings.aberrationIntensity),
-      surfaceOpacity: number(parsed.surfaceOpacity, 0.12, 0.86, defaultLiquidSettings.surfaceOpacity),
-      cornerRadius: number(parsed.cornerRadius, 8, 32, defaultLiquidSettings.cornerRadius),
-      elasticity: number(parsed.elasticity, 0, 1, defaultLiquidSettings.elasticity),
-      mode: parsed.mode === 'polar' || parsed.mode === 'prominent' || parsed.mode === 'shader' || parsed.mode === 'standard' ? parsed.mode : defaultLiquidSettings.mode,
+      distortionScale: number(parsed.distortionScale, -300, 0, defaultGlassSettings.distortionScale),
+      displace: number(parsed.displace, 0, 5, defaultGlassSettings.displace),
+      saturation: number(parsed.saturation, 0.8, 2, defaultGlassSettings.saturation),
+      backgroundOpacity: number(parsed.backgroundOpacity, 0, 0.8, defaultGlassSettings.backgroundOpacity),
+      borderRadius: number(parsed.borderRadius, 8, 32, defaultGlassSettings.borderRadius),
     };
-  } catch {
-    return {...defaultLiquidSettings};
-  }
+  } catch { return {...defaultGlassSettings}; }
 }
-
-type LiquidNumericKey = keyof Pick<LiquidSettings, 'displacementScale' | 'blurAmount' | 'saturation' | 'aberrationIntensity' | 'surfaceOpacity' | 'cornerRadius' | 'elasticity'>;
-type LiquidControl = {key: LiquidNumericKey; label: string; min: number; max: number; step: number; precision: number; percent?: boolean};
-const liquidControls: LiquidControl[] = [
-  {key: 'displacementScale', label: '왜곡 강도', min: 0, max: 70, step: 1, precision: 0},
-  {key: 'blurAmount', label: '배경 블러', min: 0, max: 0.25, step: 0.005, precision: 3},
-  {key: 'saturation', label: '색상 채도', min: 80, max: 190, step: 1, precision: 0},
-  {key: 'aberrationIntensity', label: '색수차', min: 0, max: 4, step: 0.05, precision: 2},
-  {key: 'surfaceOpacity', label: '패널 투명도', min: 0.12, max: 0.86, step: 0.01, precision: 0, percent: true},
-  {key: 'cornerRadius', label: '모서리 반경', min: 8, max: 32, step: 1, precision: 0},
-  {key: 'elasticity', label: '탄성', min: 0, max: 1, step: 0.01, precision: 2},
+type GlassNumericKey = keyof GlassSettings;
+type GlassControl = {key: GlassNumericKey; label: string; min: number; max: number; step: number; precision: number; percent?: boolean};
+const glassControls: GlassControl[] = [
+  {key: 'distortionScale', label: '굴절 변위 (distortionScale)', min: -300, max: 0, step: 1, precision: 0},
+  {key: 'displace', label: '출력 블러 (displace)', min: 0, max: 5, step: 0.1, precision: 1},
+  {key: 'saturation', label: '색상 채도', min: 0.8, max: 2, step: 0.05, precision: 2},
+  {key: 'backgroundOpacity', label: '배경 불투명도', min: 0, max: 0.8, step: 0.01, precision: 0, percent: true},
+  {key: 'borderRadius', label: '모서리 반경', min: 8, max: 32, step: 1, precision: 0},
 ];
-
 
 type ParticleRangeKey = keyof Pick<ParticleLogoControls, 'sampling' | 'particleSpacing' | 'particleSize' | 'tiltFactor' | 'tiltSpeed' | 'displaceStrength' | 'displaceRadius' | 'velocityInfluence' | 'returnSpeed' | 'canvasOpacity'>;
 type ParticleRangeControl = {key: ParticleRangeKey; label: string; min: number; max: number; step: number; precision: number};
@@ -122,23 +100,23 @@ const particleInteractionControls: ParticleRangeControl[] = [
   {key: 'returnSpeed', label: '복귀 속도', min: 0.005, max: 0.2, step: 0.005, precision: 3},
 ];
 
-const liquidLabEnabled = process.env.NODE_ENV !== 'production' || process.env.NEXT_PUBLIC_LIQUID_LAB === 'true';
+const glassLabEnabled = process.env.NODE_ENV !== 'production' || process.env.NEXT_PUBLIC_GLASS_LAB === 'true';
 
 type LabOption = {value: string; label: string};
 function LabRange({id, label, value, min, max, step, precision, format, onChange}: {id: string; label: string; value: number; min: number; max: number; step: number; precision: number; format?: (value: number) => string; onChange: (value: number) => void}) {
-  return <label className="liquid-control" htmlFor={id}><span>{label}</span><output>{format ? format(value) : value.toFixed(precision)}</output><input id={id} type="range" min={min} max={max} step={step} value={value} onChange={event => onChange(Number(event.currentTarget.value))} aria-label={label}/></label>;
+  return <label className="glass-control" htmlFor={id}><span>{label}</span><output>{format ? format(value) : value.toFixed(precision)}</output><input id={id} type="range" min={min} max={max} step={step} value={value} onChange={event => onChange(Number(event.currentTarget.value))} aria-label={label}/></label>;
 }
 function LabSelect({id, label, value, options, onChange}: {id: string; label: string; value: string; options: LabOption[]; onChange: (value: string) => void}) {
-  return <label className="liquid-select-control" htmlFor={id}><span>{label}</span><select id={id} value={value} onChange={event => onChange(event.currentTarget.value)} aria-label={label}>{options.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>;
+  return <label className="glass-select-control" htmlFor={id}><span>{label}</span><select id={id} value={value} onChange={event => onChange(event.currentTarget.value)} aria-label={label}>{options.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>;
 }
 function LabToggle({id, label, checked, onChange}: {id: string; label: string; checked: boolean; onChange: (value: boolean) => void}) {
-  return <label className="liquid-toggle-control" htmlFor={id}><span>{label}</span><input id={id} type="checkbox" checked={checked} onChange={event => onChange(event.currentTarget.checked)} aria-label={label}/></label>;
+  return <label className="glass-toggle-control" htmlFor={id}><span>{label}</span><input id={id} type="checkbox" checked={checked} onChange={event => onChange(event.currentTarget.checked)} aria-label={label}/></label>;
 }
 function LabText({id, label, value, maxLength = 64, onChange}: {id: string; label: string; value: string; maxLength?: number; onChange: (value: string) => void}) {
-  return <label className="liquid-text-control" htmlFor={id}><span>{label}</span><input id={id} type="text" value={value} maxLength={maxLength} onChange={event => onChange(event.currentTarget.value)} aria-label={label}/></label>;
+  return <label className="glass-text-control" htmlFor={id}><span>{label}</span><input id={id} type="text" value={value} maxLength={maxLength} onChange={event => onChange(event.currentTarget.value)} aria-label={label}/></label>;
 }
 function LabColor({id, label, value, onChange}: {id: string; label: string; value: string; onChange: (value: string) => void}) {
-  return <label className="liquid-color-control" htmlFor={id}><span>{label}</span><input id={id} type="color" value={value} onChange={event => onChange(event.currentTarget.value)} aria-label={label}/><output>{value}</output></label>;
+  return <label className="glass-color-control" htmlFor={id}><span>{label}</span><input id={id} type="color" value={value} onChange={event => onChange(event.currentTarget.value)} aria-label={label}/><output>{value}</output></label>;
 }
 function particleColorPreset(value: ParticleLogoControls['particleColor']) {
   return value === 'sample' || value === '#91ddd6' || value === '#b5a6ef' || value === '#b7fff5' ? value : 'custom';
@@ -147,48 +125,20 @@ function particleSolidColor(value: ParticleLogoControls['particleColor']) {
   return value === 'sample' ? defaultParticleLogoControls.particleColor : value;
 }
 
-function createLiquidSizer(children: ReactNode): ReactNode {
-  return Children.map(children, child => {
-    if (!isValidElement(child)) return child;
-    const props = child.props as Record<string, unknown> & {children?: ReactNode};
-    const sizerProps: Record<string, unknown> = {
-      ...props,
-      id: undefined,
-      htmlFor: undefined,
-      onClick: undefined,
-      onChange: undefined,
-      onInput: undefined,
-      onKeyDown: undefined,
-      onSubmit: undefined,
-      value: undefined,
-      checked: undefined,
-      selected: undefined,
-      autoFocus: false,
-      tabIndex: -1,
-      'aria-hidden': true,
-    };
-    if ('children' in props) sizerProps.children = createLiquidSizer(props.children);
-    return cloneElement(child as ReactElement, sizerProps);
-  });
-}
-
-type LiquidPanelProps = {
+type GlassPanelProps = {
   as?: 'div' | 'section' | 'article';
   className?: string;
   children: ReactNode;
-  liquid: LiquidSettings;
-  glassPadding?: string;
+  glass: GlassSettings;
   'aria-labelledby'?: string;
 };
 
-function LiquidPanel({as = 'div', className = '', children, liquid, glassPadding = '0', 'aria-labelledby': labelledBy}: LiquidPanelProps) {
+function GlassPanel({as = 'div', className = '', children, glass, 'aria-labelledby': labelledBy}: GlassPanelProps) {
   const Element = as;
-  const {surfaceOpacity, elasticity, mode, ...glassSettings} = liquid;
-  return <Element className={`liquid-panel ${className}`} style={{borderRadius: `${liquid.cornerRadius}px`}} aria-labelledby={labelledBy}>
-    <div className="liquid-panel-sizer" aria-hidden="true">{createLiquidSizer(children)}</div>
-    <LiquidGlass className="liquid-panel-live" {...glassSettings} elasticity={elasticity} mode={mode} padding={glassPadding} style={{position: 'absolute', top: '50%', left: '50%', width: '100%', height: '100%', borderRadius: `${liquid.cornerRadius}px`, background: `linear-gradient(135deg, rgb(37 64 84 / ${surfaceOpacity}), rgb(8 20 36 / ${surfaceOpacity}))`}}>
+  return <Element className={`glass-panel-host ${className}`} aria-labelledby={labelledBy}>
+    <GlassSurface className="factlens-glass" {...glass} width="100%" height="auto" style={{colorScheme: 'dark'}}>
       {children}
-    </LiquidGlass>
+    </GlassSurface>
   </Element>;
 }
 
@@ -203,11 +153,11 @@ export default function FactCheckDashboard() {
   const [mobileTab, setMobileTab] = useState('results');
   const [dialog, setDialog] = useState<string | null>(null);
   const [notice, setNotice] = useState('');
-  const [liquid, setLiquid] = useState<LiquidSettings>(defaultLiquidSettings);
+  const [glass, setGlass] = useState<GlassSettings>(defaultGlassSettings);
   const [particles, setParticles] = useState<ParticleLogoControls>(defaultParticleLogoControls);
-  const [liquidStorageReady, setLiquidStorageReady] = useState(false);
+  const [glassStorageReady, setGlassStorageReady] = useState(false);
   const [particleStorageReady, setParticleStorageReady] = useState(false);
-  const [liquidLabOpen, setLiquidLabOpen] = useState(false);
+  const [glassLabOpen, setGlassLabOpen] = useState(false);
   const request = useRef<AbortController | null>(null);
   const generation = useRef(0);
   const [consent, setConsent] = useState(false);
@@ -231,17 +181,17 @@ export default function FactCheckDashboard() {
   }, []);
   useEffect(() => {
     try {
-      setLiquid(parseLiquidSettings(window.localStorage.getItem(liquidSettingsStorageKey)));
+      setGlass(parseGlassSettings(window.localStorage.getItem(glassSettingsStorageKey)));
       setParticles(parseParticleLogoControls(window.localStorage.getItem(particleLogoSettingsStorageKey)));
     } catch { /* 브라우저 저장소가 차단된 환경에서는 기본값으로 실행합니다. */ }
-    setLiquidStorageReady(true);
+    setGlassStorageReady(true);
     setParticleStorageReady(true);
   }, []);
   useEffect(() => {
-    if (!liquidStorageReady) return;
-    try { window.localStorage.setItem(liquidSettingsStorageKey, JSON.stringify(liquid)); }
+    if (!glassStorageReady) return;
+    try { window.localStorage.setItem(glassSettingsStorageKey, JSON.stringify(glass)); }
     catch { /* 저장소 용량·권한 오류가 UI를 중단시키지 않도록 무시합니다. */ }
-  }, [liquid, liquidStorageReady]);
+  }, [glass, glassStorageReady]);
   useEffect(() => {
     if (!particleStorageReady) return;
     try { window.localStorage.setItem(particleLogoSettingsStorageKey, JSON.stringify(particles)); }
@@ -312,8 +262,8 @@ export default function FactCheckDashboard() {
     });
     chunks.push(snapshot.text.slice(cursor)); return chunks;
   })();
-  function updateLiquid(key: LiquidNumericKey, value: number) {
-    setLiquid(previous => ({...previous, [key]: value}));
+  function updateGlass(key: GlassNumericKey, value: number) {
+    setGlass(previous => ({...previous, [key]: value}));
   }
   function updateParticleRange(key: ParticleRangeKey, value: number) {
     setParticles(previous => ({...previous, [key]: value}));
@@ -336,10 +286,10 @@ export default function FactCheckDashboard() {
       <div className="sidebar-bottom"><div className="principle-card"><Icon name="shield"/><strong>결론보다, 근거를 먼저.</strong><p>확인된 내용과 아직 모르는 내용을 나란히 살펴보세요.</p><button onClick={() => setDialog('guide')}>우리의 검증 원칙 <Icon name="arrow" size={15}/></button></div><div className="local-status"><span/>{serviceLabel}</div><p className="sidebar-foot">FACTLENS / EVIDENCE WORKSPACE</p></div>
     </aside>
     <div className="main-shell">
-      <header className="topbar"><div className="breadcrumb"><span className="mobile-brand">FactLens</span></div><div className="topbar-actions"><button className="text-button" aria-label="사용 가이드" onClick={() => setDialog('guide')}><Icon name="book"/><span>사용 가이드</span></button>{liquidLabEnabled && <button type="button" className={`text-button liquid-lab-trigger ${liquidLabOpen ? 'is-active' : ''}`} aria-expanded={liquidLabOpen} aria-controls="liquid-lab" onClick={() => setLiquidLabOpen(open => !open)}><Icon name="sliders"/><span>UI 조정</span></button>}<span className="profile-mark" aria-label="로컬 워크스페이스">F</span></div></header>
+      <header className="topbar"><div className="breadcrumb"><span className="mobile-brand">FactLens</span></div><div className="topbar-actions"><button className="text-button" aria-label="사용 가이드" onClick={() => setDialog('guide')}><Icon name="book"/><span>사용 가이드</span></button>{glassLabEnabled && <button type="button" aria-label="UI 조정" className={`text-button glass-lab-trigger ${glassLabOpen ? 'is-active' : ''}`} aria-expanded={glassLabOpen} aria-controls="glass-lab" onClick={() => setGlassLabOpen(open => !open)}><Icon name="sliders"/><span>UI 조정</span></button>}<span className="profile-mark" aria-label="로컬 워크스페이스">F</span></div></header>
       <main id="workspace-main" className="page-content">
         <section className="intro"><ParticlesLogo settings={particles}/></section>
-        <LiquidPanel as="section" className="composer" glassPadding="22px 25px 0" aria-labelledby="composer-heading" liquid={liquid}>
+        <GlassPanel as="section" className="composer" aria-labelledby="composer-heading" glass={glass}>
           <div className="section-heading"><div><span className="step-label">01 / 문서 입력</span><h2 id="composer-heading"><ScrambleText>어떤 내용을 확인하고 싶으세요?</ScrambleText></h2></div><button className="text-button" aria-label="초기화" onClick={reset}><Icon name="reset" size={16}/><span>초기화</span></button></div>
           <form onSubmit={submit}>
             <div className="input-mode" role="group" aria-label="입력 방식"><button type="button" aria-pressed={mode === 'text'} onClick={() => setMode('text')}><Icon name="file" size={16}/>텍스트 입력</button><button type="button" aria-pressed={mode === 'url'} onClick={() => setMode('url')}><Icon name="link" size={16}/>URL 입력<span className="soon-label">준비 중</span></button></div>
@@ -348,7 +298,7 @@ export default function FactCheckDashboard() {
             <div className="focus-note"><div><p>gpt-5.6-luna · reasoning max · 웹 검색 사용. 유료 요청이며 시간이 걸릴 수 있습니다.</p>{!sample && <label><input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} disabled={busy}/> 원문과 확인 요청을 서버·OpenAI에 보내고 웹 검색에 사용하는 데 동의합니다. 민감한 정보는 제외해 주세요.</label>}<p>{configured === false ? configurationHelp : serviceLabel}</p></div></div><div className="composer-bottom"><p><Icon name="shield" size={15}/>{sample ? '합성 예시는 외부로 전송하지 않습니다.' : '동의한 검증 요청만 외부로 전송합니다.'}</p><div className="submit-actions">{busy && <button type="button" className="secondary-button" onClick={() => {stop(); dispatch({type: 'cancel'}); setNotice('검증 요청을 취소했습니다. 이미 전송된 요청에는 비용이 발생할 수 있습니다.');}}>취소</button>}<button className="primary-button" disabled={busy || mode === 'url' || !draft.trim()}>{busy ? '검증 진행 중' : sample ? '예시 다시 보기' : '팩트 검증 시작'}<Icon name="arrow" size={17}/></button></div></div>
           </form>
           <div className="sample-row"><span>예시로 둘러보기</span><button onClick={loadSample}><span className="sample-dot"/>가상 도시의 문화 행사<Icon name="arrow" size={14}/></button><span className="sample-explainer">일정 · 참여 조건 · 예측</span></div>
-        </LiquidPanel>
+        </GlassPanel>
         <div className="notice-line" role="status" aria-live="polite">{notice || (configured === false ? configurationHelp : '원문을 입력해 실제 검증을 시작하거나, 합성 예시를 선택해 둘러보세요.')}</div>
         <section id="review" className="review-section" aria-labelledby="review-heading">
           <div className="review-heading"><div><span className="step-label">02 / 원문과 근거</span><h2 id="review-heading"><ScrambleText>흩어진 근거를, 한눈에.</ScrambleText></h2></div><button className="secondary-button export-button" disabled={!snapshot || busy} onClick={download}><Icon name="download" size={16}/><span>{snapshot?.demo ? '예시 내보내기' : '결과 내보내기'}</span></button></div>
@@ -357,9 +307,9 @@ export default function FactCheckDashboard() {
             <div className="mobile-tabs" role="group" aria-label="검토 화면 선택">{[['original','원문'],['results','결과'],['sources','출처']].map(([value, label]) => <button key={value} aria-pressed={mobileTab === value} onClick={() => setMobileTab(value)}>{label}</button>)}</div>
             <div className={`review-body mobile-${mobileTab}`}>
               <div className="claim-selector" aria-label="주장 후보 선택">{snapshot.claims.map((claim, index) => <motion.button key={claim.id} layout={!reduce} className={`claim-card ${selected?.id === claim.id ? 'is-selected' : ''}`} aria-pressed={selected?.id === claim.id} onClick={() => select(claim.id)}><div className="claim-card-top"><span>주장 0{index + 1}</span><Badge claim={claim}/></div><strong>{claim.quote}</strong><span className="claim-card-bottom">{selected?.id === claim.id ? '선택한 주장' : '근거 살펴보기'}<Icon name={selected?.id === claim.id ? 'check' : 'arrow'} size={15}/></span></motion.button>)}</div>
-              <LiquidPanel as="article" className="original-panel" liquid={liquid}><div className="panel-top"><h3><Icon name="file" size={17}/>원문 읽기</h3><span>{snapshot.demo ? '합성 문서' : '제출한 원문'}</span></div><div className="original-content"><span className="article-kicker">{snapshot.demo ? '문화 · 행사 / 가상의 사례' : '제출 원문 / OpenAI · 웹 검색 검증'}</span><h3>{snapshot.demo ? '달빛시 가을빛 축제,\n알아두면 좋은 세 가지' : '직접 입력한 원문'}</h3><p className="article-byline">{snapshot.demo ? '팩트렌즈 예시 편집실 · 실제 기사 아님' : '검증 요청 시점의 원문을 보존했습니다.'}</p><div className="original-text">{original}</div><div className="highlight-legend"><span/>노란 강조는 선택한 문장입니다. 판정 색상이 아닙니다.</div>{snapshot.focus && <div className="focus-note"><Icon name="lens" size={17}/><div><strong>확인하고 싶은 내용</strong><p>{snapshot.focus}</p><small>{snapshot.demo ? '예시의 비교 범위를 보여드립니다.' : '이 요청을 검증의 참고 범위로 전달했습니다.'}</small></div></div>}</div><div className="original-footer"><Icon name="shield" size={15}/>{snapshot.demo ? '실제 인물·지역·사건과 무관한 합성 예시입니다.' : '원문에서 추출한 최대 3개의 주장을 검증합니다.'}</div></LiquidPanel>
-              {selected && snapshot.demo && <LiquidPanel className="evidence-panel" liquid={liquid}><div className="panel-top"><h3><Icon name="lens" size={18}/>주장별 근거</h3><span>{snapshot.demo ? '예시 비교' : '백엔드 미연결'}</span></div><AnimatePresence mode="wait" initial={false}><motion.div className="detail-content" key={selected.id} initial={reduce ? false : {opacity: 0, y: 4}} animate={{opacity: 1, y: 0}} exit={{opacity: 0}} transition={{duration: reduce ? 0 : 0.16}}><div className="result-overview"><span className="article-kicker">선택한 주장 · {snapshot.demo ? '예시 판정' : '문장 후보'}</span><h3>{selected.quote}</h3><Badge claim={selected}/><p>{selected.summary}</p></div><div className="source-content"><div className="source-heading"><h4>근거 문서 비교</h4><span>{sourceDocs.length}개 예시 문서</span></div>{sourceDocs.length ? <><div className="comparison-note"><span className="group-symbol">A</span><p><strong>같은 원자료를 공유합니다.</strong><br/>문서 2개가 독립적인 근거 2개를 뜻하지 않습니다.</p></div>{sourceDocs.map((doc, i) => <button className="source-card" key={doc.id} onClick={() => setDialog(doc.id)}><div className="source-card-top"><span className="source-index">0{i + 1}</span><span className="source-kind">{doc.relation} · 예시</span><Icon name="arrow" size={16}/></div><strong>{doc.title}</strong><span className="source-publisher">{doc.publisher} · {doc.date}</span><blockquote>“{selected.id === 'claim-1' ? (doc.id === 'doc-1' ? '가을빛 축제는 10월 12일부터 14일까지 달빛공원에서 진행합니다.' : '행사는 10월 12일부터 14일까지 열립니다.') : (doc.id === 'doc-1' ? '공예 체험은 사전 예약이 필요하며 재료비 5,000원이 있습니다.' : '공예 체험은 별도 예약과 재료비가 필요합니다.')}”</blockquote><span className="source-footer">원자료 그룹 A <span>예시 문서 전문 보기</span></span></button>)}<p className="evidence-caution">인용 표현은 아래 문서 전문에서 확인해 주세요. 모든 문서는 시연용으로 작성되었습니다.</p></> : <div className="empty-evidence"><Icon name="file" size={27}/><h4>{snapshot.demo ? '비교할 근거가 없습니다' : '아직 검증하지 않았습니다'}</h4><p>{snapshot.demo ? '미래 전망을 현재 사실로 확정하지 않습니다. 예시 문서에도 방문객 추정 근거는 없습니다.' : '현재는 문장을 나누어 보여드리는 로컬 미리보기입니다. 검색·판정 API가 연결되기 전까지 출처와 판정을 생성하지 않습니다.'}</p></div>}</div></motion.div></AnimatePresence></LiquidPanel>}
-              {!snapshot.demo && liveResult && <LiquidPanel className="evidence-panel" liquid={liquid}>
+              <GlassPanel as="article" className="original-panel" glass={glass}><div className="panel-top"><h3><Icon name="file" size={17}/>원문 읽기</h3><span>{snapshot.demo ? '합성 문서' : '제출한 원문'}</span></div><div className="original-content"><span className="article-kicker">{snapshot.demo ? '문화 · 행사 / 가상의 사례' : '제출 원문 / OpenAI · 웹 검색 검증'}</span><h3>{snapshot.demo ? '달빛시 가을빛 축제,\n알아두면 좋은 세 가지' : '직접 입력한 원문'}</h3><p className="article-byline">{snapshot.demo ? '팩트렌즈 예시 편집실 · 실제 기사 아님' : '검증 요청 시점의 원문을 보존했습니다.'}</p><div className="original-text">{original}</div><div className="highlight-legend"><span/>노란 강조는 선택한 문장입니다. 판정 색상이 아닙니다.</div>{snapshot.focus && <div className="focus-note"><Icon name="lens" size={17}/><div><strong>확인하고 싶은 내용</strong><p>{snapshot.focus}</p><small>{snapshot.demo ? '예시의 비교 범위를 보여드립니다.' : '이 요청을 검증의 참고 범위로 전달했습니다.'}</small></div></div>}</div><div className="original-footer"><Icon name="shield" size={15}/>{snapshot.demo ? '실제 인물·지역·사건과 무관한 합성 예시입니다.' : '원문에서 추출한 최대 3개의 주장을 검증합니다.'}</div></GlassPanel>
+              {selected && snapshot.demo && <GlassPanel className="evidence-panel" glass={glass}><div className="panel-top"><h3><Icon name="lens" size={18}/>주장별 근거</h3><span>{snapshot.demo ? '예시 비교' : '백엔드 미연결'}</span></div><AnimatePresence mode="wait" initial={false}><motion.div className="detail-content" key={selected.id} initial={reduce ? false : {opacity: 0, y: 4}} animate={{opacity: 1, y: 0}} exit={{opacity: 0}} transition={{duration: reduce ? 0 : 0.16}}><div className="result-overview"><span className="article-kicker">선택한 주장 · {snapshot.demo ? '예시 판정' : '문장 후보'}</span><h3>{selected.quote}</h3><Badge claim={selected}/><p>{selected.summary}</p></div><div className="source-content"><div className="source-heading"><h4>근거 문서 비교</h4><span>{sourceDocs.length}개 예시 문서</span></div>{sourceDocs.length ? <><div className="comparison-note"><span className="group-symbol">A</span><p><strong>같은 원자료를 공유합니다.</strong><br/>문서 2개가 독립적인 근거 2개를 뜻하지 않습니다.</p></div>{sourceDocs.map((doc, i) => <button className="source-card" key={doc.id} onClick={() => setDialog(doc.id)}><div className="source-card-top"><span className="source-index">0{i + 1}</span><span className="source-kind">{doc.relation} · 예시</span><Icon name="arrow" size={16}/></div><strong>{doc.title}</strong><span className="source-publisher">{doc.publisher} · {doc.date}</span><blockquote>“{selected.id === 'claim-1' ? (doc.id === 'doc-1' ? '가을빛 축제는 10월 12일부터 14일까지 달빛공원에서 진행합니다.' : '행사는 10월 12일부터 14일까지 열립니다.') : (doc.id === 'doc-1' ? '공예 체험은 사전 예약이 필요하며 재료비 5,000원이 있습니다.' : '공예 체험은 별도 예약과 재료비가 필요합니다.')}”</blockquote><span className="source-footer">원자료 그룹 A <span>예시 문서 전문 보기</span></span></button>)}<p className="evidence-caution">인용 표현은 아래 문서 전문에서 확인해 주세요. 모든 문서는 시연용으로 작성되었습니다.</p></> : <div className="empty-evidence"><Icon name="file" size={27}/><h4>{snapshot.demo ? '비교할 근거가 없습니다' : '아직 검증하지 않았습니다'}</h4><p>{snapshot.demo ? '미래 전망을 현재 사실로 확정하지 않습니다. 예시 문서에도 방문객 추정 근거는 없습니다.' : '현재는 문장을 나누어 보여드리는 로컬 미리보기입니다. 검색·판정 API가 연결되기 전까지 출처와 판정을 생성하지 않습니다.'}</p></div>}</div></motion.div></AnimatePresence></GlassPanel>}
+              {!snapshot.demo && liveResult && <GlassPanel className="evidence-panel" glass={glass}>
                 <div className="panel-top"><h3><Icon name="lens" size={18}/>주장별 근거</h3><span>수집된 원문 비교</span></div>
                 <div className="detail-content">
                   {selected && <>
@@ -386,20 +336,20 @@ export default function FactCheckDashboard() {
                   </>}
                   <div className="source-content"><h4>검증 한계</h4><ul>{liveResult.warnings.map((text, i) => <li key={i}>{text}</li>)}</ul></div>
                 </div>
-              </LiquidPanel>}
+              </GlassPanel>}
              </div>
-          </> : <LiquidPanel className="empty-workspace" glassPadding="55px 20px" liquid={liquid}><Icon name="lens" size={34}/><h3>첫 번째 문서를 기다리고 있습니다.</h3><p>원문을 붙여넣거나 예시를 불러와 근거 비교 화면을 둘러보세요.</p><button className="secondary-button" onClick={loadSample}>예시 불러오기<Icon name="arrow"/></button></LiquidPanel>}
+          </> : <GlassPanel className="empty-workspace" glass={glass}><Icon name="lens" size={34}/><h3>첫 번째 문서를 기다리고 있습니다.</h3><p>원문을 붙여넣거나 예시를 불러와 근거 비교 화면을 둘러보세요.</p><button className="secondary-button" onClick={loadSample}>예시 불러오기<Icon name="arrow"/></button></GlassPanel>}
         </section>
         <footer className="page-footer"><span><span className="footer-mark">F</span>FactLens <span className="footer-divider">/</span>판단을 대신하지 않고, 근거를 연결합니다.</span><button className="text-button" onClick={() => setDialog('guide')}>검증 원칙<Icon name="arrow" size={15}/></button></footer>
       </main>
-      {liquidLabEnabled && <AnimatePresence>
-        {liquidLabOpen && <motion.aside id="liquid-lab" className="liquid-lab" aria-label="UI 컴포넌트 조정" initial={reduce ? false : {opacity: 0, x: 18, scale: 0.98}} animate={{opacity: 1, x: 0, scale: 1}} exit={reduce ? undefined : {opacity: 0, x: 18, scale: 0.98}} transition={{duration: reduce ? 0 : 0.18}}>
-          <div className="liquid-lab-head"><div><span className="liquid-lab-kicker"><Icon name="sliders" size={13}/>DEV TOOL</span><h2>UI Component Lab</h2><p>Glass, particle 설정을 실시간으로 조정합니다.</p></div><button type="button" className="icon-button" onClick={() => setLiquidLabOpen(false)} aria-label="UI 조정 닫기"><Icon name="close" size={17}/></button></div>
-          <div className="liquid-lab-scroll">
-            <section className="liquid-lab-section" aria-labelledby="liquid-section-heading"><div className="liquid-section-title"><h3 id="liquid-section-heading">Liquid Glass</h3><span>8개 설정</span></div><div className="liquid-controls">{liquidControls.map(control => <LabRange key={control.key} id={`liquid-${control.key}`} label={control.label} value={liquid[control.key]} min={control.min} max={control.max} step={control.step} precision={control.precision} format={control.percent ? value => `${Math.round(value * 100)}%` : undefined} onChange={value => updateLiquid(control.key, value)}/>)}<LabSelect id="liquid-mode" label="렌더 모드" value={liquid.mode} options={[{value: 'standard', label: 'Standard'}, {value: 'polar', label: 'Polar'}, {value: 'prominent', label: 'Prominent'}, {value: 'shader', label: 'Shader'}]} onChange={value => setLiquid(previous => ({...previous, mode: value as LiquidSettings['mode']}))}/></div></section>
-            <section className="liquid-lab-section lab-divider-section" aria-labelledby="particles-section-heading"><div className="liquid-section-title"><h3 id="particles-section-heading">TRUE OR NOT</h3><span>14개 설정 · 자동 저장</span><button type="button" className="lab-reset-button" onClick={resetParticles}>초기화</button></div><div className="liquid-text-controls"><LabText id="particle-text" label="로고 텍스트" value={particles.particleText} maxLength={40} onChange={value => updateParticleOption('particleText', value)}/><LabText id="particle-character" label="입자 기호" value={particles.particleCharacter} maxLength={2} onChange={value => updateParticleOption('particleCharacter', value)}/></div><div className="liquid-select-grid"><LabSelect id="particle-color" label="입자 색상" value={particleColorPreset(particles.particleColor)} options={[{value: 'sample', label: '원본 샘플'}, {value: '#91ddd6', label: 'Cyan'}, {value: '#b5a6ef', label: 'Violet'}, {value: '#b7fff5', label: 'Mint'}, {value: 'custom', label: '직접 선택'}]} onChange={value => updateParticleOption('particleColor', value === 'custom' ? particleSolidColor(particles.particleColor) : value as ParticleLogoControls['particleColor'])}/><LabColor id="particle-color-custom" label="직접 색상" value={particleSolidColor(particles.particleColor)} onChange={value => updateParticleOption('particleColor', value as ParticleLogoControls['particleColor'])}/></div><div className="liquid-subheading">모양</div><div className="liquid-controls">{particleAppearanceControls.map(control => <LabRange key={control.key} id={`particle-${control.key}`} label={control.label} value={particles[control.key]} min={control.min} max={control.max} step={control.step} precision={control.precision} onChange={value => updateParticleRange(control.key, value)}/>)}</div><div className="liquid-toggle-grid"><LabToggle id="particle-tilt" label="기울기 반응" checked={particles.tilt} onChange={value => setParticles(previous => ({...previous, tilt: value}))}/></div><div className="liquid-subheading">상호작용</div><div className="liquid-controls">{particleInteractionControls.map(control => <LabRange key={control.key} id={`particle-${control.key}`} label={control.label} value={particles[control.key]} min={control.min} max={control.max} step={control.step} precision={control.precision} onChange={value => updateParticleRange(control.key, value)}/>)}</div></section>
+      {glassLabEnabled && <AnimatePresence>
+        {glassLabOpen && <motion.aside id="glass-lab" className="glass-lab" aria-label="UI 컴포넌트 조정" initial={reduce ? false : {opacity: 0, x: 18, scale: 0.98}} animate={{opacity: 1, x: 0, scale: 1}} exit={reduce ? undefined : {opacity: 0, x: 18, scale: 0.98}} transition={{duration: reduce ? 0 : 0.18}}>
+          <div className="glass-lab-head"><div><span className="glass-lab-kicker"><Icon name="sliders" size={13}/>DEV TOOL</span><h2>UI Component Lab</h2><p>GlassSurface · particle 설정. SVG 미지원 시 공식 fallback(고정 블러·채도)을 사용합니다.</p></div><button type="button" className="icon-button" onClick={() => setGlassLabOpen(false)} aria-label="UI 조정 닫기"><Icon name="close" size={17}/></button></div>
+          <div className="glass-lab-scroll">
+            <section className="glass-lab-section" aria-labelledby="glass-section-heading"><div className="glass-section-title"><h3 id="glass-section-heading">React Bits GlassSurface</h3><span>5개 설정</span></div><div className="glass-controls">{glassControls.map(control => <LabRange key={control.key} id={`glass-${control.key}`} label={control.label} value={glass[control.key]} min={control.min} max={control.max} step={control.step} precision={control.precision} format={control.percent ? value => `${Math.round(value * 100)}%` : undefined} onChange={value => updateGlass(control.key, value)}/>)}</div></section>
+            <section className="glass-lab-section lab-divider-section" aria-labelledby="particles-section-heading"><div className="glass-section-title"><h3 id="particles-section-heading">TRUE OR NOT</h3><span>14개 설정 · 자동 저장</span><button type="button" className="lab-reset-button" onClick={resetParticles}>초기화</button></div><div className="glass-text-controls"><LabText id="particle-text" label="로고 텍스트" value={particles.particleText} maxLength={40} onChange={value => updateParticleOption('particleText', value)}/><LabText id="particle-character" label="입자 기호" value={particles.particleCharacter} maxLength={2} onChange={value => updateParticleOption('particleCharacter', value)}/></div><div className="glass-select-grid"><LabSelect id="particle-color" label="입자 색상" value={particleColorPreset(particles.particleColor)} options={[{value: 'sample', label: '원본 샘플'}, {value: '#91ddd6', label: 'Cyan'}, {value: '#b5a6ef', label: 'Violet'}, {value: '#b7fff5', label: 'Mint'}, {value: 'custom', label: '직접 선택'}]} onChange={value => updateParticleOption('particleColor', value === 'custom' ? particleSolidColor(particles.particleColor) : value as ParticleLogoControls['particleColor'])}/><LabColor id="particle-color-custom" label="직접 색상" value={particleSolidColor(particles.particleColor)} onChange={value => updateParticleOption('particleColor', value as ParticleLogoControls['particleColor'])}/></div><div className="glass-subheading">모양</div><div className="glass-controls">{particleAppearanceControls.map(control => <LabRange key={control.key} id={`particle-${control.key}`} label={control.label} value={particles[control.key]} min={control.min} max={control.max} step={control.step} precision={control.precision} onChange={value => updateParticleRange(control.key, value)}/>)}</div><div className="glass-toggle-grid"><LabToggle id="particle-tilt" label="기울기 반응" checked={particles.tilt} onChange={value => setParticles(previous => ({...previous, tilt: value}))}/></div><div className="glass-subheading">상호작용</div><div className="glass-controls">{particleInteractionControls.map(control => <LabRange key={control.key} id={`particle-${control.key}`} label={control.label} value={particles[control.key]} min={control.min} max={control.max} step={control.step} precision={control.precision} onChange={value => updateParticleRange(control.key, value)}/>)}</div></section>
           </div>
-          <div className="liquid-lab-foot"><span><span className="live-dot"/>브라우저에 저장됨</span><div className="liquid-lab-actions"><button type="button" className="text-button" onClick={() => setLiquid(defaultLiquidSettings)}>글래스 기본값</button></div></div>
+          <div className="glass-lab-foot"><span><span className="live-dot"/>브라우저에 저장됨</span><div className="glass-lab-actions"><button type="button" className="text-button" onClick={() => setGlass(defaultGlassSettings)}>글래스 기본값</button></div></div>
         </motion.aside>}
       </AnimatePresence>}
     </div>
