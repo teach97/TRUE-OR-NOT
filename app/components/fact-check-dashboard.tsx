@@ -10,7 +10,7 @@ import type { FactCheckResult } from '../lib/fact-check-contract';
 import { FactCheckError, readFactCheckStream, safeSourceUrl } from './fact-check-client';
 import { DEMO_FOCUS, DEMO_TEXT, demoPreview, documents } from './demo-fixture';
 import ScrambleText from './scramble-text';
-import FloatingLinesBackground from './floating-lines-background';
+import LetterGlitchBackground from './letter-glitch-background';
 
 type IconName = 'lens' | 'grid' | 'book' | 'arrow' | 'file' | 'link' | 'close' | 'download' | 'plus' | 'shield' | 'check' | 'reset' | 'sliders';
 function Icon({name, size = 18}: {name: IconName; size?: number}) {
@@ -84,11 +84,13 @@ type GlassPanelProps = {
   className?: string;
   children: ReactNode;
   glass: GlassSettings;
+  enabled?: boolean;
   'aria-labelledby'?: string;
 };
 
-function GlassPanel({as = 'div', className = '', children, glass, 'aria-labelledby': labelledBy}: GlassPanelProps) {
+function GlassPanel({as = 'div', className = '', children, glass, enabled = true, 'aria-labelledby': labelledBy}: GlassPanelProps) {
   const Element = as;
+  if (!enabled) return <Element className={`glass-panel-host glass-disabled ${className}`} aria-labelledby={labelledBy}>{children}</Element>;
   return <Element className={`glass-panel-host ${className}`} aria-labelledby={labelledBy}>
     <GlassSurface className="factlens-glass" {...glass} width="100%" height="auto" style={{colorScheme: 'dark'}}>
       {children}
@@ -110,6 +112,7 @@ export default function FactCheckDashboard() {
   const [glass, setGlass] = useState<GlassSettings>(defaultGlassSettings);
   const [glassStorageReady, setGlassStorageReady] = useState(false);
   const [glassLabOpen, setGlassLabOpen] = useState(false);
+  const [glassEnabled, setGlassEnabled] = useState(true);
   const request = useRef<AbortController | null>(null);
   const generation = useRef(0);
   const [consent, setConsent] = useState(false);
@@ -201,8 +204,8 @@ export default function FactCheckDashboard() {
   function updateGlass(key: GlassNumericKey, value: number) {
     setGlass(previous => ({...previous, [key]: value}));
   }
-  return <MotionConfig reducedMotion="user"><div className="app-shell" id="top">
-    <FloatingLinesBackground />
+  return <MotionConfig reducedMotion="user"><div className="app-shell" id="top" data-glass-enabled={glassEnabled}>
+    <LetterGlitchBackground />
     <a className="skip-link" href="#workspace-main">본문으로 건너뛰기</a>
     <aside className="sidebar">
       <a className="brand" href="#top" aria-label="팩트렌즈 홈"><span className="brand-symbol"><Icon name="lens" size={25}/></span><span><ScrambleText>FactLens</ScrambleText><small>팩트렌즈</small></span></a>
@@ -214,7 +217,7 @@ export default function FactCheckDashboard() {
     <div className="main-shell">
       <header className="topbar"><div className="breadcrumb"><span className="mobile-brand">FactLens</span></div><div className="topbar-actions"><button className="text-button" aria-label="사용 가이드" onClick={() => setDialog('guide')}><Icon name="book"/><span>사용 가이드</span></button>{glassLabEnabled && <button type="button" aria-label="UI 조정" className={`text-button glass-lab-trigger ${glassLabOpen ? 'is-active' : ''}`} aria-expanded={glassLabOpen} aria-controls="glass-lab" onClick={() => setGlassLabOpen(open => !open)}><Icon name="sliders"/><span>UI 조정</span></button>}<span className="profile-mark" aria-label="로컬 워크스페이스">F</span></div></header>
       <main id="workspace-main" className="page-content">
-        <GlassPanel as="section" className="composer" aria-labelledby="composer-heading" glass={glass}>
+        <GlassPanel as="section" className="composer" aria-labelledby="composer-heading" glass={glass} enabled={glassEnabled}>
           <div className="section-heading"><div><span className="step-label">01 / 문서 입력</span><h2 id="composer-heading"><ScrambleText>어떤 내용을 확인하고 싶으세요?</ScrambleText></h2></div><button className="text-button" aria-label="초기화" onClick={reset}><Icon name="reset" size={16}/><span>초기화</span></button></div>
           <form onSubmit={submit}>
             <div className="input-mode" role="group" aria-label="입력 방식"><button type="button" aria-pressed={mode === 'text'} onClick={() => setMode('text')}><Icon name="file" size={16}/>텍스트 입력</button><button type="button" aria-pressed={mode === 'url'} onClick={() => setMode('url')}><Icon name="link" size={16}/>URL 입력<span className="soon-label">준비 중</span></button></div>
@@ -232,9 +235,9 @@ export default function FactCheckDashboard() {
             <div className="mobile-tabs" role="group" aria-label="검토 화면 선택">{[['original','원문'],['results','결과'],['sources','출처']].map(([value, label]) => <button key={value} aria-pressed={mobileTab === value} onClick={() => setMobileTab(value)}>{label}</button>)}</div>
             <div className={`review-body mobile-${mobileTab}`}>
               <div className="claim-selector" aria-label="주장 후보 선택">{snapshot.claims.map((claim, index) => <motion.button key={claim.id} layout={!reduce} className={`claim-card ${selected?.id === claim.id ? 'is-selected' : ''}`} aria-pressed={selected?.id === claim.id} onClick={() => select(claim.id)}><div className="claim-card-top"><span>주장 0{index + 1}</span><Badge claim={claim}/></div><strong>{claim.quote}</strong><span className="claim-card-bottom">{selected?.id === claim.id ? '선택한 주장' : '근거 살펴보기'}<Icon name={selected?.id === claim.id ? 'check' : 'arrow'} size={15}/></span></motion.button>)}</div>
-              <GlassPanel as="article" className="original-panel" glass={glass}><div className="panel-top"><h3><Icon name="file" size={17}/>원문 읽기</h3><span>{snapshot.demo ? '합성 문서' : '제출한 원문'}</span></div><div className="original-content"><span className="article-kicker">{snapshot.demo ? '문화 · 행사 / 가상의 사례' : '제출 원문 / OpenAI · 웹 검색 검증'}</span><h3>{snapshot.demo ? '달빛시 가을빛 축제,\n알아두면 좋은 세 가지' : '직접 입력한 원문'}</h3><p className="article-byline">{snapshot.demo ? '팩트렌즈 예시 편집실 · 실제 기사 아님' : '검증 요청 시점의 원문을 보존했습니다.'}</p><div className="original-text">{original}</div><div className="highlight-legend"><span/>노란 강조는 선택한 문장입니다. 판정 색상이 아닙니다.</div>{snapshot.focus && <div className="focus-note"><Icon name="lens" size={17}/><div><strong>확인하고 싶은 내용</strong><p>{snapshot.focus}</p><small>{snapshot.demo ? '예시의 비교 범위를 보여드립니다.' : '이 요청을 검증의 참고 범위로 전달했습니다.'}</small></div></div>}</div><div className="original-footer"><Icon name="shield" size={15}/>{snapshot.demo ? '실제 인물·지역·사건과 무관한 합성 예시입니다.' : '원문에서 추출한 최대 3개의 주장을 검증합니다.'}</div></GlassPanel>
-              {selected && snapshot.demo && <GlassPanel className="evidence-panel" glass={glass}><div className="panel-top"><h3><Icon name="lens" size={18}/>주장별 근거</h3><span>{snapshot.demo ? '예시 비교' : '백엔드 미연결'}</span></div><AnimatePresence mode="wait" initial={false}><motion.div className="detail-content" key={selected.id} initial={reduce ? false : {opacity: 0, y: 4}} animate={{opacity: 1, y: 0}} exit={{opacity: 0}} transition={{duration: reduce ? 0 : 0.16}}><div className="result-overview"><span className="article-kicker">선택한 주장 · {snapshot.demo ? '예시 판정' : '문장 후보'}</span><h3>{selected.quote}</h3><Badge claim={selected}/><p>{selected.summary}</p></div><div className="source-content"><div className="source-heading"><h4>근거 문서 비교</h4><span>{sourceDocs.length}개 예시 문서</span></div>{sourceDocs.length ? <><div className="comparison-note"><span className="group-symbol">A</span><p><strong>같은 원자료를 공유합니다.</strong><br/>문서 2개가 독립적인 근거 2개를 뜻하지 않습니다.</p></div>{sourceDocs.map((doc, i) => <button className="source-card" key={doc.id} onClick={() => setDialog(doc.id)}><div className="source-card-top"><span className="source-index">0{i + 1}</span><span className="source-kind">{doc.relation} · 예시</span><Icon name="arrow" size={16}/></div><strong>{doc.title}</strong><span className="source-publisher">{doc.publisher} · {doc.date}</span><blockquote>“{selected.id === 'claim-1' ? (doc.id === 'doc-1' ? '가을빛 축제는 10월 12일부터 14일까지 달빛공원에서 진행합니다.' : '행사는 10월 12일부터 14일까지 열립니다.') : (doc.id === 'doc-1' ? '공예 체험은 사전 예약이 필요하며 재료비 5,000원이 있습니다.' : '공예 체험은 별도 예약과 재료비가 필요합니다.')}”</blockquote><span className="source-footer">원자료 그룹 A <span>예시 문서 전문 보기</span></span></button>)}<p className="evidence-caution">인용 표현은 아래 문서 전문에서 확인해 주세요. 모든 문서는 시연용으로 작성되었습니다.</p></> : <div className="empty-evidence"><Icon name="file" size={27}/><h4>{snapshot.demo ? '비교할 근거가 없습니다' : '아직 검증하지 않았습니다'}</h4><p>{snapshot.demo ? '미래 전망을 현재 사실로 확정하지 않습니다. 예시 문서에도 방문객 추정 근거는 없습니다.' : '현재는 문장을 나누어 보여드리는 로컬 미리보기입니다. 검색·판정 API가 연결되기 전까지 출처와 판정을 생성하지 않습니다.'}</p></div>}</div></motion.div></AnimatePresence></GlassPanel>}
-              {!snapshot.demo && liveResult && <GlassPanel className="evidence-panel" glass={glass}>
+              <GlassPanel as="article" className="original-panel" glass={glass} enabled={glassEnabled}><div className="panel-top"><h3><Icon name="file" size={17}/>원문 읽기</h3><span>{snapshot.demo ? '합성 문서' : '제출한 원문'}</span></div><div className="original-content"><span className="article-kicker">{snapshot.demo ? '문화 · 행사 / 가상의 사례' : '제출 원문 / OpenAI · 웹 검색 검증'}</span><h3>{snapshot.demo ? '달빛시 가을빛 축제,\n알아두면 좋은 세 가지' : '직접 입력한 원문'}</h3><p className="article-byline">{snapshot.demo ? '팩트렌즈 예시 편집실 · 실제 기사 아님' : '검증 요청 시점의 원문을 보존했습니다.'}</p><div className="original-text">{original}</div><div className="highlight-legend"><span/>노란 강조는 선택한 문장입니다. 판정 색상이 아닙니다.</div>{snapshot.focus && <div className="focus-note"><Icon name="lens" size={17}/><div><strong>확인하고 싶은 내용</strong><p>{snapshot.focus}</p><small>{snapshot.demo ? '예시의 비교 범위를 보여드립니다.' : '이 요청을 검증의 참고 범위로 전달했습니다.'}</small></div></div>}</div><div className="original-footer"><Icon name="shield" size={15}/>{snapshot.demo ? '실제 인물·지역·사건과 무관한 합성 예시입니다.' : '원문에서 추출한 최대 3개의 주장을 검증합니다.'}</div></GlassPanel>
+              {selected && snapshot.demo && <GlassPanel className="evidence-panel" glass={glass} enabled={glassEnabled}><div className="panel-top"><h3><Icon name="lens" size={18}/>주장별 근거</h3><span>{snapshot.demo ? '예시 비교' : '백엔드 미연결'}</span></div><AnimatePresence mode="wait" initial={false}><motion.div className="detail-content" key={selected.id} initial={reduce ? false : {opacity: 0, y: 4}} animate={{opacity: 1, y: 0}} exit={{opacity: 0}} transition={{duration: reduce ? 0 : 0.16}}><div className="result-overview"><span className="article-kicker">선택한 주장 · {snapshot.demo ? '예시 판정' : '문장 후보'}</span><h3>{selected.quote}</h3><Badge claim={selected}/><p>{selected.summary}</p></div><div className="source-content"><div className="source-heading"><h4>근거 문서 비교</h4><span>{sourceDocs.length}개 예시 문서</span></div>{sourceDocs.length ? <><div className="comparison-note"><span className="group-symbol">A</span><p><strong>같은 원자료를 공유합니다.</strong><br/>문서 2개가 독립적인 근거 2개를 뜻하지 않습니다.</p></div>{sourceDocs.map((doc, i) => <button className="source-card" key={doc.id} onClick={() => setDialog(doc.id)}><div className="source-card-top"><span className="source-index">0{i + 1}</span><span className="source-kind">{doc.relation} · 예시</span><Icon name="arrow" size={16}/></div><strong>{doc.title}</strong><span className="source-publisher">{doc.publisher} · {doc.date}</span><blockquote>“{selected.id === 'claim-1' ? (doc.id === 'doc-1' ? '가을빛 축제는 10월 12일부터 14일까지 달빛공원에서 진행합니다.' : '행사는 10월 12일부터 14일까지 열립니다.') : (doc.id === 'doc-1' ? '공예 체험은 사전 예약이 필요하며 재료비 5,000원이 있습니다.' : '공예 체험은 별도 예약과 재료비가 필요합니다.')}”</blockquote><span className="source-footer">원자료 그룹 A <span>예시 문서 전문 보기</span></span></button>)}<p className="evidence-caution">인용 표현은 아래 문서 전문에서 확인해 주세요. 모든 문서는 시연용으로 작성되었습니다.</p></> : <div className="empty-evidence"><Icon name="file" size={27}/><h4>{snapshot.demo ? '비교할 근거가 없습니다' : '아직 검증하지 않았습니다'}</h4><p>{snapshot.demo ? '미래 전망을 현재 사실로 확정하지 않습니다. 예시 문서에도 방문객 추정 근거는 없습니다.' : '현재는 문장을 나누어 보여드리는 로컬 미리보기입니다. 검색·판정 API가 연결되기 전까지 출처와 판정을 생성하지 않습니다.'}</p></div>}</div></motion.div></AnimatePresence></GlassPanel>}
+              {!snapshot.demo && liveResult && <GlassPanel className="evidence-panel" glass={glass} enabled={glassEnabled}>
                 <div className="panel-top"><h3><Icon name="lens" size={18}/>주장별 근거</h3><span>수집된 원문 비교</span></div>
                 <div className="detail-content">
                   {selected && <>
@@ -263,7 +266,7 @@ export default function FactCheckDashboard() {
                 </div>
               </GlassPanel>}
              </div>
-          </> : <GlassPanel className="empty-workspace" glass={glass}><Icon name="lens" size={34}/><h3>첫 번째 문서를 기다리고 있습니다.</h3><p>원문을 붙여넣거나 예시를 불러와 근거 비교 화면을 둘러보세요.</p><button className="secondary-button" onClick={loadSample}>예시 불러오기<Icon name="arrow"/></button></GlassPanel>}
+          </> : <GlassPanel className="empty-workspace" glass={glass} enabled={glassEnabled}><Icon name="lens" size={34}/><h3>첫 번째 문서를 기다리고 있습니다.</h3><p>원문을 붙여넣거나 예시를 불러와 근거 비교 화면을 둘러보세요.</p><button className="secondary-button" onClick={loadSample}>예시 불러오기<Icon name="arrow"/></button></GlassPanel>}
         </section>
         <footer className="page-footer"><span><span className="footer-mark">F</span>FactLens <span className="footer-divider">/</span>판단을 대신하지 않고, 근거를 연결합니다.</span><button className="text-button" onClick={() => setDialog('guide')}>검증 원칙<Icon name="arrow" size={15}/></button></footer>
       </main>
@@ -273,7 +276,7 @@ export default function FactCheckDashboard() {
           <div className="glass-lab-scroll">
             <section className="glass-lab-section" aria-labelledby="glass-section-heading"><div className="glass-section-title"><h3 id="glass-section-heading">React Bits GlassSurface</h3><span>5개 설정</span></div><div className="glass-controls">{glassControls.map(control => <LabRange key={control.key} id={`glass-${control.key}`} label={control.label} value={glass[control.key]} min={control.min} max={control.max} step={control.step} precision={control.precision} format={control.percent ? value => `${Math.round(value * 100)}%` : undefined} onChange={value => updateGlass(control.key, value)}/>)}</div></section>
           </div>
-          <div className="glass-lab-foot"><span><span className="live-dot"/>브라우저에 저장됨</span><div className="glass-lab-actions"><button type="button" className="text-button" onClick={() => setGlass(defaultGlassSettings)}>글래스 기본값</button></div></div>
+          <div className="glass-lab-foot"><span><span className="live-dot"/>브라우저에 저장됨</span><div className="glass-lab-actions"><button type="button" className={`text-button glass-toggle ${glassEnabled ? 'is-active' : ''}`} aria-pressed={glassEnabled} onClick={() => setGlassEnabled(value => !value)}>{glassEnabled ? '리퀴드 글라스 끄기' : '리퀴드 글라스 켜기'}</button><button type="button" className="text-button" onClick={() => setGlass(defaultGlassSettings)}>글래스 기본값</button></div></div>
         </motion.aside>}
       </AnimatePresence>}
     </div>
