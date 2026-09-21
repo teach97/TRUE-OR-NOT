@@ -50,7 +50,7 @@ export default function FloatingLinesBackground() {
     <div className="floating-lines-background" data-floating-lines-background data-active={active} aria-hidden="true">
       {active && <BackgroundBoundary><FloatingLines
         linesGradient={floatingLinesGradient}
-        enabledWaves={[...floatingLinesWaves]}
+        enabledWaves={floatingLinesWaves}
         lineCount={floatingLinesCount}
         lineDistance={floatingLinesDistance}
         animationSpeed={0.38}

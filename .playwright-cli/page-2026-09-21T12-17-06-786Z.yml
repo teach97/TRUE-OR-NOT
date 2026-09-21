@@ -1,0 +1,1145 @@
+- generic [ref=e2]:
+  - main [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e5]:
+        - link [ref=e6] [cursor=pointer]:
+          - /url: /
+        - generic [ref=e18]: /
+        - navigation [ref=e19]:
+          - link "Docs" [ref=e20] [cursor=pointer]:
+            - /url: /get-started/introduction
+          - link "Tools" [ref=e21] [cursor=pointer]:
+            - /url: /tools
+          - link "Pro" [ref=e22] [cursor=pointer]:
+            - /url: /pro
+          - link "Sponsors" [ref=e23] [cursor=pointer]:
+            - /url: /sponsors
+      - generic [ref=e24]:
+        - button "Search" [ref=e25] [cursor=pointer]:
+          - generic [ref=e29]: Search...
+          - generic [ref=e30]: /
+        - button "Preferences" [ref=e32] [cursor=pointer]
+        - button "Switch to light mode" [ref=e36] [cursor=pointer]
+        - link "47.8K" [ref=e43] [cursor=pointer]:
+          - /url: https://github.com/DavidHDev/react-bits
+        - link "Get React Bits Pro" [ref=e47] [cursor=pointer]:
+          - /url: https://pro.reactbits.dev/?utm_source=reactbits.dev&utm_medium=docs-navbar&utm_campaign=free-to-pro#pricing
+    - generic [ref=e49]:
+      - navigation [ref=e50]:
+        - tablist "Category" [ref=e51]:
+          - tab "All" [selected] [ref=e52] [cursor=pointer]
+          - tab "Text Animations" [ref=e58] [cursor=pointer]
+          - tab "Components" [ref=e62] [cursor=pointer]
+          - tab "Micro" [ref=e65] [cursor=pointer]
+          - tab "Animations" [ref=e69] [cursor=pointer]
+          - tab "Backgrounds" [ref=e74] [cursor=pointer]
+        - textbox "Filter sidebar navigation" [ref=e83]:
+          - /placeholder: Filter 205 components...
+        - generic [ref=e86]:
+          - generic [ref=e87]:
+            - paragraph [ref=e88]: Get Started
+            - generic [ref=e89]:
+              - link "Introduction" [ref=e90] [cursor=pointer]:
+                - /url: /get-started/introduction
+              - link "Installation" [ref=e91] [cursor=pointer]:
+                - /url: /get-started/installation
+              - link "MCP" [ref=e92] [cursor=pointer]:
+                - /url: /get-started/mcp
+              - link "Index" [ref=e93] [cursor=pointer]:
+                - /url: /get-started/index
+              - link "Favorites" [ref=e94] [cursor=pointer]:
+                - /url: /favorites
+          - generic [ref=e95]:
+            - paragraph [ref=e96]: Explore Pro
+            - generic [ref=e97]:
+              - link "Components" [ref=e98] [cursor=pointer]:
+                - /url: /pro/components
+              - link "Blocks" [ref=e105] [cursor=pointer]:
+                - /url: /pro/blocks
+              - link "App UI" [ref=e110] [cursor=pointer]:
+                - /url: /pro/app-ui
+              - link "Templates 1 Free" [ref=e115] [cursor=pointer]:
+                - /url: /pro/templates
+                - generic [ref=e120]: Templates
+                - generic [ref=e121]: 1 Free
+              - link "Skills 1 Free" [ref=e122] [cursor=pointer]:
+                - /url: /pro/agent-kit
+                - generic [ref=e126]: Skills
+                - generic [ref=e127]: 1 Free
+          - generic [ref=e128]:
+            - paragraph [ref=e129]: Text Animations
+            - generic [ref=e130]:
+              - link "Text Loop New" [ref=e131] [cursor=pointer]:
+                - /url: /text-animations/text-loop
+                - text: Text Loop
+                - generic [ref=e132]: New
+              - link "Masked Heading" [ref=e133] [cursor=pointer]:
+                - /url: /text-animations/masked-heading
+              - link "Particle Text New" [ref=e134] [cursor=pointer]:
+                - /url: /text-animations/particle-text
+                - text: Particle Text
+                - generic [ref=e135]: New
+              - link "Split Flap Text New" [ref=e136] [cursor=pointer]:
+                - /url: /text-animations/split-flap-text
+                - text: Split Flap Text
+                - generic [ref=e137]: New
+              - link "Warp Text New" [ref=e138] [cursor=pointer]:
+                - /url: /text-animations/warp-text
+                - text: Warp Text
+                - generic [ref=e139]: New
+              - link "Stroke Text" [ref=e140] [cursor=pointer]:
+                - /url: /text-animations/stroke-text
+              - link "Depth Text New" [ref=e141] [cursor=pointer]:
+                - /url: /text-animations/depth-text
+                - text: Depth Text
+                - generic [ref=e142]: New
+              - link "Fold Text" [ref=e143] [cursor=pointer]:
+                - /url: /text-animations/fold-text
+              - link "Echo Text" [ref=e144] [cursor=pointer]:
+                - /url: /text-animations/echo-text
+              - link "Split Text" [ref=e145] [cursor=pointer]:
+                - /url: /text-animations/split-text
+              - link "Blur Text" [ref=e146] [cursor=pointer]:
+                - /url: /text-animations/blur-text
+              - link "Circular Text" [ref=e147] [cursor=pointer]:
+                - /url: /text-animations/circular-text
+              - link "Text Type" [ref=e148] [cursor=pointer]:
+                - /url: /text-animations/text-type
+              - link "Shuffle" [ref=e149] [cursor=pointer]:
+                - /url: /text-animations/shuffle
+              - link "Shiny Text" [ref=e150] [cursor=pointer]:
+                - /url: /text-animations/shiny-text
+              - link "Text Pressure" [ref=e151] [cursor=pointer]:
+                - /url: /text-animations/text-pressure
+              - link "Curved Loop" [ref=e152] [cursor=pointer]:
+                - /url: /text-animations/curved-loop
+              - link "Fuzzy Text" [ref=e153] [cursor=pointer]:
+                - /url: /text-animations/fuzzy-text
+              - link "Gradient Text" [ref=e154] [cursor=pointer]:
+                - /url: /text-animations/gradient-text
+              - link "Falling Text" [ref=e155] [cursor=pointer]:
+                - /url: /text-animations/falling-text
+              - link "Text Cursor" [ref=e156] [cursor=pointer]:
+                - /url: /text-animations/text-cursor
+              - link "Decrypted Text" [ref=e157] [cursor=pointer]:
+                - /url: /text-animations/decrypted-text
+              - link "True Focus" [ref=e158] [cursor=pointer]:
+                - /url: /text-animations/true-focus
+              - link "Scroll Float" [ref=e159] [cursor=pointer]:
+                - /url: /text-animations/scroll-float
+              - link "Scroll Reveal" [ref=e160] [cursor=pointer]:
+                - /url: /text-animations/scroll-reveal
+              - link "ASCII Text" [ref=e161] [cursor=pointer]:
+                - /url: /text-animations/ascii-text
+              - link "Scrambled Text" [ref=e162] [cursor=pointer]:
+                - /url: /text-animations/scrambled-text
+              - link "Rotating Text" [ref=e163] [cursor=pointer]:
+                - /url: /text-animations/rotating-text
+              - link "Glitch Text" [ref=e164] [cursor=pointer]:
+                - /url: /text-animations/glitch-text
+              - link "Scroll Velocity" [ref=e165] [cursor=pointer]:
+                - /url: /text-animations/scroll-velocity
+              - link "Variable Proximity" [ref=e166] [cursor=pointer]:
+                - /url: /text-animations/variable-proximity
+              - link "Count Up" [ref=e167] [cursor=pointer]:
+                - /url: /text-animations/count-up
+          - generic [ref=e168]:
+            - paragraph [ref=e169]: Animations
+            - generic [ref=e170]:
+              - link "Glow Cursor New" [ref=e171] [cursor=pointer]:
+                - /url: /animations/glow-cursor
+                - text: Glow Cursor
+                - generic [ref=e172]: New
+              - link "Scroll Expand New" [ref=e173] [cursor=pointer]:
+                - /url: /animations/scroll-expand
+                - text: Scroll Expand
+                - generic [ref=e174]: New
+              - link "Ripple Distortion New" [ref=e175] [cursor=pointer]:
+                - /url: /animations/ripple-distortion
+                - text: Ripple Distortion
+                - generic [ref=e176]: New
+              - link "Elastic Mesh" [ref=e177] [cursor=pointer]:
+                - /url: /animations/elastic-mesh
+              - link "Swarm Cursor" [ref=e178] [cursor=pointer]:
+                - /url: /animations/swarm-cursor
+              - link "Halftone Reveal" [ref=e179] [cursor=pointer]:
+                - /url: /animations/halftone-reveal
+              - link "Pixel Swap" [ref=e180] [cursor=pointer]:
+                - /url: /animations/pixel-swap
+              - link "Cursor Grid" [ref=e181] [cursor=pointer]:
+                - /url: /animations/cursor-grid
+              - link "Animated Content" [ref=e182] [cursor=pointer]:
+                - /url: /animations/animated-content
+              - link "Fade Content" [ref=e183] [cursor=pointer]:
+                - /url: /animations/fade-content
+              - link "Electric Border" [ref=e184] [cursor=pointer]:
+                - /url: /animations/electric-border
+              - link "Orbit Images" [ref=e185] [cursor=pointer]:
+                - /url: /animations/orbit-images
+              - link "Pixel Transition" [ref=e186] [cursor=pointer]:
+                - /url: /animations/pixel-transition
+              - link "Glare Hover" [ref=e187] [cursor=pointer]:
+                - /url: /animations/glare-hover
+              - link "Antigravity" [ref=e188] [cursor=pointer]:
+                - /url: /animations/antigravity
+              - link "Logo Loop" [ref=e189] [cursor=pointer]:
+                - /url: /animations/logo-loop
+              - link "Target Cursor" [ref=e190] [cursor=pointer]:
+                - /url: /animations/target-cursor
+              - link "Magic Rings" [ref=e191] [cursor=pointer]:
+                - /url: /animations/magic-rings
+              - link "Laser Flow" [ref=e192] [cursor=pointer]:
+                - /url: /animations/laser-flow
+              - link "Magnet Lines" [ref=e193] [cursor=pointer]:
+                - /url: /animations/magnet-lines
+              - link "Ghost Cursor" [ref=e194] [cursor=pointer]:
+                - /url: /animations/ghost-cursor
+              - link "Gradual Blur" [ref=e195] [cursor=pointer]:
+                - /url: /animations/gradual-blur
+              - link "Click Spark" [ref=e196] [cursor=pointer]:
+                - /url: /animations/click-spark
+              - link "Magnet" [ref=e197] [cursor=pointer]:
+                - /url: /animations/magnet
+              - link "Strands" [ref=e198] [cursor=pointer]:
+                - /url: /animations/strands
+              - link "Sticker Peel" [ref=e199] [cursor=pointer]:
+                - /url: /animations/sticker-peel
+              - link "Pixel Trail" [ref=e200] [cursor=pointer]:
+                - /url: /animations/pixel-trail
+              - link "Cubes" [ref=e201] [cursor=pointer]:
+                - /url: /animations/cubes
+              - link "Metallic Paint" [ref=e202] [cursor=pointer]:
+                - /url: /animations/metallic-paint
+              - link "Noise" [ref=e203] [cursor=pointer]:
+                - /url: /animations/noise
+              - link "Shape Blur" [ref=e204] [cursor=pointer]:
+                - /url: /animations/shape-blur
+              - link "Crosshair" [ref=e205] [cursor=pointer]:
+                - /url: /animations/crosshair
+              - link "Image Trail" [ref=e206] [cursor=pointer]:
+                - /url: /animations/image-trail
+              - link "Ribbons" [ref=e207] [cursor=pointer]:
+                - /url: /animations/ribbons
+              - link "Splash Cursor" [ref=e208] [cursor=pointer]:
+                - /url: /animations/splash-cursor
+              - link "Meta Balls" [ref=e209] [cursor=pointer]:
+                - /url: /animations/meta-balls
+              - link "Blob Cursor" [ref=e210] [cursor=pointer]:
+                - /url: /animations/blob-cursor
+              - link "Star Border" [ref=e211] [cursor=pointer]:
+                - /url: /animations/star-border
+          - generic [ref=e212]:
+            - paragraph [ref=e213]: Components
+            - generic [ref=e214]:
+              - link "Infinite Spiral New" [ref=e215] [cursor=pointer]:
+                - /url: /components/infinite-spiral
+                - text: Infinite Spiral
+                - generic [ref=e216]: New
+              - link "Depth Carousel New" [ref=e217] [cursor=pointer]:
+                - /url: /components/depth-carousel
+                - text: Depth Carousel
+                - generic [ref=e218]: New
+              - link "Morph Slider New" [ref=e219] [cursor=pointer]:
+                - /url: /components/morph-slider
+                - text: Morph Slider
+                - generic [ref=e220]: New
+              - link "Drift Wall New" [ref=e221] [cursor=pointer]:
+                - /url: /components/drift-wall
+                - text: Drift Wall
+                - generic [ref=e222]: New
+              - link "Accordion Gallery" [ref=e223] [cursor=pointer]:
+                - /url: /components/accordion-gallery
+              - link "Specular Button" [ref=e224] [cursor=pointer]:
+                - /url: /components/specular-button
+              - link "Option Wheel" [ref=e225] [cursor=pointer]:
+                - /url: /components/option-wheel
+              - link "Curved Input" [ref=e226] [cursor=pointer]:
+                - /url: /components/curved-input
+              - link "Line Sidebar" [ref=e227] [cursor=pointer]:
+                - /url: /components/line-sidebar
+              - link "Animated List" [ref=e228] [cursor=pointer]:
+                - /url: /components/animated-list
+              - link "Scroll Stack" [ref=e229] [cursor=pointer]:
+                - /url: /components/scroll-stack
+              - link "Bubble Menu" [ref=e230] [cursor=pointer]:
+                - /url: /components/bubble-menu
+              - link "Magic Bento" [ref=e231] [cursor=pointer]:
+                - /url: /components/magic-bento
+              - link "Circular Gallery" [ref=e232] [cursor=pointer]:
+                - /url: /components/circular-gallery
+              - link "Reflective Card" [ref=e233] [cursor=pointer]:
+                - /url: /components/reflective-card
+              - link "Card Nav" [ref=e234] [cursor=pointer]:
+                - /url: /components/card-nav
+              - link "Stack" [ref=e235] [cursor=pointer]:
+                - /url: /components/stack
+              - link "Fluid Glass" [ref=e236] [cursor=pointer]:
+                - /url: /components/fluid-glass
+              - link "Pill Nav" [ref=e237] [cursor=pointer]:
+                - /url: /components/pill-nav
+              - link "Tilted Card" [ref=e238] [cursor=pointer]:
+                - /url: /components/tilted-card
+              - link "Masonry" [ref=e239] [cursor=pointer]:
+                - /url: /components/masonry
+              - link "Glass Surface" [ref=e240] [cursor=pointer]:
+                - /url: /components/glass-surface
+              - link "Dome Gallery" [ref=e241] [cursor=pointer]:
+                - /url: /components/dome-gallery
+              - link "Chroma Grid" [ref=e242] [cursor=pointer]:
+                - /url: /components/chroma-grid
+              - link "Folder" [ref=e243] [cursor=pointer]:
+                - /url: /components/folder
+              - link "Staggered Menu" [ref=e244] [cursor=pointer]:
+                - /url: /components/staggered-menu
+              - link "Model Viewer" [ref=e245] [cursor=pointer]:
+                - /url: /components/model-viewer
+              - link "Lanyard" [ref=e246] [cursor=pointer]:
+                - /url: /components/lanyard
+              - link "Profile Card" [ref=e247] [cursor=pointer]:
+                - /url: /components/profile-card
+              - link "Dock" [ref=e248] [cursor=pointer]:
+                - /url: /components/dock
+              - link "Gooey Nav" [ref=e249] [cursor=pointer]:
+                - /url: /components/gooey-nav
+              - link "Pixel Card" [ref=e250] [cursor=pointer]:
+                - /url: /components/pixel-card
+              - link "Carousel" [ref=e251] [cursor=pointer]:
+                - /url: /components/carousel
+              - link "Spotlight Card" [ref=e252] [cursor=pointer]:
+                - /url: /components/spotlight-card
+              - link "Border Glow" [ref=e253] [cursor=pointer]:
+                - /url: /components/border-glow
+              - link "Flying Posters" [ref=e254] [cursor=pointer]:
+                - /url: /components/flying-posters
+              - link "Card Swap" [ref=e255] [cursor=pointer]:
+                - /url: /components/card-swap
+              - link "Glass Icons" [ref=e256] [cursor=pointer]:
+                - /url: /components/glass-icons
+              - link "Decay Card" [ref=e257] [cursor=pointer]:
+                - /url: /components/decay-card
+              - link "Flowing Menu" [ref=e258] [cursor=pointer]:
+                - /url: /components/flowing-menu
+              - link "Elastic Slider" [ref=e259] [cursor=pointer]:
+                - /url: /components/elastic-slider
+              - link "Counter" [ref=e260] [cursor=pointer]:
+                - /url: /components/counter
+              - link "Infinite Menu" [ref=e261] [cursor=pointer]:
+                - /url: /components/infinite-menu
+              - link "Stepper" [ref=e262] [cursor=pointer]:
+                - /url: /components/stepper
+              - link "Bounce Cards" [ref=e263] [cursor=pointer]:
+                - /url: /components/bounce-cards
+          - generic [ref=e264]:
+            - paragraph [ref=e265]: Micro
+            - generic [ref=e266]:
+              - link "Paper Crumple" [ref=e267] [cursor=pointer]:
+                - /url: /micro/paper-crumple
+              - link "Tear Ticket New" [ref=e268] [cursor=pointer]:
+                - /url: /micro/tear-ticket
+                - text: Tear Ticket
+                - generic [ref=e269]: New
+              - link "Flip Card New" [ref=e270] [cursor=pointer]:
+                - /url: /micro/flip-card
+                - text: Flip Card
+                - generic [ref=e271]: New
+              - link "Branched Menu New" [ref=e272] [cursor=pointer]:
+                - /url: /micro/branched-menu
+                - text: Branched Menu
+                - generic [ref=e273]: New
+              - link "Folder Float New" [ref=e274] [cursor=pointer]:
+                - /url: /micro/folder-float
+                - text: Folder Float
+                - generic [ref=e275]: New
+              - link "Refine Frame New" [ref=e276] [cursor=pointer]:
+                - /url: /micro/refine-frame
+                - text: Refine Frame
+                - generic [ref=e277]: New
+              - link "Thought Line New" [ref=e278] [cursor=pointer]:
+                - /url: /micro/thought-line
+                - text: Thought Line
+                - generic [ref=e279]: New
+              - link "Voice Pill New" [ref=e280] [cursor=pointer]:
+                - /url: /micro/voice-pill
+                - text: Voice Pill
+                - generic [ref=e281]: New
+              - link "Slosh Gauge New" [ref=e282] [cursor=pointer]:
+                - /url: /micro/slosh-gauge
+                - text: Slosh Gauge
+                - generic [ref=e283]: New
+              - link "Prompt Bar New" [ref=e284] [cursor=pointer]:
+                - /url: /micro/prompt-bar
+                - text: Prompt Bar
+                - generic [ref=e285]: New
+              - link "Swipe Toast New" [ref=e286] [cursor=pointer]:
+                - /url: /micro/swipe-toast
+                - text: Swipe Toast
+                - generic [ref=e287]: New
+              - link "Sling Button New" [ref=e288] [cursor=pointer]:
+                - /url: /micro/sling-button
+                - text: Sling Button
+                - generic [ref=e289]: New
+              - link "Bell Toggle New" [ref=e290] [cursor=pointer]:
+                - /url: /micro/bell-toggle
+                - text: Bell Toggle
+                - generic [ref=e291]: New
+              - link "Call Chip New" [ref=e292] [cursor=pointer]:
+                - /url: /micro/call-chip
+                - text: Call Chip
+                - generic [ref=e293]: New
+              - link "Status Mark New" [ref=e294] [cursor=pointer]:
+                - /url: /micro/status-mark
+                - text: Status Mark
+                - generic [ref=e295]: New
+              - link "Glide Select New" [ref=e296] [cursor=pointer]:
+                - /url: /micro/glide-select
+                - text: Glide Select
+                - generic [ref=e297]: New
+              - link "Swipe Row New" [ref=e298] [cursor=pointer]:
+                - /url: /micro/swipe-row
+                - text: Swipe Row
+                - generic [ref=e299]: New
+              - link "Jelly Radio New" [ref=e300] [cursor=pointer]:
+                - /url: /micro/jelly-radio
+                - text: Jelly Radio
+                - generic [ref=e301]: New
+              - link "Comet Dial New" [ref=e302] [cursor=pointer]:
+                - /url: /micro/comet-dial
+                - text: Comet Dial
+                - generic [ref=e303]: New
+              - link "Wake Slider New" [ref=e304] [cursor=pointer]:
+                - /url: /micro/wake-slider
+                - text: Wake Slider
+                - generic [ref=e305]: New
+              - link "Code Slots New" [ref=e306] [cursor=pointer]:
+                - /url: /micro/code-slots
+                - text: Code Slots
+                - generic [ref=e307]: New
+              - link "Dodge Field New" [ref=e308] [cursor=pointer]:
+                - /url: /micro/dodge-field
+                - text: Dodge Field
+                - generic [ref=e309]: New
+              - link "Lattice Loader New" [ref=e310] [cursor=pointer]:
+                - /url: /micro/lattice-loader
+                - text: Lattice Loader
+                - generic [ref=e311]: New
+              - link "Scrub Field New" [ref=e312] [cursor=pointer]:
+                - /url: /micro/scrub-field
+                - text: Scrub Field
+                - generic [ref=e313]: New
+              - link "Fuse Button New" [ref=e314] [cursor=pointer]:
+                - /url: /micro/fuse-button
+                - text: Fuse Button
+                - generic [ref=e315]: New
+              - link "Warm Tooltip New" [ref=e316] [cursor=pointer]:
+                - /url: /micro/warm-tooltip
+                - text: Warm Tooltip
+                - generic [ref=e317]: New
+              - link "Slide Commit New" [ref=e318] [cursor=pointer]:
+                - /url: /micro/slide-commit
+                - text: Slide Commit
+                - generic [ref=e319]: New
+              - link "Rubber Segment New" [ref=e320] [cursor=pointer]:
+                - /url: /micro/rubber-segment
+                - text: Rubber Segment
+                - generic [ref=e321]: New
+              - link "Pulse Heart New" [ref=e322] [cursor=pointer]:
+                - /url: /micro/pulse-heart
+                - text: Pulse Heart
+                - generic [ref=e323]: New
+              - link "Spring Check New" [ref=e324] [cursor=pointer]:
+                - /url: /micro/spring-check
+                - text: Spring Check
+                - generic [ref=e325]: New
+              - link "Peek Rating New" [ref=e326] [cursor=pointer]:
+                - /url: /micro/peek-rating
+                - text: Peek Rating
+                - generic [ref=e327]: New
+              - link "Hold Button New" [ref=e328] [cursor=pointer]:
+                - /url: /micro/hold-button
+                - text: Hold Button
+                - generic [ref=e329]: New
+              - link "Squish Switch New" [ref=e330] [cursor=pointer]:
+                - /url: /micro/squish-switch
+                - text: Squish Switch
+                - generic [ref=e331]: New
+          - generic [ref=e332]:
+            - paragraph [ref=e333]: Backgrounds
+            - generic [ref=e334]:
+              - link "Shape Waves New" [ref=e335] [cursor=pointer]:
+                - /url: /backgrounds/shape-waves
+                - text: Shape Waves
+                - generic [ref=e336]: New
+              - link "Aero Shards New" [ref=e337] [cursor=pointer]:
+                - /url: /backgrounds/aero-shards
+                - text: Aero Shards
+                - generic [ref=e338]: New
+              - link "Ghost Fibers New" [ref=e339] [cursor=pointer]:
+                - /url: /backgrounds/ghost-fibers
+                - text: Ghost Fibers
+                - generic [ref=e340]: New
+              - link "CRT Warp New" [ref=e341] [cursor=pointer]:
+                - /url: /backgrounds/crt-warp
+                - text: CRT Warp
+                - generic [ref=e342]: New
+              - link "Molten Metal New" [ref=e343] [cursor=pointer]:
+                - /url: /backgrounds/molten-metal
+                - text: Molten Metal
+                - generic [ref=e344]: New
+              - link "Gradient Waves New" [ref=e345] [cursor=pointer]:
+                - /url: /backgrounds/gradient-waves
+                - text: Gradient Waves
+                - generic [ref=e346]: New
+              - link "Web Threads New" [ref=e347] [cursor=pointer]:
+                - /url: /backgrounds/web-threads
+                - text: Web Threads
+                - generic [ref=e348]: New
+              - link "Topography" [ref=e349] [cursor=pointer]:
+                - /url: /backgrounds/topography
+              - link "Light Tunnel" [ref=e350] [cursor=pointer]:
+                - /url: /backgrounds/light-tunnel
+              - link "Sliced Waves" [ref=e351] [cursor=pointer]:
+                - /url: /backgrounds/sliced-waves
+              - link "Acid Squares" [ref=e352] [cursor=pointer]:
+                - /url: /backgrounds/acid-squares
+              - link "Scanner" [ref=e353] [cursor=pointer]:
+                - /url: /backgrounds/scanner
+              - link "Ferrofluid" [ref=e354] [cursor=pointer]:
+                - /url: /backgrounds/ferrofluid
+              - link "Lightfall" [ref=e355] [cursor=pointer]:
+                - /url: /backgrounds/lightfall
+              - link "Liquid Ether" [ref=e356] [cursor=pointer]:
+                - /url: /backgrounds/liquid-ether
+              - link "Prism" [ref=e357] [cursor=pointer]:
+                - /url: /backgrounds/prism
+              - link "Dark Veil" [ref=e358] [cursor=pointer]:
+                - /url: /backgrounds/dark-veil
+              - link "Light Pillar" [ref=e359] [cursor=pointer]:
+                - /url: /backgrounds/light-pillar
+              - link "Silk" [ref=e360] [cursor=pointer]:
+                - /url: /backgrounds/silk
+              - link "Floating Lines" [ref=e361] [cursor=pointer]:
+                - /url: /backgrounds/floating-lines
+              - link "Side Rays" [ref=e362] [cursor=pointer]:
+                - /url: /backgrounds/side-rays
+              - link "Light Rays" [ref=e363] [cursor=pointer]:
+                - /url: /backgrounds/light-rays
+              - link "Pixel Blast" [ref=e364] [cursor=pointer]:
+                - /url: /backgrounds/pixel-blast
+              - link "Color Bends" [ref=e365] [cursor=pointer]:
+                - /url: /backgrounds/color-bends
+              - link "Evil Eye" [ref=e366] [cursor=pointer]:
+                - /url: /backgrounds/evil-eye
+              - link "Line Waves" [ref=e367] [cursor=pointer]:
+                - /url: /backgrounds/line-waves
+              - link "Radar" [ref=e368] [cursor=pointer]:
+                - /url: /backgrounds/radar
+              - link "Soft Aurora" [ref=e369] [cursor=pointer]:
+                - /url: /backgrounds/soft-aurora
+              - link "Aurora" [ref=e370] [cursor=pointer]:
+                - /url: /backgrounds/aurora
+              - link "Plasma" [ref=e371] [cursor=pointer]:
+                - /url: /backgrounds/plasma
+              - link "Plasma Wave" [ref=e372] [cursor=pointer]:
+                - /url: /backgrounds/plasma-wave
+              - link "Particles" [ref=e373] [cursor=pointer]:
+                - /url: /backgrounds/particles
+              - link "Gradient Blinds" [ref=e374] [cursor=pointer]:
+                - /url: /backgrounds/gradient-blinds
+              - link "Grainient" [ref=e375] [cursor=pointer]:
+                - /url: /backgrounds/grainient
+              - link "Grid Scan" [ref=e376] [cursor=pointer]:
+                - /url: /backgrounds/grid-scan
+              - link "Beams" [ref=e377] [cursor=pointer]:
+                - /url: /backgrounds/beams
+              - link "Pixel Snow" [ref=e378] [cursor=pointer]:
+                - /url: /backgrounds/pixel-snow
+              - link "Lightning" [ref=e379] [cursor=pointer]:
+                - /url: /backgrounds/lightning
+              - link "Prismatic Burst" [ref=e380] [cursor=pointer]:
+                - /url: /backgrounds/prismatic-burst
+              - link "Galaxy" [ref=e381] [cursor=pointer]:
+                - /url: /backgrounds/galaxy
+              - link "Dither" [ref=e382] [cursor=pointer]:
+                - /url: /backgrounds/dither
+              - link "Faulty Terminal" [ref=e383] [cursor=pointer]:
+                - /url: /backgrounds/faulty-terminal
+              - link "Ripple Grid" [ref=e384] [cursor=pointer]:
+                - /url: /backgrounds/ripple-grid
+              - link "Dot Field" [ref=e385] [cursor=pointer]:
+                - /url: /backgrounds/dot-field
+              - link "Dot Grid" [ref=e386] [cursor=pointer]:
+                - /url: /backgrounds/dot-grid
+              - link "Threads" [ref=e387] [cursor=pointer]:
+                - /url: /backgrounds/threads
+              - link "Hyperspeed" [ref=e388] [cursor=pointer]:
+                - /url: /backgrounds/hyperspeed
+              - link "Iridescence" [ref=e389] [cursor=pointer]:
+                - /url: /backgrounds/iridescence
+              - link "Waves" [ref=e390] [cursor=pointer]:
+                - /url: /backgrounds/waves
+              - link "Grid Distortion" [ref=e391] [cursor=pointer]:
+                - /url: /backgrounds/grid-distortion
+              - link "Ballpit" [ref=e392] [cursor=pointer]:
+                - /url: /backgrounds/ballpit
+              - link "Orb" [ref=e393] [cursor=pointer]:
+                - /url: /backgrounds/orb
+              - link "Letter Glitch" [ref=e394] [cursor=pointer]:
+                - /url: /backgrounds/letter-glitch
+              - link "Grid Motion" [ref=e395] [cursor=pointer]:
+                - /url: /backgrounds/grid-motion
+              - link "Shape Grid" [ref=e396] [cursor=pointer]:
+                - /url: /backgrounds/shape-grid
+              - link "Liquid Chrome" [ref=e397] [cursor=pointer]:
+                - /url: /backgrounds/liquid-chrome
+              - link "Balatro" [ref=e398] [cursor=pointer]:
+                - /url: /backgrounds/balatro
+      - generic [ref=e399]:
+        - generic [ref=e400]:
+          - heading "Floating Lines" [level=2] [ref=e401]
+          - generic [ref=e402]:
+            - tablist [ref=e403]:
+              - generic [ref=e404]:
+                - generic [ref=e405]:
+                  - tab "Preview" [ref=e406] [cursor=pointer]
+                  - tab "Code" [active] [selected] [ref=e410] [cursor=pointer]
+                - generic [ref=e414]:
+                  - button "Add to Favorites" [ref=e415] [cursor=pointer]
+                  - button "Copy share link" [ref=e418] [cursor=pointer]
+                  - button "Copy for AI" [ref=e421] [cursor=pointer]
+            - tabpanel "Code" [ref=e694]:
+              - generic [ref=e695]:
+                - generic [ref=e696]:
+                  - heading "Install" [level=2] [ref=e698]
+                  - generic [ref=e700]:
+                    - generic [ref=e702]:
+                      - button "CLI" [ref=e703] [cursor=pointer]
+                      - button "Manual" [ref=e704] [cursor=pointer]
+                    - button "Choose installation options" [ref=e705] [cursor=pointer]:
+                      - generic [ref=e706]: npm
+                    - button "Copy code to clipboard" [ref=e709] [cursor=pointer]
+                - code [ref=e715]: npm install three
+              - generic [ref=e716]:
+                - generic [ref=e717]:
+                  - generic [ref=e718]:
+                    - heading "Usage" [level=2] [ref=e719]
+                    - generic [ref=e720]: With your settings
+                  - button "Copy code to clipboard" [ref=e722] [cursor=pointer]
+                - code [ref=e731]:
+                  - generic [ref=e732]: import FloatingLines from './FloatingLines';
+                  - generic [ref=e734]: "<div style={{ width: '100%', height: '600px', position: 'relative' }}>"
+                  - generic [ref=e735]: <FloatingLines
+                  - generic [ref=e736]: "enabledWaves={[\"top\",\"middle\",\"bottom\"]}"
+                  - generic [ref=e737]: // Array - specify line count per wave; Number - same count for all waves
+                  - generic [ref=e738]: "lineCount={8}"
+                  - generic [ref=e739]: // Array - specify line distance per wave; Number - same distance for all waves
+                  - generic [ref=e740]: "lineDistance={8}"
+                  - generic [ref=e741]: "bendRadius={8}"
+                  - generic [ref=e742]: "bendStrength={-2}"
+                  - generic [ref=e743]: interactive
+                  - generic [ref=e744]: "parallax={true}"
+                  - generic [ref=e745]: "animationSpeed={1}"
+                  - generic [ref=e746]: gradientStart="#5fcb4b"
+                  - generic [ref=e747]: gradientMid="#6f6f6f"
+                  - generic [ref=e748]: gradientEnd="#6a6a6a"
+                  - generic [ref=e749]: />
+                  - generic [ref=e750]: </div>
+              - generic [ref=e751]:
+                - generic [ref=e752]:
+                  - generic [ref=e753]:
+                    - heading "Code" [level=2] [ref=e755]
+                    - generic [ref=e756]:
+                      - generic [ref=e757]:
+                        - combobox [aria-hidden] [ref=e758]
+                        - combobox [ref=e760] [cursor=pointer]:
+                          - generic [ref=e761]: JavaScript
+                      - generic [ref=e764]:
+                        - combobox [aria-hidden] [ref=e765]
+                        - combobox [ref=e767] [cursor=pointer]:
+                          - generic [ref=e768]: CSS
+                      - button "Copy code to clipboard" [ref=e771] [cursor=pointer]
+                  - generic [ref=e778]:
+                    - code [ref=e781]:
+                      - generic [ref=e782]: "import { useEffect, useRef } from 'react';"
+                      - generic [ref=e783]: "import {"
+                      - generic [ref=e784]: Clock,
+                      - generic [ref=e785]: Mesh,
+                      - generic [ref=e786]: OrthographicCamera,
+                      - generic [ref=e787]: PlaneGeometry,
+                      - generic [ref=e788]: Scene,
+                      - generic [ref=e789]: ShaderMaterial,
+                      - generic [ref=e790]: Vector2,
+                      - generic [ref=e791]: Vector3,
+                      - generic [ref=e792]: WebGLRenderer
+                      - generic [ref=e793]: "} from 'three';"
+                      - generic [ref=e795]: import './FloatingLines.css';
+                      - generic [ref=e797]: "const vertexShader = `"
+                      - generic [ref=e798]: precision highp float;
+                      - generic [ref=e800]: "void main() {"
+                      - generic [ref=e801]: gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                      - generic [ref=e802]: "}"
+                      - generic [ref=e803]: "`;"
+                      - generic [ref=e805]: "const fragmentShader = `"
+                      - generic [ref=e806]: precision highp float;
+                      - generic [ref=e808]: uniform float iTime;
+                      - generic [ref=e809]: uniform vec3 iResolution;
+                      - generic [ref=e810]: uniform float animationSpeed;
+                      - generic [ref=e812]: uniform bool enableTop;
+                      - generic [ref=e813]: uniform bool enableMiddle;
+                      - generic [ref=e814]: uniform bool enableBottom;
+                      - generic [ref=e816]: uniform int topLineCount;
+                      - generic [ref=e817]: uniform int middleLineCount;
+                      - generic [ref=e818]: uniform int bottomLineCount;
+                      - generic [ref=e820]: uniform float topLineDistance;
+                      - generic [ref=e821]: uniform float middleLineDistance;
+                      - generic [ref=e822]: uniform float bottomLineDistance;
+                      - generic [ref=e824]: uniform vec3 topWavePosition;
+                      - generic [ref=e825]: uniform vec3 middleWavePosition;
+                      - generic [ref=e826]: uniform vec3 bottomWavePosition;
+                      - generic [ref=e828]: uniform vec2 iMouse;
+                      - generic [ref=e829]: uniform bool interactive;
+                      - generic [ref=e830]: uniform float bendRadius;
+                      - generic [ref=e831]: uniform float bendStrength;
+                      - generic [ref=e832]: uniform float bendInfluence;
+                      - generic [ref=e834]: uniform bool parallax;
+                      - generic [ref=e835]: uniform float parallaxStrength;
+                      - generic [ref=e836]: uniform vec2 parallaxOffset;
+                      - generic [ref=e838]: uniform vec3 lineGradient[8];
+                      - generic [ref=e839]: uniform int lineGradientCount;
+                      - generic [ref=e840]: uniform vec3 backgroundColor;
+                      - generic [ref=e841]: uniform bool lightMode;
+                      - generic [ref=e843]: const vec3 BLACK = vec3(0.0);
+                      - generic [ref=e844]: const vec3 PINK = vec3(233.0, 71.0, 245.0) / 255.0;
+                      - generic [ref=e845]: const vec3 BLUE = vec3(47.0, 75.0, 162.0) / 255.0;
+                      - generic [ref=e847]: "mat2 rotate(float r) {"
+                      - generic [ref=e848]: return mat2(cos(r), sin(r), -sin(r), cos(r));
+                      - generic [ref=e849]: "}"
+                      - generic [ref=e851]: "vec3 background_color(vec2 uv) {"
+                      - generic [ref=e852]: vec3 col = vec3(0.0);
+                      - generic [ref=e854]: float y = sin(uv.x - 0.2) * 0.3 - 0.1;
+                      - generic [ref=e855]: float m = uv.y - y;
+                      - generic [ref=e857]: col += mix(BLUE, BLACK, smoothstep(0.0, 1.0, abs(m)));
+                      - generic [ref=e858]: col += mix(PINK, BLACK, smoothstep(0.0, 1.0, abs(m - 0.8)));
+                      - generic [ref=e859]: return col * 0.5;
+                      - generic [ref=e860]: "}"
+                      - generic [ref=e862]: "vec3 getLineColor(float t, vec3 baseColor) {"
+                      - generic [ref=e863]: "if (lineGradientCount <= 0) {"
+                      - generic [ref=e864]: return baseColor;
+                      - generic [ref=e865]: "}"
+                      - generic [ref=e867]: vec3 gradientColor;
+                      - generic [ref=e869]: "if (lineGradientCount == 1) {"
+                      - generic [ref=e870]: gradientColor = lineGradient[0];
+                      - generic [ref=e871]: "} else {"
+                      - generic [ref=e872]: float clampedT = clamp(t, 0.0, 0.9999);
+                      - generic [ref=e873]: float scaled = clampedT * float(lineGradientCount - 1);
+                      - generic [ref=e874]: int idx = int(floor(scaled));
+                      - generic [ref=e875]: float f = fract(scaled);
+                      - generic [ref=e876]: int idx2 = min(idx + 1, lineGradientCount - 1);
+                      - generic [ref=e878]: vec3 c1 = lineGradient[idx];
+                      - generic [ref=e879]: vec3 c2 = lineGradient[idx2];
+                      - generic [ref=e881]: gradientColor = mix(c1, c2, f);
+                      - generic [ref=e882]: "}"
+                      - generic [ref=e884]: return gradientColor * 0.5;
+                      - generic [ref=e885]: "}"
+                      - generic [ref=e887]: "float wave(vec2 uv, float offset, vec2 screenUv, vec2 mouseUv, bool shouldBend) {"
+                      - generic [ref=e888]: float time = iTime * animationSpeed;
+                      - generic [ref=e890]: float x_offset = offset;
+                      - generic [ref=e891]: float x_movement = time * 0.1;
+                      - generic [ref=e892]: float amp = sin(offset + time * 0.2) * 0.3;
+                      - generic [ref=e893]: float y = sin(uv.x + x_offset + x_movement) * amp;
+                      - generic [ref=e895]: "if (shouldBend) {"
+                      - generic [ref=e896]: vec2 d = screenUv - mouseUv;
+                      - generic [ref=e897]: float influence = exp(-dot(d, d) * bendRadius); // radial falloff around cursor
+                      - generic [ref=e898]: float bendOffset = (mouseUv.y - screenUv.y) * influence * bendStrength * bendInfluence;
+                      - generic [ref=e899]: y += bendOffset;
+                      - generic [ref=e900]: "}"
+                      - generic [ref=e902]: float m = uv.y - y;
+                      - generic [ref=e903]: return 0.0175 / max(abs(m) + 0.01, 1e-3) + 0.01;
+                      - generic [ref=e904]: "}"
+                      - generic [ref=e906]: "void mainImage(out vec4 fragColor, in vec2 fragCoord) {"
+                      - generic [ref=e907]: vec2 baseUv = (2.0 * fragCoord - iResolution.xy) / iResolution.y;
+                      - generic [ref=e908]: baseUv.y *= -1.0;
+                      - generic [ref=e910]: "if (parallax) {"
+                      - generic [ref=e911]: baseUv += parallaxOffset;
+                      - generic [ref=e912]: "}"
+                      - generic [ref=e914]: vec3 col = vec3(0.0);
+                      - generic [ref=e916]: "vec3 b = lineGradientCount > 0 ? vec3(0.0) : background_color(baseUv);"
+                      - generic [ref=e918]: vec2 mouseUv = vec2(0.0);
+                      - generic [ref=e919]: "if (interactive) {"
+                      - generic [ref=e920]: mouseUv = (2.0 * iMouse - iResolution.xy) / iResolution.y;
+                      - generic [ref=e921]: mouseUv.y *= -1.0;
+                      - generic [ref=e922]: "}"
+                      - generic [ref=e924]: "if (enableBottom) {"
+                      - generic [ref=e925]: "for (int i = 0; i < bottomLineCount; ++i) {"
+                      - generic [ref=e926]: float fi = float(i);
+                      - generic [ref=e927]: float t = fi / max(float(bottomLineCount - 1), 1.0);
+                      - generic [ref=e928]: vec3 lineCol = getLineColor(t, b);
+                      - generic [ref=e930]: float angle = bottomWavePosition.z * log(length(baseUv) + 1.0);
+                      - generic [ref=e931]: vec2 ruv = baseUv * rotate(angle);
+                      - generic [ref=e932]: col += lineCol * wave(
+                      - generic [ref=e933]: ruv + vec2(bottomLineDistance * fi + bottomWavePosition.x, bottomWavePosition.y),
+                      - generic [ref=e934]: 1.5 + 0.2 * fi,
+                      - generic [ref=e935]: baseUv,
+                      - generic [ref=e936]: mouseUv,
+                      - generic [ref=e937]: interactive
+                      - generic [ref=e938]: ) * 0.2;
+                      - generic [ref=e939]: "}"
+                      - generic [ref=e940]: "}"
+                      - generic [ref=e942]: "if (enableMiddle) {"
+                      - generic [ref=e943]: "for (int i = 0; i < middleLineCount; ++i) {"
+                      - generic [ref=e944]: float fi = float(i);
+                      - generic [ref=e945]: float t = fi / max(float(middleLineCount - 1), 1.0);
+                      - generic [ref=e946]: vec3 lineCol = getLineColor(t, b);
+                      - generic [ref=e948]: float angle = middleWavePosition.z * log(length(baseUv) + 1.0);
+                      - generic [ref=e949]: vec2 ruv = baseUv * rotate(angle);
+                      - generic [ref=e950]: col += lineCol * wave(
+                      - generic [ref=e951]: ruv + vec2(middleLineDistance * fi + middleWavePosition.x, middleWavePosition.y),
+                      - generic [ref=e952]: 2.0 + 0.15 * fi,
+                      - generic [ref=e953]: baseUv,
+                      - generic [ref=e954]: mouseUv,
+                      - generic [ref=e955]: interactive
+                      - generic [ref=e956]: );
+                      - generic [ref=e957]: "}"
+                      - generic [ref=e958]: "}"
+                      - generic [ref=e960]: "if (enableTop) {"
+                      - generic [ref=e961]: "for (int i = 0; i < topLineCount; ++i) {"
+                      - generic [ref=e962]: float fi = float(i);
+                      - generic [ref=e963]: float t = fi / max(float(topLineCount - 1), 1.0);
+                      - generic [ref=e964]: vec3 lineCol = getLineColor(t, b);
+                      - generic [ref=e966]: float angle = topWavePosition.z * log(length(baseUv) + 1.0);
+                      - generic [ref=e967]: vec2 ruv = baseUv * rotate(angle);
+                      - generic [ref=e968]: ruv.x *= -1.0;
+                      - generic [ref=e969]: col += lineCol * wave(
+                      - generic [ref=e970]: ruv + vec2(topLineDistance * fi + topWavePosition.x, topWavePosition.y),
+                      - generic [ref=e971]: 1.0 + 0.2 * fi,
+                      - generic [ref=e972]: baseUv,
+                      - generic [ref=e973]: mouseUv,
+                      - generic [ref=e974]: interactive
+                      - generic [ref=e975]: ) * 0.1;
+                      - generic [ref=e976]: "}"
+                      - generic [ref=e977]: "}"
+                      - generic [ref=e979]: "if (lightMode) {"
+                      - generic [ref=e980]: vec3 energy = max(col, vec3(0.0));
+                      - generic [ref=e981]: float peak = max(energy.r, max(energy.g, energy.b));
+                      - generic [ref=e982]: float coverage = smoothstep(0.018, 0.5, peak);
+                      - generic [ref=e983]: vec3 chroma = clamp(energy / max(peak, 0.0001), 0.0, 1.0);
+                      - generic [ref=e984]: chroma = pow(chroma, vec3(1.35));
+                      - generic [ref=e985]: float chromaPeak = max(chroma.r, max(chroma.g, chroma.b));
+                      - generic [ref=e986]: chroma /= max(chromaPeak, 0.0001);
+                      - generic [ref=e987]: vec3 ink = mix(chroma, clamp(chroma * 0.82, 0.0, 1.0), smoothstep(0.5, 1.0, coverage));
+                      - generic [ref=e988]: fragColor = vec4(mix(vec3(1.0), ink, coverage * 0.94), 1.0);
+                      - generic [ref=e989]: "} else {"
+                      - generic [ref=e990]: fragColor = vec4(col, 1.0);
+                      - generic [ref=e991]: "}"
+                      - generic [ref=e992]: "}"
+                      - generic [ref=e994]: "void main() {"
+                      - generic [ref=e995]: vec4 color = vec4(0.0);
+                      - generic [ref=e996]: mainImage(color, gl_FragCoord.xy);
+                      - generic [ref=e997]: gl_FragColor = color;
+                      - generic [ref=e998]: "}"
+                      - generic [ref=e999]: "`;"
+                      - generic [ref=e1001]: const MAX_GRADIENT_STOPS = 8;
+                      - generic [ref=e1003]: "function hexToVec3(hex) {"
+                      - generic [ref=e1004]: let value = hex.trim();
+                      - generic [ref=e1006]: "if (value.startsWith('#')) {"
+                      - generic [ref=e1007]: value = value.slice(1);
+                      - generic [ref=e1008]: "}"
+                      - generic [ref=e1010]: let r = 255;
+                      - generic [ref=e1011]: let g = 255;
+                      - generic [ref=e1012]: let b = 255;
+                      - generic [ref=e1014]: "if (value.length === 3) {"
+                      - generic [ref=e1015]: r = parseInt(value[0] + value[0], 16);
+                      - generic [ref=e1016]: g = parseInt(value[1] + value[1], 16);
+                      - generic [ref=e1017]: b = parseInt(value[2] + value[2], 16);
+                      - generic [ref=e1018]: "} else if (value.length === 6) {"
+                      - generic [ref=e1019]: r = parseInt(value.slice(0, 2), 16);
+                      - generic [ref=e1020]: g = parseInt(value.slice(2, 4), 16);
+                      - generic [ref=e1021]: b = parseInt(value.slice(4, 6), 16);
+                      - generic [ref=e1022]: "}"
+                      - generic [ref=e1024]: return new Vector3(r / 255, g / 255, b / 255);
+                      - generic [ref=e1025]: "}"
+                      - generic [ref=e1027]: "export default function FloatingLines({"
+                      - generic [ref=e1028]: linesGradient,
+                      - generic [ref=e1029]: enabledWaves = ['top', 'middle', 'bottom'],
+                      - generic [ref=e1030]: lineCount = [6],
+                      - generic [ref=e1031]: lineDistance = [5],
+                      - generic [ref=e1032]: topWavePosition,
+                      - generic [ref=e1033]: middleWavePosition,
+                      - generic [ref=e1034]: "bottomWavePosition = { x: 2.0, y: -0.7, rotate: -1 },"
+                      - generic [ref=e1035]: animationSpeed = 1,
+                      - generic [ref=e1036]: interactive = true,
+                      - generic [ref=e1037]: bendRadius = 5.0,
+                      - generic [ref=e1038]: bendStrength = -0.5,
+                      - generic [ref=e1039]: mouseDamping = 0.05,
+                      - generic [ref=e1040]: parallax = true,
+                      - generic [ref=e1041]: parallaxStrength = 0.2,
+                      - generic [ref=e1042]: mixBlendMode = 'screen',
+                      - generic [ref=e1043]: backgroundColor = '#000000',
+                      - generic [ref=e1044]: lightMode = false
+                      - generic [ref=e1045]: "}) {"
+                      - generic [ref=e1046]: const containerRef = useRef(null);
+                      - generic [ref=e1047]: const targetMouseRef = useRef(new Vector2(-1000, -1000));
+                      - generic [ref=e1048]: const currentMouseRef = useRef(new Vector2(-1000, -1000));
+                      - generic [ref=e1049]: const targetInfluenceRef = useRef(0);
+                      - generic [ref=e1050]: const currentInfluenceRef = useRef(0);
+                      - generic [ref=e1051]: const targetParallaxRef = useRef(new Vector2(0, 0));
+                      - generic [ref=e1052]: const currentParallaxRef = useRef(new Vector2(0, 0));
+                      - generic [ref=e1054]: "const getLineCount = waveType => {"
+                      - generic [ref=e1055]: if (typeof lineCount === 'number') return lineCount;
+                      - generic [ref=e1056]: if (!enabledWaves.includes(waveType)) return 0;
+                      - generic [ref=e1057]: const index = enabledWaves.indexOf(waveType);
+                      - generic [ref=e1058]: return lineCount[index] ?? 6;
+                      - generic [ref=e1059]: "};"
+                      - generic [ref=e1061]: "const getLineDistance = waveType => {"
+                      - generic [ref=e1062]: if (typeof lineDistance === 'number') return lineDistance;
+                      - generic [ref=e1063]: if (!enabledWaves.includes(waveType)) return 0.1;
+                      - generic [ref=e1064]: const index = enabledWaves.indexOf(waveType);
+                      - generic [ref=e1065]: return lineDistance[index] ?? 0.1;
+                      - generic [ref=e1066]: "};"
+                      - generic [ref=e1068]: "const topLineCount = enabledWaves.includes('top') ? getLineCount('top') : 0;"
+                      - generic [ref=e1069]: "const middleLineCount = enabledWaves.includes('middle') ? getLineCount('middle') : 0;"
+                      - generic [ref=e1070]: "const bottomLineCount = enabledWaves.includes('bottom') ? getLineCount('bottom') : 0;"
+                      - generic [ref=e1072]: "const topLineDistance = enabledWaves.includes('top') ? getLineDistance('top') * 0.01 : 0.01;"
+                      - generic [ref=e1073]: "const middleLineDistance = enabledWaves.includes('middle') ? getLineDistance('middle') * 0.01 : 0.01;"
+                      - generic [ref=e1074]: "const bottomLineDistance = enabledWaves.includes('bottom') ? getLineDistance('bottom') * 0.01 : 0.01;"
+                      - generic [ref=e1076]: "useEffect(() => {"
+                      - generic [ref=e1077]: const container = containerRef.current;
+                      - generic [ref=e1078]: if (!container) return;
+                      - generic [ref=e1080]: let active = true;
+                      - generic [ref=e1082]: const scene = new Scene();
+                      - generic [ref=e1084]: const camera = new OrthographicCamera(-1, 1, 1, -1, 0, 1);
+                      - generic [ref=e1085]: camera.position.z = 1;
+                      - generic [ref=e1087]: "const renderer = new WebGLRenderer({ antialias: true, alpha: false });"
+                      - generic [ref=e1088]: renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+                      - generic [ref=e1089]: renderer.domElement.style.width = '100%';
+                      - generic [ref=e1090]: renderer.domElement.style.height = '100%';
+                      - generic [ref=e1091]: container.appendChild(renderer.domElement);
+                      - generic [ref=e1093]: "const uniforms = {"
+                      - generic [ref=e1094]: "iTime: { value: 0 },"
+                      - generic [ref=e1095]: "iResolution: { value: new Vector3(1, 1, 1) },"
+                      - generic [ref=e1096]: "animationSpeed: { value: animationSpeed },"
+                      - generic [ref=e1098]: "enableTop: { value: enabledWaves.includes('top') },"
+                      - generic [ref=e1099]: "enableMiddle: { value: enabledWaves.includes('middle') },"
+                      - generic [ref=e1100]: "enableBottom: { value: enabledWaves.includes('bottom') },"
+                      - generic [ref=e1102]: "topLineCount: { value: topLineCount },"
+                      - generic [ref=e1103]: "middleLineCount: { value: middleLineCount },"
+                      - generic [ref=e1104]: "bottomLineCount: { value: bottomLineCount },"
+                      - generic [ref=e1106]: "topLineDistance: { value: topLineDistance },"
+                      - generic [ref=e1107]: "middleLineDistance: { value: middleLineDistance },"
+                      - generic [ref=e1108]: "bottomLineDistance: { value: bottomLineDistance },"
+                      - generic [ref=e1110]: "topWavePosition: {"
+                      - generic [ref=e1111]: "value: new Vector3(topWavePosition?.x ?? 10.0, topWavePosition?.y ?? 0.5, topWavePosition?.rotate ?? -0.4)"
+                      - generic [ref=e1112]: "},"
+                      - generic [ref=e1113]: "middleWavePosition: {"
+                      - generic [ref=e1114]: "value: new Vector3("
+                      - generic [ref=e1115]: middleWavePosition?.x ?? 5.0,
+                      - generic [ref=e1116]: middleWavePosition?.y ?? 0.0,
+                      - generic [ref=e1117]: middleWavePosition?.rotate ?? 0.2
+                      - generic [ref=e1118]: )
+                      - generic [ref=e1119]: "},"
+                      - generic [ref=e1120]: "bottomWavePosition: {"
+                      - generic [ref=e1121]: "value: new Vector3("
+                      - generic [ref=e1122]: bottomWavePosition?.x ?? 2.0,
+                      - generic [ref=e1123]: bottomWavePosition?.y ?? -0.7,
+                      - generic [ref=e1124]: bottomWavePosition?.rotate ?? 0.4
+                      - generic [ref=e1125]: )
+                      - generic [ref=e1126]: "},"
+                      - generic [ref=e1128]: "iMouse: { value: new Vector2(-1000, -1000) },"
+                      - generic [ref=e1129]: "interactive: { value: interactive },"
+                      - generic [ref=e1130]: "bendRadius: { value: bendRadius },"
+                      - generic [ref=e1131]: "bendStrength: { value: bendStrength },"
+                      - generic [ref=e1132]: "bendInfluence: { value: 0 },"
+                      - generic [ref=e1134]: "parallax: { value: parallax },"
+                      - generic [ref=e1135]: "parallaxStrength: { value: parallaxStrength },"
+                      - generic [ref=e1136]: "parallaxOffset: { value: new Vector2(0, 0) },"
+                      - generic [ref=e1138]: "lineGradient: {"
+                      - generic [ref=e1139]: "value: Array.from({ length: MAX_GRADIENT_STOPS }, () => new Vector3(1, 1, 1))"
+                      - generic [ref=e1140]: "},"
+                      - generic [ref=e1141]: "lineGradientCount: { value: 0 },"
+                      - generic [ref=e1142]: "backgroundColor: { value: hexToVec3(backgroundColor) },"
+                      - generic [ref=e1143]: "lightMode: { value: lightMode }"
+                      - generic [ref=e1144]: "};"
+                      - generic [ref=e1146]: "if (linesGradient && linesGradient.length > 0) {"
+                      - generic [ref=e1147]: const stops = linesGradient.slice(0, MAX_GRADIENT_STOPS);
+                      - generic [ref=e1148]: uniforms.lineGradientCount.value = stops.length;
+                      - generic [ref=e1150]: "stops.forEach((hex, i) => {"
+                      - generic [ref=e1151]: const color = hexToVec3(hex);
+                      - generic [ref=e1152]: uniforms.lineGradient.value[i].set(color.x, color.y, color.z);
+                      - generic [ref=e1153]: "});"
+                      - generic [ref=e1154]: "}"
+                      - generic [ref=e1156]: "const material = new ShaderMaterial({"
+                      - generic [ref=e1157]: uniforms,
+                      - generic [ref=e1158]: vertexShader,
+                      - generic [ref=e1159]: fragmentShader
+                      - generic [ref=e1160]: "});"
+                      - generic [ref=e1162]: const geometry = new PlaneGeometry(2, 2);
+                      - generic [ref=e1163]: const mesh = new Mesh(geometry, material);
+                      - generic [ref=e1164]: scene.add(mesh);
+                      - generic [ref=e1166]: const clock = new Clock();
+                      - generic [ref=e1168]: "const setSize = () => {"
+                      - generic [ref=e1169]: if (!active) return;
+                      - generic [ref=e1170]: const width = container.clientWidth || 1;
+                      - generic [ref=e1171]: const height = container.clientHeight || 1;
+                      - generic [ref=e1173]: renderer.setSize(width, height, false);
+                      - generic [ref=e1175]: const canvasWidth = renderer.domElement.width;
+                      - generic [ref=e1176]: const canvasHeight = renderer.domElement.height;
+                      - generic [ref=e1177]: uniforms.iResolution.value.set(canvasWidth, canvasHeight, 1);
+                      - generic [ref=e1178]: "};"
+                      - generic [ref=e1180]: setSize();
+                      - generic [ref=e1182]: const ro =
+                      - generic [ref=e1183]: typeof ResizeObserver !== 'undefined'
+                      - generic [ref=e1184]: "? new ResizeObserver(() => {"
+                      - generic [ref=e1185]: if (!active) return;
+                      - generic [ref=e1186]: setSize();
+                      - generic [ref=e1187]: "})"
+                      - generic [ref=e1188]: ": null;"
+                      - generic [ref=e1190]: if (ro) ro.observe(container);
+                      - generic [ref=e1192]: "const handlePointerMove = event => {"
+                      - generic [ref=e1193]: const rect = renderer.domElement.getBoundingClientRect();
+                      - generic [ref=e1194]: const x = event.clientX - rect.left;
+                      - generic [ref=e1195]: const y = event.clientY - rect.top;
+                      - generic [ref=e1196]: const dpr = renderer.getPixelRatio();
+                      - generic [ref=e1198]: targetMouseRef.current.set(x * dpr, (rect.height - y) * dpr);
+                      - generic [ref=e1199]: targetInfluenceRef.current = 1.0;
+                      - generic [ref=e1201]: "if (parallax) {"
+                      - generic [ref=e1202]: const centerX = rect.width / 2;
+                      - generic [ref=e1203]: const centerY = rect.height / 2;
+                      - generic [ref=e1204]: const offsetX = (x - centerX) / rect.width;
+                      - generic [ref=e1205]: const offsetY = -(y - centerY) / rect.height;
+                      - generic [ref=e1206]: targetParallaxRef.current.set(offsetX * parallaxStrength, offsetY * parallaxStrength);
+                      - generic [ref=e1207]: "}"
+                      - generic [ref=e1208]: "};"
+                      - generic [ref=e1210]: "const handlePointerLeave = () => {"
+                      - generic [ref=e1211]: targetInfluenceRef.current = 0.0;
+                      - generic [ref=e1212]: "};"
+                      - generic [ref=e1214]: "if (interactive) {"
+                      - generic [ref=e1215]: renderer.domElement.addEventListener('pointermove', handlePointerMove);
+                      - generic [ref=e1216]: renderer.domElement.addEventListener('pointerleave', handlePointerLeave);
+                      - generic [ref=e1217]: "}"
+                      - generic [ref=e1219]: let raf = 0;
+                      - generic [ref=e1220]: "const renderLoop = () => {"
+                      - generic [ref=e1221]: if (!active) return;
+                      - generic [ref=e1223]: uniforms.iTime.value = clock.getElapsedTime();
+                      - generic [ref=e1225]: "if (interactive) {"
+                      - generic [ref=e1226]: currentMouseRef.current.lerp(targetMouseRef.current, mouseDamping);
+                      - generic [ref=e1227]: uniforms.iMouse.value.copy(currentMouseRef.current);
+                      - generic [ref=e1229]: currentInfluenceRef.current += (targetInfluenceRef.current - currentInfluenceRef.current) * mouseDamping;
+                      - generic [ref=e1230]: uniforms.bendInfluence.value = currentInfluenceRef.current;
+                      - generic [ref=e1231]: "}"
+                      - generic [ref=e1233]: "if (parallax) {"
+                      - generic [ref=e1234]: currentParallaxRef.current.lerp(targetParallaxRef.current, mouseDamping);
+                      - generic [ref=e1235]: uniforms.parallaxOffset.value.copy(currentParallaxRef.current);
+                      - generic [ref=e1236]: "}"
+                      - generic [ref=e1238]: renderer.render(scene, camera);
+                      - generic [ref=e1239]: raf = requestAnimationFrame(renderLoop);
+                      - generic [ref=e1240]: "};"
+                      - generic [ref=e1241]: renderLoop();
+                      - generic [ref=e1243]: "return () => {"
+                      - generic [ref=e1244]: active = false;
+                      - generic [ref=e1246]: cancelAnimationFrame(raf);
+                      - generic [ref=e1248]: if (ro) ro.disconnect();
+                      - generic [ref=e1250]: "if (interactive) {"
+                      - generic [ref=e1251]: renderer.domElement.removeEventListener('pointermove', handlePointerMove);
+                      - generic [ref=e1252]: renderer.domElement.removeEventListener('pointerleave', handlePointerLeave);
+                      - generic [ref=e1253]: "}"
+                      - generic [ref=e1255]: geometry.dispose();
+                      - generic [ref=e1256]: material.dispose();
+                      - generic [ref=e1257]: renderer.dispose();
+                      - generic [ref=e1258]: renderer.forceContextLoss();
+                      - generic [ref=e1259]: "if (renderer.domElement.parentElement) {"
+                      - generic [ref=e1260]: renderer.domElement.parentElement.removeChild(renderer.domElement);
+                      - generic [ref=e1261]: "}"
+                      - generic [ref=e1262]: "};"
+                      - generic [ref=e1263]: // eslint-disable-next-line react-hooks/exhaustive-deps
+                      - generic [ref=e1264]: "}, ["
+                      - generic [ref=e1265]: linesGradient,
+                      - generic [ref=e1266]: enabledWaves,
+                      - generic [ref=e1267]: lineCount,
+                      - generic [ref=e1268]: lineDistance,
+                      - generic [ref=e1269]: topWavePosition,
+                      - generic [ref=e1270]: middleWavePosition,
+                      - generic [ref=e1271]: bottomWavePosition,
+                      - generic [ref=e1272]: animationSpeed,
+                      - generic [ref=e1273]: interactive,
+                      - generic [ref=e1274]: bendRadius,
+                      - generic [ref=e1275]: bendStrength,
+                      - generic [ref=e1276]: mouseDamping,
+                      - generic [ref=e1277]: parallax,
+                      - generic [ref=e1278]: parallaxStrength,
+                      - generic [ref=e1279]: backgroundColor,
+                      - generic [ref=e1280]: lightMode
+                      - generic [ref=e1281]: "]);"
+                      - generic [ref=e1283]: return (
+                      - generic [ref=e1284]: <div
+                      - generic [ref=e1285]: "ref={containerRef}"
+                      - generic [ref=e1286]: className="floating-lines-container"
+                      - generic [ref=e1287]: "style={{"
+                      - generic [ref=e1288]: "mixBlendMode: lightMode ? 'normal' : mixBlendMode"
+                      - generic [ref=e1289]: "}}"
+                      - generic [ref=e1290]: />
+                      - generic [ref=e1291]: );
+                      - generic [ref=e1292]: "}"
+                    - button "Expand Snippet" [ref=e1295] [cursor=pointer]
+                - generic [ref=e1296]:
+                  - generic [ref=e1297]:
+                    - heading "CSS" [level=2] [ref=e1299]
+                    - button "Copy code to clipboard" [ref=e1301] [cursor=pointer]
+                  - code [ref=e1310]:
+                    - generic [ref=e1311]: ".floating-lines-container {"
+                    - generic [ref=e1312]: "width: 100%;"
+                    - generic [ref=e1313]: "height: 100%;"
+                    - generic [ref=e1314]: "position: relative;"
+                    - generic [ref=e1315]: "overflow: hidden;"
+                    - generic [ref=e1316]: "}"
+            - navigation "Component navigation" [ref=e629]:
+              - link "Previous Silk" [ref=e630] [cursor=pointer]:
+                - /url: /backgrounds/silk
+                - generic [ref=e633]:
+                  - generic [ref=e634]: Previous
+                  - generic [ref=e635]: Silk
+              - link "Next Side Rays" [ref=e636] [cursor=pointer]:
+                - /url: /backgrounds/side-rays
+                - generic [ref=e637]:
+                  - generic [ref=e638]: Next
+                  - generic [ref=e639]: Side Rays
+            - link "Explore more backgrounds Browse the complete Pro collection with editable source. View Collection" [ref=e643] [cursor=pointer]:
+              - /url: /pro/components?group=Backgrounds
+              - generic [ref=e645]:
+                - generic [ref=e646]:
+                  - generic [ref=e647]: Explore more backgrounds
+                  - generic [ref=e648]: Browse the complete Pro collection with editable source.
+                - generic [ref=e649]: View Collection
+        - button [aria-hidden] [ref=e654]
+      - complementary [ref=e657]:
+        - generic [ref=e658]:
+          - link [ref=e659] [cursor=pointer]:
+            - /url: https://pro.reactbits.dev/?utm_source=reactbits.dev&utm_medium=right-panel-card&utm_campaign=free-to-pro
+            - article [ref=e660]:
+              - generic [ref=e662]:
+                - heading "Build the whole product with one library." [level=3] [ref=e663]
+                - paragraph [ref=e664]: Components, page blocks, application UI, templates and AI skills, ready to launch.
+                - generic [ref=e665]:
+                  - generic [ref=e666]: 150 Components · 280 Blocks
+                  - generic [ref=e667]: 300 App UI · 15 Templates · 20 Agent Skills
+                - generic [ref=e668]: Explore React Bits Pro
+          - generic [ref=e670]:
+            - generic [ref=e671]:
+              - generic [ref=e672]: Sponsors
+              - generic [ref=e673]: 500K+ developers monthly
+            - generic [ref=e674]:
+              - generic [ref=e675]:
+                - generic [ref=e676]: Diamond
+                - link [ref=e678] [cursor=pointer]:
+                  - /url: https://www.shadcnblocks.com/?utm_source=reactbits&utm_medium=sponsor&utm_campaign=diamond&ref=reactbits
+                  - img "shadcnblocks.com" [ref=e680]
+              - generic [ref=e681]:
+                - generic [ref=e682]: Silver
+                - generic [ref=e683]:
+                  - link [ref=e684] [cursor=pointer]:
+                    - /url: https://shadcncraft.com/?utm_source=reactbits&utm_medium=sponsor&utm_campaign=silver&ref=reactbits
+                    - img "Shadcncraft" [ref=e686]
+                  - link [ref=e687] [cursor=pointer]:
+                    - /url: https://shadcnuikit.com/?utm_source=reactbits&utm_medium=sponsor&utm_campaign=silver&ref=reactbits
+                    - img "shadcnuikit.com" [ref=e689]
+            - link "Become a sponsor" [ref=e690] [cursor=pointer]:
+              - /url: /sponsors#sponsor-plans
+  - region "Notifications alt+T"

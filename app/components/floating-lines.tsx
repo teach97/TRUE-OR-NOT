@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { memo, useEffect, useRef } from "react";
 import type { CSSProperties } from "react";
 import {
   Timer,
@@ -228,11 +228,16 @@ type WavePosition = {
   rotate: number;
 };
 
+const DEFAULT_ENABLED_WAVES = ['top', 'middle', 'bottom'] as const;
+const DEFAULT_LINE_COUNT = [6] as const;
+const DEFAULT_LINE_DISTANCE = [5] as const;
+const DEFAULT_BOTTOM_WAVE_POSITION: WavePosition = {x: 2.0, y: -0.7, rotate: -1};
+
 type FloatingLinesProps = {
   linesGradient?: string[];
-  enabledWaves?: Array<'top' | 'middle' | 'bottom'>;
-  lineCount?: number | number[];
-  lineDistance?: number | number[];
+  enabledWaves?: ReadonlyArray<'top' | 'middle' | 'bottom'>;
+  lineCount?: number | ReadonlyArray<number>;
+  lineDistance?: number | ReadonlyArray<number>;
   topWavePosition?: WavePosition;
   middleWavePosition?: WavePosition;
   bottomWavePosition?: WavePosition;
@@ -272,14 +277,14 @@ function hexToVec3(hex: string): Vector3 {
   return new Vector3(r / 255, g / 255, b / 255);
 }
 
-export default function FloatingLines({
+function FloatingLines({
   linesGradient,
-  enabledWaves = ['top', 'middle', 'bottom'],
-  lineCount = [6],
-  lineDistance = [5],
+  enabledWaves = DEFAULT_ENABLED_WAVES,
+  lineCount = DEFAULT_LINE_COUNT,
+  lineDistance = DEFAULT_LINE_DISTANCE,
   topWavePosition,
   middleWavePosition,
-  bottomWavePosition = { x: 2.0, y: -0.7, rotate: -1 },
+  bottomWavePosition = DEFAULT_BOTTOM_WAVE_POSITION,
   animationSpeed = 1,
   interactive = true,
   bendRadius = 5.0,
@@ -545,3 +550,5 @@ export default function FloatingLines({
     />
   );
 }
+
+export default memo(FloatingLines);
