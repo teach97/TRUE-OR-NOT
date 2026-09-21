@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -6,7 +7,7 @@ export const metadata: Metadata = {
   description: "주장과 출처를 비교해 더 나은 판단을 돕는 팩트체크 워크스페이스입니다.",
 };
 
-export default function RootLayout({ children }: LayoutProps<"/">) {
+export default function RootLayout({ children }: {children: ReactNode}) {
   return (
     <html lang="ko">
       <body>{children}</body>

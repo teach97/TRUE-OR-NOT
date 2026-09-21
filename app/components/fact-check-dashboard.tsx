@@ -20,11 +20,7 @@ import {
   particleLogoSettingsStorageKey,
 } from './particles-settings';
 import type { ParticleLogoControls } from './particles-settings';
-import ShaderBackground from './shader-background';
-import { defaultShaderSettings, parseShaderSettings, shaderSettingsStorageKey } from './shader-settings';
-import type { ShaderSettings } from './shader-settings';
-import { defaultLensSettings, lensSettingsStorageKey, parseLensSettings } from './lens-settings';
-import type { LensSettings } from './lens-settings';
+import FloatingLinesBackground from './floating-lines-background';
 
 type IconName = 'lens' | 'grid' | 'book' | 'arrow' | 'file' | 'link' | 'close' | 'download' | 'plus' | 'shield' | 'check' | 'reset' | 'sliders';
 function Icon({name, size = 18}: {name: IconName; size?: number}) {
@@ -108,68 +104,6 @@ const liquidControls: LiquidControl[] = [
   {key: 'elasticity', label: '탄성', min: 0, max: 1, step: 0.01, precision: 2},
 ];
 
-type ShaderColorKey = 'color1' | 'color2' | 'color3';
-type ShaderRangeKey = keyof Pick<ShaderSettings, 'uTime' | 'uSpeed' | 'uStrength' | 'uDensity' | 'uFrequency' | 'uAmplitude' | 'rangeStart' | 'rangeEnd' | 'loopDuration' | 'positionX' | 'positionY' | 'positionZ' | 'rotationX' | 'rotationY' | 'rotationZ' | 'cAzimuthAngle' | 'cPolarAngle' | 'cDistance' | 'cameraZoom' | 'reflection' | 'smoothTime' | 'brightness' | 'grainBlending' | 'pixelDensity' | 'fov' | 'threshold'>;
-type ShaderRangeControl = {key: ShaderRangeKey; label: string; min: number; max: number; step: number; precision: number};
-const shaderColorKeys: ShaderColorKey[] = ['color1', 'color2', 'color3'];
-const shaderMotionControls: ShaderRangeControl[] = [
-  {key: 'uTime', label: '고정 시간', min: 0, max: 100, step: 0.1, precision: 1},
-  {key: 'uSpeed', label: '애니메이션 속도', min: 0, max: 0.5, step: 0.01, precision: 2},
-  {key: 'uStrength', label: '형태 강도', min: 0, max: 6, step: 0.1, precision: 1},
-  {key: 'uDensity', label: '밀도', min: 0.5, max: 3, step: 0.1, precision: 1},
-  {key: 'uFrequency', label: '주파수', min: 1, max: 10, step: 0.1, precision: 1},
-  {key: 'uAmplitude', label: '진폭', min: 0, max: 2, step: 0.05, precision: 2},
-  {key: 'rangeStart', label: '범위 시작', min: 0, max: 100, step: 1, precision: 0},
-  {key: 'rangeEnd', label: '범위 끝', min: 0, max: 100, step: 1, precision: 0},
-  {key: 'loopDuration', label: '루프 시간', min: 1, max: 60, step: 0.5, precision: 1},
-];
-const shaderShapeControls: ShaderRangeControl[] = [
-  {key: 'positionX', label: '위치 X', min: -3, max: 3, step: 0.05, precision: 2},
-  {key: 'positionY', label: '위치 Y', min: -3, max: 3, step: 0.05, precision: 2},
-  {key: 'positionZ', label: '위치 Z', min: -3, max: 3, step: 0.05, precision: 2},
-  {key: 'rotationX', label: '회전 X', min: -180, max: 180, step: 1, precision: 0},
-  {key: 'rotationY', label: '회전 Y', min: -180, max: 180, step: 1, precision: 0},
-  {key: 'rotationZ', label: '회전 Z', min: -180, max: 180, step: 1, precision: 0},
-];
-const shaderViewControls: ShaderRangeControl[] = [
-  {key: 'cAzimuthAngle', label: '카메라 방위각', min: 0, max: 360, step: 1, precision: 0},
-  {key: 'cPolarAngle', label: '카메라 극각', min: 0, max: 180, step: 1, precision: 0},
-  {key: 'cDistance', label: '카메라 거리', min: 0.1, max: 20, step: 0.1, precision: 1},
-  {key: 'cameraZoom', label: '카메라 줌', min: 0.25, max: 3, step: 0.05, precision: 2},
-  {key: 'reflection', label: '반사', min: 0, max: 1, step: 0.01, precision: 2},
-];
-const shaderEffectControls: ShaderRangeControl[] = [
-  {key: 'brightness', label: '밝기', min: 0.5, max: 1.8, step: 0.05, precision: 2},
-  {key: 'smoothTime', label: '보간 시간', min: 0, max: 2, step: 0.05, precision: 2},
-  {key: 'grainBlending', label: '그레인 혼합', min: 0, max: 1, step: 0.01, precision: 2},
-];
-const shaderCanvasControls: ShaderRangeControl[] = [
-  {key: 'pixelDensity', label: '픽셀 밀도', min: 0.5, max: 2, step: 0.1, precision: 1},
-  {key: 'fov', label: '시야각', min: 20, max: 90, step: 1, precision: 0},
-  {key: 'threshold', label: '지연 로드 기준', min: 0, max: 1, step: 0.05, precision: 2},
-];
-
-type LensColorKey = keyof Pick<LensSettings, 'color1' | 'color2' | 'color3' | 'color4'>;
-type LensRangeKey = keyof Pick<LensSettings, 'speed' | 'distortion' | 'swirl' | 'grainMixer' | 'grainOverlay' | 'scale' | 'rotation' | 'originX' | 'originY' | 'offsetX' | 'offsetY' | 'worldWidth' | 'worldHeight'>;
-type LensRangeControl = {key: LensRangeKey; label: string; min: number; max: number; step: number; precision: number};
-const lensColorKeys: LensColorKey[] = ['color1', 'color2', 'color3', 'color4'];
-const lensMotionControls: LensRangeControl[] = [
-  {key: 'speed', label: '애니메이션 속도', min: 0, max: 0.5, step: 0.01, precision: 2},
-  {key: 'distortion', label: '왜곡', min: 0, max: 1, step: 0.01, precision: 2},
-  {key: 'swirl', label: '소용돌이', min: 0, max: 1, step: 0.01, precision: 2},
-  {key: 'grainMixer', label: '그레인 변형', min: 0, max: 1, step: 0.01, precision: 2},
-  {key: 'grainOverlay', label: '그레인 오버레이', min: 0, max: 1, step: 0.01, precision: 2},
-];
-const lensSizingControls: LensRangeControl[] = [
-  {key: 'scale', label: '크기', min: 0.01, max: 4, step: 0.05, precision: 2},
-  {key: 'rotation', label: '회전', min: 0, max: 360, step: 1, precision: 0},
-  {key: 'originX', label: '기준점 X', min: 0, max: 1, step: 0.01, precision: 2},
-  {key: 'originY', label: '기준점 Y', min: 0, max: 1, step: 0.01, precision: 2},
-  {key: 'offsetX', label: '오프셋 X', min: -1, max: 1, step: 0.01, precision: 2},
-  {key: 'offsetY', label: '오프셋 Y', min: -1, max: 1, step: 0.01, precision: 2},
-  {key: 'worldWidth', label: '가상 너비', min: 0, max: 4096, step: 16, precision: 0},
-  {key: 'worldHeight', label: '가상 높이', min: 0, max: 4096, step: 16, precision: 0},
-];
 
 type ParticleRangeKey = keyof Pick<ParticleLogoControls, 'sampling' | 'particleSpacing' | 'particleSize' | 'tiltFactor' | 'tiltSpeed' | 'displaceStrength' | 'displaceRadius' | 'velocityInfluence' | 'returnSpeed' | 'canvasOpacity'>;
 type ParticleRangeControl = {key: ParticleRangeKey; label: string; min: number; max: number; step: number; precision: number};
@@ -270,14 +204,9 @@ export default function FactCheckDashboard() {
   const [dialog, setDialog] = useState<string | null>(null);
   const [notice, setNotice] = useState('');
   const [liquid, setLiquid] = useState<LiquidSettings>(defaultLiquidSettings);
-  const [shader, setShader] = useState<ShaderSettings>(defaultShaderSettings);
-  const [lens, setLens] = useState<LensSettings>(defaultLensSettings);
   const [particles, setParticles] = useState<ParticleLogoControls>(defaultParticleLogoControls);
   const [liquidStorageReady, setLiquidStorageReady] = useState(false);
-  const [shaderStorageReady, setShaderStorageReady] = useState(false);
-  const [lensStorageReady, setLensStorageReady] = useState(false);
   const [particleStorageReady, setParticleStorageReady] = useState(false);
-  const [shaderProjectSaving, setShaderProjectSaving] = useState(false);
   const [liquidLabOpen, setLiquidLabOpen] = useState(false);
   const request = useRef<AbortController | null>(null);
   const generation = useRef(0);
@@ -301,18 +230,11 @@ export default function FactCheckDashboard() {
     return () => {controller.abort(); generation.current++; request.current?.abort();};
   }, []);
   useEffect(() => {
-    try { setShader(parseShaderSettings(window.localStorage.getItem(shaderSettingsStorageKey))); }
-    catch { /* 브라우저 저장소가 차단된 환경에서는 기본값으로 실행합니다. */ }
-    setShaderStorageReady(true);
-  }, []);
-  useEffect(() => {
     try {
       setLiquid(parseLiquidSettings(window.localStorage.getItem(liquidSettingsStorageKey)));
-      setLens(parseLensSettings(window.localStorage.getItem(lensSettingsStorageKey)));
       setParticles(parseParticleLogoControls(window.localStorage.getItem(particleLogoSettingsStorageKey)));
     } catch { /* 브라우저 저장소가 차단된 환경에서는 기본값으로 실행합니다. */ }
     setLiquidStorageReady(true);
-    setLensStorageReady(true);
     setParticleStorageReady(true);
   }, []);
   useEffect(() => {
@@ -320,16 +242,6 @@ export default function FactCheckDashboard() {
     try { window.localStorage.setItem(liquidSettingsStorageKey, JSON.stringify(liquid)); }
     catch { /* 저장소 용량·권한 오류가 UI를 중단시키지 않도록 무시합니다. */ }
   }, [liquid, liquidStorageReady]);
-  useEffect(() => {
-    if (!shaderStorageReady) return;
-    try { window.localStorage.setItem(shaderSettingsStorageKey, JSON.stringify(shader)); }
-    catch { /* 저장소 용량·권한 오류가 UI를 중단시키지 않도록 무시합니다. */ }
-  }, [shader, shaderStorageReady]);
-  useEffect(() => {
-    if (!lensStorageReady) return;
-    try { window.localStorage.setItem(lensSettingsStorageKey, JSON.stringify(lens)); }
-    catch { /* 저장소 용량·권한 오류가 UI를 중단시키지 않도록 무시합니다. */ }
-  }, [lens, lensStorageReady]);
   useEffect(() => {
     if (!particleStorageReady) return;
     try { window.localStorage.setItem(particleLogoSettingsStorageKey, JSON.stringify(particles)); }
@@ -403,119 +315,18 @@ export default function FactCheckDashboard() {
   function updateLiquid(key: LiquidNumericKey, value: number) {
     setLiquid(previous => ({...previous, [key]: value}));
   }
-  function updateShaderColor(key: ShaderColorKey, value: string) {
-    setShader(previous => ({...previous, [key]: value}));
-  }
-  function updateShaderRange(key: ShaderRangeKey, value: number) {
-    setShader(previous => ({...previous, [key]: value}));
-  }
-  function updateShaderOption<K extends keyof ShaderSettings>(key: K, value: ShaderSettings[K]) {
-    setShader(previous => ({...previous, [key]: value}));
-  }
-  function updateLensRange(key: LensRangeKey, value: number) {
-    setLens(previous => ({...previous, [key]: value}));
-  }
-  function updateLensOption<K extends keyof LensSettings>(key: K, value: LensSettings[K]) {
-    setLens(previous => ({...previous, [key]: value}));
-  }
   function updateParticleRange(key: ParticleRangeKey, value: number) {
     setParticles(previous => ({...previous, [key]: value}));
   }
   function updateParticleOption<K extends keyof ParticleLogoControls>(key: K, value: ParticleLogoControls[K]) {
     setParticles(previous => ({...previous, [key]: value}));
   }
-  function resetShader() {
-    setShader({...defaultShaderSettings});
-    setNotice('셰이더 그라디언트를 기본값으로 되돌렸습니다.');
-  }
-  function resetLens() {
-    setLens({...defaultLensSettings});
-    setNotice('렌즈 비주얼을 기본값으로 되돌렸습니다.');
-  }
   function resetParticles() {
     setParticles({...defaultParticleLogoControls});
     setNotice('TRUE OR NOT 로고 입자를 기본값으로 되돌렸습니다.');
   }
-  async function copyShaderCode() {
-    const code = `<ShaderGradientCanvas
-  pixelDensity={${shader.pixelDensity}}
-  fov={${shader.fov}}
-  pointerEvents="${shader.pointerEvents}"
-  lazyLoad={${shader.lazyLoad}}
-  threshold={${shader.threshold}}
-  rootMargin="${shader.rootMargin}"
-  preserveDrawingBuffer={${shader.preserveDrawingBuffer}}
-  powerPreference="${shader.powerPreference}"
->
-  <ShaderGradient
-    control="props"
-    type="${shader.type}"
-    animate="${shader.animate}"
-    uTime={${shader.uTime}}
-    uSpeed={${shader.uSpeed}}
-    uStrength={${shader.uStrength}}
-    uDensity={${shader.uDensity}}
-    uFrequency={${shader.uFrequency}}
-    uAmplitude={${shader.uAmplitude}}
-    range="${shader.range}"
-    rangeStart={${shader.rangeStart}}
-    rangeEnd={${shader.rangeEnd}}
-    loop="${shader.loop}"
-    loopDuration={${shader.loopDuration}}
-    color1="${shader.color1}"
-    color2="${shader.color2}"
-    color3="${shader.color3}"
-    positionX={${shader.positionX}}
-    positionY={${shader.positionY}}
-    positionZ={${shader.positionZ}}
-    rotationX={${shader.rotationX}}
-    rotationY={${shader.rotationY}}
-    rotationZ={${shader.rotationZ}}
-    reflection={${shader.reflection}}
-    wireframe={${shader.wireframe}}
-    smoothTime={${shader.smoothTime}}
-    cAzimuthAngle={${shader.cAzimuthAngle}}
-    cPolarAngle={${shader.cPolarAngle}}
-    cDistance={${shader.cDistance}}
-    cameraZoom={${shader.cameraZoom}}
-    lightType="${shader.lightType}"
-    brightness={${shader.brightness}}
-    envPreset="${shader.envPreset}"
-    grain="${shader.grain}"
-    grainBlending={${shader.grainBlending}}
-    zoomOut={${shader.zoomOut}}
-    toggleAxis={${shader.toggleAxis}}
-    enableTransition={${shader.enableTransition}}
-    enableCameraUpdate={${shader.enableCameraUpdate}}
-  />
-</ShaderGradientCanvas>`;
-    try {
-      await navigator.clipboard.writeText(code);
-      setNotice('현재 셰이더 설정 JSX를 클립보드에 복사했습니다.');
-    } catch {
-      setNotice('클립보드 복사에 실패했습니다. 브라우저 권한을 확인해 주세요.');
-    }
-  }
-  async function saveShaderToProject() {
-    setShaderProjectSaving(true);
-    try {
-      const response = await fetch('/api/shader-settings', {
-        method: 'POST',
-        headers: {'content-type': 'application/json'},
-        body: JSON.stringify(shader),
-      });
-      const result = await response.json() as {error?: string};
-      if (!response.ok) throw new Error(result.error || '프로젝트 설정을 저장하지 못했습니다.');
-      setNotice('셰이더 설정을 프로젝트 코드에 저장했습니다. 다음 실행부터 기본값으로 사용됩니다.');
-    } catch (error) {
-      setNotice(error instanceof Error ? error.message : '프로젝트 설정 저장에 실패했습니다.');
-    } finally {
-      setShaderProjectSaving(false);
-    }
-  }
-
   return <MotionConfig reducedMotion="user"><div className="app-shell" id="top">
-    <ShaderBackground settings={shader} />
+    <FloatingLinesBackground />
     <a className="skip-link" href="#workspace-main">본문으로 건너뛰기</a>
     <aside className="sidebar">
       <a className="brand" href="#top" aria-label="팩트렌즈 홈"><span className="brand-symbol"><Icon name="lens" size={25}/></span><span><ScrambleText>FactLens</ScrambleText><small>팩트렌즈</small></span></a>
@@ -583,14 +394,12 @@ export default function FactCheckDashboard() {
       </main>
       {liquidLabEnabled && <AnimatePresence>
         {liquidLabOpen && <motion.aside id="liquid-lab" className="liquid-lab" aria-label="UI 컴포넌트 조정" initial={reduce ? false : {opacity: 0, x: 18, scale: 0.98}} animate={{opacity: 1, x: 0, scale: 1}} exit={reduce ? undefined : {opacity: 0, x: 18, scale: 0.98}} transition={{duration: reduce ? 0 : 0.18}}>
-          <div className="liquid-lab-head"><div><span className="liquid-lab-kicker"><Icon name="sliders" size={13}/>DEV TOOL</span><h2>UI Component Lab</h2><p>Glass, shader, lens, particle 설정을 실시간으로 조정합니다.</p></div><button type="button" className="icon-button" onClick={() => setLiquidLabOpen(false)} aria-label="UI 조정 닫기"><Icon name="close" size={17}/></button></div>
+          <div className="liquid-lab-head"><div><span className="liquid-lab-kicker"><Icon name="sliders" size={13}/>DEV TOOL</span><h2>UI Component Lab</h2><p>Glass, particle 설정을 실시간으로 조정합니다.</p></div><button type="button" className="icon-button" onClick={() => setLiquidLabOpen(false)} aria-label="UI 조정 닫기"><Icon name="close" size={17}/></button></div>
           <div className="liquid-lab-scroll">
             <section className="liquid-lab-section" aria-labelledby="liquid-section-heading"><div className="liquid-section-title"><h3 id="liquid-section-heading">Liquid Glass</h3><span>8개 설정</span></div><div className="liquid-controls">{liquidControls.map(control => <LabRange key={control.key} id={`liquid-${control.key}`} label={control.label} value={liquid[control.key]} min={control.min} max={control.max} step={control.step} precision={control.precision} format={control.percent ? value => `${Math.round(value * 100)}%` : undefined} onChange={value => updateLiquid(control.key, value)}/>)}<LabSelect id="liquid-mode" label="렌더 모드" value={liquid.mode} options={[{value: 'standard', label: 'Standard'}, {value: 'polar', label: 'Polar'}, {value: 'prominent', label: 'Prominent'}, {value: 'shader', label: 'Shader'}]} onChange={value => setLiquid(previous => ({...previous, mode: value as LiquidSettings['mode']}))}/></div></section>
-            <section className="liquid-lab-section shader-section" aria-labelledby="shader-section-heading"><div className="liquid-section-title"><h3 id="shader-section-heading">Shader Gradient</h3><span>전체 설정 · 자동 저장</span><button type="button" className="lab-reset-button" onClick={resetShader}>초기화</button></div><div className="shader-color-grid">{shaderColorKeys.map((key, index) => <label className="shader-color-control" key={key} htmlFor={`shader-${key}`}><span><b>색상 {index + 1}</b><output>{shader[key]}</output></span><input id={`shader-${key}`} type="color" value={shader[key]} onChange={event => updateShaderColor(key, event.currentTarget.value)} aria-label={`셰이더 색상 ${index + 1}`}/></label>)}</div><div className="liquid-subheading">모션 · 형태</div><div className="liquid-select-grid"><LabSelect id="shader-type" label="형태" value={shader.type} options={[{value: 'plane', label: 'Plane'}, {value: 'sphere', label: 'Sphere'}, {value: 'waterPlane', label: 'Water Plane'}]} onChange={value => updateShaderOption('type', value as ShaderSettings['type'])}/><LabSelect id="shader-animate" label="애니메이션" value={shader.animate} options={[{value: 'on', label: '켜짐'}, {value: 'off', label: '꺼짐'}]} onChange={value => updateShaderOption('animate', value as ShaderSettings['animate'])}/><LabSelect id="shader-range" label="범위" value={shader.range} options={[{value: 'disabled', label: '사용 안 함'}, {value: 'enabled', label: '사용'}]} onChange={value => updateShaderOption('range', value as ShaderSettings['range'])}/><LabSelect id="shader-loop" label="루프" value={shader.loop} options={[{value: 'off', label: '꺼짐'}, {value: 'on', label: '켜짐'}]} onChange={value => updateShaderOption('loop', value as ShaderSettings['loop'])}/></div><div className="liquid-controls shader-controls">{shaderMotionControls.map(control => <LabRange key={control.key} id={`shader-${control.key}`} label={control.label} value={shader[control.key]} min={control.min} max={control.max} step={control.step} precision={control.precision} onChange={value => updateShaderRange(control.key, value)}/>)}</div><div className="liquid-subheading">배치 · 카메라</div><div className="liquid-controls shader-controls">{shaderShapeControls.map(control => <LabRange key={control.key} id={`shader-${control.key}`} label={control.label} value={shader[control.key]} min={control.min} max={control.max} step={control.step} precision={control.precision} onChange={value => updateShaderRange(control.key, value)}/>)}{shaderViewControls.map(control => <LabRange key={control.key} id={`shader-${control.key}`} label={control.label} value={shader[control.key]} min={control.min} max={control.max} step={control.step} precision={control.precision} onChange={value => updateShaderRange(control.key, value)}/>)}</div><div className="liquid-subheading">조명 · 효과</div><div className="liquid-select-grid"><LabSelect id="shader-light-type" label="조명 방식" value={shader.lightType} options={[{value: '3d', label: '3D Light'}, {value: 'env', label: 'Environment'}]} onChange={value => updateShaderOption('lightType', value as ShaderSettings['lightType'])}/><LabSelect id="shader-env-preset" label="환경 프리셋" value={shader.envPreset} options={[{value: 'city', label: 'City'}, {value: 'dawn', label: 'Dawn'}, {value: 'lobby', label: 'Lobby'}]} onChange={value => updateShaderOption('envPreset', value as ShaderSettings['envPreset'])}/><LabSelect id="shader-grain" label="그레인" value={shader.grain} options={[{value: 'off', label: '꺼짐'}, {value: 'on', label: '켜짐'}]} onChange={value => updateShaderOption('grain', value as ShaderSettings['grain'])}/></div><div className="liquid-controls shader-controls">{shaderEffectControls.map(control => <LabRange key={control.key} id={`shader-${control.key}`} label={control.label} value={shader[control.key]} min={control.min} max={control.max} step={control.step} precision={control.precision} onChange={value => updateShaderRange(control.key, value)}/>)}</div><div className="liquid-toggle-grid"><LabToggle id="shader-wireframe" label="와이어프레임" checked={shader.wireframe} onChange={value => updateShaderOption('wireframe', value)}/><LabToggle id="shader-zoom-out" label="줌 아웃" checked={shader.zoomOut} onChange={value => updateShaderOption('zoomOut', value)}/><LabToggle id="shader-toggle-axis" label="축 전환" checked={shader.toggleAxis} onChange={value => updateShaderOption('toggleAxis', value)}/><LabToggle id="shader-transition" label="전환 효과" checked={shader.enableTransition} onChange={value => updateShaderOption('enableTransition', value)}/><LabToggle id="shader-camera-update" label="카메라 업데이트" checked={shader.enableCameraUpdate} onChange={value => updateShaderOption('enableCameraUpdate', value)}/></div><div className="liquid-subheading">캔버스 · 렌더러</div><div className="liquid-controls shader-controls">{shaderCanvasControls.map(control => <LabRange key={control.key} id={`shader-${control.key}`} label={control.label} value={shader[control.key]} min={control.min} max={control.max} step={control.step} precision={control.precision} onChange={value => updateShaderRange(control.key, value)}/>)}</div><div className="liquid-select-grid"><LabSelect id="shader-pointer-events" label="포인터 이벤트" value={shader.pointerEvents} options={[{value: 'none', label: '무시'}, {value: 'auto', label: '허용'}]} onChange={value => updateShaderOption('pointerEvents', value as ShaderSettings['pointerEvents'])}/><LabSelect id="shader-power-preference" label="GPU 선호" value={shader.powerPreference} options={[{value: 'low-power', label: '저전력'}, {value: 'high-performance', label: '고성능'}, {value: 'default', label: '기본'}]} onChange={value => updateShaderOption('powerPreference', value as ShaderSettings['powerPreference'])}/></div><div className="liquid-toggle-grid"><LabToggle id="shader-lazy-load" label="지연 로드" checked={shader.lazyLoad} onChange={value => updateShaderOption('lazyLoad', value)}/><LabToggle id="shader-preserve-buffer" label="버퍼 보존" checked={shader.preserveDrawingBuffer} onChange={value => updateShaderOption('preserveDrawingBuffer', value)}/></div><LabText id="shader-root-margin" label="Intersection root margin" value={shader.rootMargin} onChange={value => updateShaderOption('rootMargin', value)}/></section>
-            <section className="liquid-lab-section shader-section" aria-labelledby="lens-section-heading"><div className="liquid-section-title"><h3 id="lens-section-heading">Lens Visual</h3><span>렌즈 코어 · 자동 저장</span><button type="button" className="lab-reset-button" onClick={resetLens}>초기화</button></div><div className="shader-color-grid lens-color-grid">{lensColorKeys.map((key, index) => <label className="shader-color-control" key={key} htmlFor={`lens-${key}`}><span><b>색상 {index + 1}</b><output>{lens[key]}</output></span><input id={`lens-${key}`} type="color" value={lens[key]} onChange={event => updateLensOption(key, event.currentTarget.value)} aria-label={`렌즈 색상 ${index + 1}`}/></label>)}</div><div className="liquid-subheading">모션 · 왜곡</div><div className="liquid-controls shader-controls">{lensMotionControls.map(control => <LabRange key={control.key} id={`lens-${control.key}`} label={control.label} value={lens[control.key]} min={control.min} max={control.max} step={control.step} precision={control.precision} onChange={value => updateLensRange(control.key, value)}/>)}</div><div className="liquid-subheading">크기 · 배치</div><div className="liquid-select-grid"><LabSelect id="lens-fit" label="맞춤 방식" value={lens.fit} options={[{value: 'contain', label: 'Contain'}, {value: 'cover', label: 'Cover'}, {value: 'none', label: 'None'}]} onChange={value => updateLensOption('fit', value as LensSettings['fit'])}/></div><div className="liquid-controls shader-controls">{lensSizingControls.map(control => <LabRange key={control.key} id={`lens-${control.key}`} label={control.label} value={lens[control.key]} min={control.min} max={control.max} step={control.step} precision={control.precision} onChange={value => updateLensRange(control.key, value)}/>)}</div></section>
-            <section className="liquid-lab-section shader-section" aria-labelledby="particles-section-heading"><div className="liquid-section-title"><h3 id="particles-section-heading">TRUE OR NOT</h3><span>14개 설정 · 자동 저장</span><button type="button" className="lab-reset-button" onClick={resetParticles}>초기화</button></div><div className="liquid-text-controls"><LabText id="particle-text" label="로고 텍스트" value={particles.particleText} maxLength={40} onChange={value => updateParticleOption('particleText', value)}/><LabText id="particle-character" label="입자 기호" value={particles.particleCharacter} maxLength={2} onChange={value => updateParticleOption('particleCharacter', value)}/></div><div className="liquid-select-grid"><LabSelect id="particle-color" label="입자 색상" value={particleColorPreset(particles.particleColor)} options={[{value: 'sample', label: '원본 샘플'}, {value: '#91ddd6', label: 'Cyan'}, {value: '#b5a6ef', label: 'Violet'}, {value: '#b7fff5', label: 'Mint'}, {value: 'custom', label: '직접 선택'}]} onChange={value => updateParticleOption('particleColor', value === 'custom' ? particleSolidColor(particles.particleColor) : value as ParticleLogoControls['particleColor'])}/><LabColor id="particle-color-custom" label="직접 색상" value={particleSolidColor(particles.particleColor)} onChange={value => updateParticleOption('particleColor', value as ParticleLogoControls['particleColor'])}/></div><div className="liquid-subheading">모양</div><div className="liquid-controls shader-controls">{particleAppearanceControls.map(control => <LabRange key={control.key} id={`particle-${control.key}`} label={control.label} value={particles[control.key]} min={control.min} max={control.max} step={control.step} precision={control.precision} onChange={value => updateParticleRange(control.key, value)}/>)}</div><div className="liquid-toggle-grid"><LabToggle id="particle-tilt" label="기울기 반응" checked={particles.tilt} onChange={value => setParticles(previous => ({...previous, tilt: value}))}/></div><div className="liquid-subheading">상호작용</div><div className="liquid-controls shader-controls">{particleInteractionControls.map(control => <LabRange key={control.key} id={`particle-${control.key}`} label={control.label} value={particles[control.key]} min={control.min} max={control.max} step={control.step} precision={control.precision} onChange={value => updateParticleRange(control.key, value)}/>)}</div></section>
+            <section className="liquid-lab-section lab-divider-section" aria-labelledby="particles-section-heading"><div className="liquid-section-title"><h3 id="particles-section-heading">TRUE OR NOT</h3><span>14개 설정 · 자동 저장</span><button type="button" className="lab-reset-button" onClick={resetParticles}>초기화</button></div><div className="liquid-text-controls"><LabText id="particle-text" label="로고 텍스트" value={particles.particleText} maxLength={40} onChange={value => updateParticleOption('particleText', value)}/><LabText id="particle-character" label="입자 기호" value={particles.particleCharacter} maxLength={2} onChange={value => updateParticleOption('particleCharacter', value)}/></div><div className="liquid-select-grid"><LabSelect id="particle-color" label="입자 색상" value={particleColorPreset(particles.particleColor)} options={[{value: 'sample', label: '원본 샘플'}, {value: '#91ddd6', label: 'Cyan'}, {value: '#b5a6ef', label: 'Violet'}, {value: '#b7fff5', label: 'Mint'}, {value: 'custom', label: '직접 선택'}]} onChange={value => updateParticleOption('particleColor', value === 'custom' ? particleSolidColor(particles.particleColor) : value as ParticleLogoControls['particleColor'])}/><LabColor id="particle-color-custom" label="직접 색상" value={particleSolidColor(particles.particleColor)} onChange={value => updateParticleOption('particleColor', value as ParticleLogoControls['particleColor'])}/></div><div className="liquid-subheading">모양</div><div className="liquid-controls">{particleAppearanceControls.map(control => <LabRange key={control.key} id={`particle-${control.key}`} label={control.label} value={particles[control.key]} min={control.min} max={control.max} step={control.step} precision={control.precision} onChange={value => updateParticleRange(control.key, value)}/>)}</div><div className="liquid-toggle-grid"><LabToggle id="particle-tilt" label="기울기 반응" checked={particles.tilt} onChange={value => setParticles(previous => ({...previous, tilt: value}))}/></div><div className="liquid-subheading">상호작용</div><div className="liquid-controls">{particleInteractionControls.map(control => <LabRange key={control.key} id={`particle-${control.key}`} label={control.label} value={particles[control.key]} min={control.min} max={control.max} step={control.step} precision={control.precision} onChange={value => updateParticleRange(control.key, value)}/>)}</div></section>
           </div>
-          <div className="liquid-lab-foot"><span><span className="live-dot"/>브라우저에 저장됨</span><div className="liquid-lab-actions"><button type="button" className="text-button" onClick={saveShaderToProject} disabled={shaderProjectSaving}>{shaderProjectSaving ? '저장 중' : '프로젝트 저장'}</button><button type="button" className="text-button" onClick={copyShaderCode}>코드 복사</button><button type="button" className="text-button" onClick={resetShader}><Icon name="reset" size={14}/>배경 기본값</button><button type="button" className="text-button" onClick={() => setLiquid(defaultLiquidSettings)}>글래스 기본값</button></div></div>
+          <div className="liquid-lab-foot"><span><span className="live-dot"/>브라우저에 저장됨</span><div className="liquid-lab-actions"><button type="button" className="text-button" onClick={() => setLiquid(defaultLiquidSettings)}>글래스 기본값</button></div></div>
         </motion.aside>}
       </AnimatePresence>}
     </div>
