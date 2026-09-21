@@ -9,17 +9,7 @@ import type { Claim } from './demo-state';
 import type { FactCheckResult } from '../lib/fact-check-contract';
 import { FactCheckError, readFactCheckStream, safeSourceUrl } from './fact-check-client';
 import { DEMO_FOCUS, DEMO_TEXT, demoPreview, documents } from './demo-fixture';
-import ParticlesLogo from './particles-logo';
 import ScrambleText from './scramble-text';
-import {
-  defaultParticleLogoControls,
-  emitParticleLogoSettings,
-  normalizeParticleLogoControls,
-  parseParticleLogoControls,
-  particleLogoSettingsEvent,
-  particleLogoSettingsStorageKey,
-} from './particles-settings';
-import type { ParticleLogoControls } from './particles-settings';
 import FloatingLinesBackground from './floating-lines-background';
 
 type IconName = 'lens' | 'grid' | 'book' | 'arrow' | 'file' | 'link' | 'close' | 'download' | 'plus' | 'shield' | 'check' | 'reset' | 'sliders';
@@ -83,46 +73,10 @@ const glassControls: GlassControl[] = [
   {key: 'borderRadius', label: '모서리 반경', min: 8, max: 32, step: 1, precision: 0},
 ];
 
-type ParticleRangeKey = keyof Pick<ParticleLogoControls, 'sampling' | 'particleSpacing' | 'particleSize' | 'tiltFactor' | 'tiltSpeed' | 'displaceStrength' | 'displaceRadius' | 'velocityInfluence' | 'returnSpeed' | 'canvasOpacity'>;
-type ParticleRangeControl = {key: ParticleRangeKey; label: string; min: number; max: number; step: number; precision: number};
-const particleAppearanceControls: ParticleRangeControl[] = [
-  {key: 'sampling', label: '입자 밀도', min: 2, max: 12, step: 1, precision: 0},
-  {key: 'particleSpacing', label: '입자 간격', min: 0.001, max: 0.006, step: 0.0001, precision: 4},
-  {key: 'particleSize', label: '입자 크기', min: 0.001, max: 0.02, step: 0.0005, precision: 4},
-  {key: 'canvasOpacity', label: '로고 투명도', min: 0.05, max: 1, step: 0.01, precision: 2},
-];
-const particleInteractionControls: ParticleRangeControl[] = [
-  {key: 'tiltFactor', label: '기울기 강도', min: 0, max: 0.3, step: 0.01, precision: 2},
-  {key: 'tiltSpeed', label: '기울기 속도', min: 0, max: 0.2, step: 0.005, precision: 3},
-  {key: 'displaceStrength', label: '밀어내기 힘', min: 0, max: 2, step: 0.05, precision: 2},
-  {key: 'displaceRadius', label: '밀어내기 반경', min: 0.02, max: 0.5, step: 0.01, precision: 2},
-  {key: 'velocityInfluence', label: '속도 반영', min: 0, max: 1, step: 0.05, precision: 2},
-  {key: 'returnSpeed', label: '복귀 속도', min: 0.005, max: 0.2, step: 0.005, precision: 3},
-];
-
 const glassLabEnabled = process.env.NODE_ENV !== 'production' || process.env.NEXT_PUBLIC_GLASS_LAB === 'true';
 
-type LabOption = {value: string; label: string};
 function LabRange({id, label, value, min, max, step, precision, format, onChange}: {id: string; label: string; value: number; min: number; max: number; step: number; precision: number; format?: (value: number) => string; onChange: (value: number) => void}) {
   return <label className="glass-control" htmlFor={id}><span>{label}</span><output>{format ? format(value) : value.toFixed(precision)}</output><input id={id} type="range" min={min} max={max} step={step} value={value} onChange={event => onChange(Number(event.currentTarget.value))} aria-label={label}/></label>;
-}
-function LabSelect({id, label, value, options, onChange}: {id: string; label: string; value: string; options: LabOption[]; onChange: (value: string) => void}) {
-  return <label className="glass-select-control" htmlFor={id}><span>{label}</span><select id={id} value={value} onChange={event => onChange(event.currentTarget.value)} aria-label={label}>{options.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>;
-}
-function LabToggle({id, label, checked, onChange}: {id: string; label: string; checked: boolean; onChange: (value: boolean) => void}) {
-  return <label className="glass-toggle-control" htmlFor={id}><span>{label}</span><input id={id} type="checkbox" checked={checked} onChange={event => onChange(event.currentTarget.checked)} aria-label={label}/></label>;
-}
-function LabText({id, label, value, maxLength = 64, onChange}: {id: string; label: string; value: string; maxLength?: number; onChange: (value: string) => void}) {
-  return <label className="glass-text-control" htmlFor={id}><span>{label}</span><input id={id} type="text" value={value} maxLength={maxLength} onChange={event => onChange(event.currentTarget.value)} aria-label={label}/></label>;
-}
-function LabColor({id, label, value, onChange}: {id: string; label: string; value: string; onChange: (value: string) => void}) {
-  return <label className="glass-color-control" htmlFor={id}><span>{label}</span><input id={id} type="color" value={value} onChange={event => onChange(event.currentTarget.value)} aria-label={label}/><output>{value}</output></label>;
-}
-function particleColorPreset(value: ParticleLogoControls['particleColor']) {
-  return value === 'sample' || value === '#91ddd6' || value === '#b5a6ef' || value === '#b7fff5' ? value : 'custom';
-}
-function particleSolidColor(value: ParticleLogoControls['particleColor']) {
-  return value === 'sample' ? defaultParticleLogoControls.particleColor : value;
 }
 
 type GlassPanelProps = {
@@ -154,9 +108,7 @@ export default function FactCheckDashboard() {
   const [dialog, setDialog] = useState<string | null>(null);
   const [notice, setNotice] = useState('');
   const [glass, setGlass] = useState<GlassSettings>(defaultGlassSettings);
-  const [particles, setParticles] = useState<ParticleLogoControls>(defaultParticleLogoControls);
   const [glassStorageReady, setGlassStorageReady] = useState(false);
-  const [particleStorageReady, setParticleStorageReady] = useState(false);
   const [glassLabOpen, setGlassLabOpen] = useState(false);
   const request = useRef<AbortController | null>(null);
   const generation = useRef(0);
@@ -182,30 +134,14 @@ export default function FactCheckDashboard() {
   useEffect(() => {
     try {
       setGlass(parseGlassSettings(window.localStorage.getItem(glassSettingsStorageKey)));
-      setParticles(parseParticleLogoControls(window.localStorage.getItem(particleLogoSettingsStorageKey)));
     } catch { /* 브라우저 저장소가 차단된 환경에서는 기본값으로 실행합니다. */ }
     setGlassStorageReady(true);
-    setParticleStorageReady(true);
   }, []);
   useEffect(() => {
     if (!glassStorageReady) return;
     try { window.localStorage.setItem(glassSettingsStorageKey, JSON.stringify(glass)); }
     catch { /* 저장소 용량·권한 오류가 UI를 중단시키지 않도록 무시합니다. */ }
   }, [glass, glassStorageReady]);
-  useEffect(() => {
-    if (!particleStorageReady) return;
-    try { window.localStorage.setItem(particleLogoSettingsStorageKey, JSON.stringify(particles)); }
-    catch { /* 저장소 용량·권한 오류가 UI를 중단시키지 않도록 무시합니다. */ }
-    emitParticleLogoSettings(particles);
-  }, [particles, particleStorageReady]);
-  useEffect(() => {
-    const syncParticles = (event: Event) => {
-      const next = normalizeParticleLogoControls((event as CustomEvent<unknown>).detail);
-      setParticles(previous => JSON.stringify(previous) === JSON.stringify(next) ? previous : next);
-    };
-    window.addEventListener(particleLogoSettingsEvent, syncParticles);
-    return () => window.removeEventListener(particleLogoSettingsEvent, syncParticles);
-  }, []);
   function stop() {generation.current++; request.current?.abort(); request.current = null;}
   function loadSample() {
     stop(); setLiveResult(null); dispatch({type: 'cancel'}); dispatch({type: 'load', snapshot: demoPreview});
@@ -265,16 +201,6 @@ export default function FactCheckDashboard() {
   function updateGlass(key: GlassNumericKey, value: number) {
     setGlass(previous => ({...previous, [key]: value}));
   }
-  function updateParticleRange(key: ParticleRangeKey, value: number) {
-    setParticles(previous => ({...previous, [key]: value}));
-  }
-  function updateParticleOption<K extends keyof ParticleLogoControls>(key: K, value: ParticleLogoControls[K]) {
-    setParticles(previous => ({...previous, [key]: value}));
-  }
-  function resetParticles() {
-    setParticles({...defaultParticleLogoControls});
-    setNotice('TRUE OR NOT 로고 입자를 기본값으로 되돌렸습니다.');
-  }
   return <MotionConfig reducedMotion="user"><div className="app-shell" id="top">
     <FloatingLinesBackground />
     <a className="skip-link" href="#workspace-main">본문으로 건너뛰기</a>
@@ -288,7 +214,6 @@ export default function FactCheckDashboard() {
     <div className="main-shell">
       <header className="topbar"><div className="breadcrumb"><span className="mobile-brand">FactLens</span></div><div className="topbar-actions"><button className="text-button" aria-label="사용 가이드" onClick={() => setDialog('guide')}><Icon name="book"/><span>사용 가이드</span></button>{glassLabEnabled && <button type="button" aria-label="UI 조정" className={`text-button glass-lab-trigger ${glassLabOpen ? 'is-active' : ''}`} aria-expanded={glassLabOpen} aria-controls="glass-lab" onClick={() => setGlassLabOpen(open => !open)}><Icon name="sliders"/><span>UI 조정</span></button>}<span className="profile-mark" aria-label="로컬 워크스페이스">F</span></div></header>
       <main id="workspace-main" className="page-content">
-        <section className="intro"><ParticlesLogo settings={particles}/></section>
         <GlassPanel as="section" className="composer" aria-labelledby="composer-heading" glass={glass}>
           <div className="section-heading"><div><span className="step-label">01 / 문서 입력</span><h2 id="composer-heading"><ScrambleText>어떤 내용을 확인하고 싶으세요?</ScrambleText></h2></div><button className="text-button" aria-label="초기화" onClick={reset}><Icon name="reset" size={16}/><span>초기화</span></button></div>
           <form onSubmit={submit}>
@@ -344,10 +269,9 @@ export default function FactCheckDashboard() {
       </main>
       {glassLabEnabled && <AnimatePresence>
         {glassLabOpen && <motion.aside id="glass-lab" className="glass-lab" aria-label="UI 컴포넌트 조정" initial={reduce ? false : {opacity: 0, x: 18, scale: 0.98}} animate={{opacity: 1, x: 0, scale: 1}} exit={reduce ? undefined : {opacity: 0, x: 18, scale: 0.98}} transition={{duration: reduce ? 0 : 0.18}}>
-          <div className="glass-lab-head"><div><span className="glass-lab-kicker"><Icon name="sliders" size={13}/>DEV TOOL</span><h2>UI Component Lab</h2><p>GlassSurface · particle 설정. SVG 미지원 시 공식 fallback(고정 블러·채도)을 사용합니다.</p></div><button type="button" className="icon-button" onClick={() => setGlassLabOpen(false)} aria-label="UI 조정 닫기"><Icon name="close" size={17}/></button></div>
+          <div className="glass-lab-head"><div><span className="glass-lab-kicker"><Icon name="sliders" size={13}/>DEV TOOL</span><h2>UI Component Lab</h2><p>GlassSurface 설정을 브라우저에서 조정합니다.</p></div><button type="button" className="icon-button" onClick={() => setGlassLabOpen(false)} aria-label="UI 조정 닫기"><Icon name="close" size={17}/></button></div>
           <div className="glass-lab-scroll">
             <section className="glass-lab-section" aria-labelledby="glass-section-heading"><div className="glass-section-title"><h3 id="glass-section-heading">React Bits GlassSurface</h3><span>5개 설정</span></div><div className="glass-controls">{glassControls.map(control => <LabRange key={control.key} id={`glass-${control.key}`} label={control.label} value={glass[control.key]} min={control.min} max={control.max} step={control.step} precision={control.precision} format={control.percent ? value => `${Math.round(value * 100)}%` : undefined} onChange={value => updateGlass(control.key, value)}/>)}</div></section>
-            <section className="glass-lab-section lab-divider-section" aria-labelledby="particles-section-heading"><div className="glass-section-title"><h3 id="particles-section-heading">TRUE OR NOT</h3><span>14개 설정 · 자동 저장</span><button type="button" className="lab-reset-button" onClick={resetParticles}>초기화</button></div><div className="glass-text-controls"><LabText id="particle-text" label="로고 텍스트" value={particles.particleText} maxLength={40} onChange={value => updateParticleOption('particleText', value)}/><LabText id="particle-character" label="입자 기호" value={particles.particleCharacter} maxLength={2} onChange={value => updateParticleOption('particleCharacter', value)}/></div><div className="glass-select-grid"><LabSelect id="particle-color" label="입자 색상" value={particleColorPreset(particles.particleColor)} options={[{value: 'sample', label: '원본 샘플'}, {value: '#91ddd6', label: 'Cyan'}, {value: '#b5a6ef', label: 'Violet'}, {value: '#b7fff5', label: 'Mint'}, {value: 'custom', label: '직접 선택'}]} onChange={value => updateParticleOption('particleColor', value === 'custom' ? particleSolidColor(particles.particleColor) : value as ParticleLogoControls['particleColor'])}/><LabColor id="particle-color-custom" label="직접 색상" value={particleSolidColor(particles.particleColor)} onChange={value => updateParticleOption('particleColor', value as ParticleLogoControls['particleColor'])}/></div><div className="glass-subheading">모양</div><div className="glass-controls">{particleAppearanceControls.map(control => <LabRange key={control.key} id={`particle-${control.key}`} label={control.label} value={particles[control.key]} min={control.min} max={control.max} step={control.step} precision={control.precision} onChange={value => updateParticleRange(control.key, value)}/>)}</div><div className="glass-toggle-grid"><LabToggle id="particle-tilt" label="기울기 반응" checked={particles.tilt} onChange={value => setParticles(previous => ({...previous, tilt: value}))}/></div><div className="glass-subheading">상호작용</div><div className="glass-controls">{particleInteractionControls.map(control => <LabRange key={control.key} id={`particle-${control.key}`} label={control.label} value={particles[control.key]} min={control.min} max={control.max} step={control.step} precision={control.precision} onChange={value => updateParticleRange(control.key, value)}/>)}</div></section>
           </div>
           <div className="glass-lab-foot"><span><span className="live-dot"/>브라우저에 저장됨</span><div className="glass-lab-actions"><button type="button" className="text-button" onClick={() => setGlass(defaultGlassSettings)}>글래스 기본값</button></div></div>
         </motion.aside>}

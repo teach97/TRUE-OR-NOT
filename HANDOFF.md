@@ -403,7 +403,6 @@ npm run typecheck
 | `@paper-design/shaders-react` | `0.0.81` | `MeshGradient` 기반 배경 쉐이더 |
 | `liquid-glass-react` | `1.1.1` | 카드·입력 패널의 Liquid Glass 효과 |
 | `motion` | `13.4.0` | 페이지 진입, 카드 등장, 상태 전환, 토스트 애니메이션 |
-| `animejs` | `4.5.0` | 실시간 상태 점(`pulse-signal`) 펄스 애니메이션 |
 | `html2canvas` | `1.4.1` | 대시보드 PNG 리포트 내보내기 |
 | `@shadergradient/react` | `2.4.20` | 설치 완료, 현재 화면에서는 미사용 |
 | `@react-three/fiber` | `9.7.0` | 설치 완료, 추후 3D/WebGL 확장용 |
