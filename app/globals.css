@@ -198,9 +198,9 @@ textarea:focus-visible { outline-offset: 2px; }
 
 /* 장식 캔버스는 고정하고 콘텐츠와 포인터 이벤트를 분리합니다. */
 .app-shell { position: relative; z-index: 1; isolation: isolate; background: transparent; }
-.letter-glitch-background { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; isolation: isolate; background: radial-gradient(ellipse at 20% 18%, #164d5e 0%, transparent 58%), radial-gradient(ellipse at 85% 30%, #433064 0%, transparent 63%), #0b1221; }
-.letter-glitch-background > div { position: relative; width: 100%; height: 100%; }
-.letter-glitch-background canvas { position: relative; z-index: 0; display: block; }
+.floating-lines-background { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; isolation: isolate; background: radial-gradient(ellipse at 20% 18%, #164d5e 0%, transparent 58%), radial-gradient(ellipse at 85% 30%, #433064 0%, transparent 63%), #0b1221; }
+.floating-lines-background::after { content: ""; position: absolute; inset: 0; z-index: 2; background: linear-gradient(180deg, #090e1840, #090d1770 60%, #090d178c); pointer-events: none; }
+.floating-lines-background canvas { position: relative; z-index: 0; display: block; }
 
 
 .sidebar { background: #0c1017d9; backdrop-filter: blur(18px); }

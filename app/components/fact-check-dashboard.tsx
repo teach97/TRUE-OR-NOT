@@ -10,7 +10,7 @@ import type { FactCheckResult } from '../lib/fact-check-contract';
 import { FactCheckError, readFactCheckStream, safeSourceUrl } from './fact-check-client';
 import { DEMO_FOCUS, DEMO_TEXT, demoPreview, documents } from './demo-fixture';
 import ScrambleText from './scramble-text';
-import LetterGlitchBackground from './letter-glitch-background';
+import FloatingLinesBackground from './floating-lines-background';
 
 type IconName = 'lens' | 'grid' | 'book' | 'arrow' | 'file' | 'link' | 'close' | 'download' | 'plus' | 'shield' | 'check' | 'reset' | 'sliders';
 function Icon({name, size = 18}: {name: IconName; size?: number}) {
@@ -205,7 +205,7 @@ export default function FactCheckDashboard() {
     setGlass(previous => ({...previous, [key]: value}));
   }
   return <MotionConfig reducedMotion="user"><div className="app-shell" id="top" data-glass-enabled={glassEnabled}>
-    <LetterGlitchBackground />
+    <FloatingLinesBackground />
     <a className="skip-link" href="#workspace-main">본문으로 건너뛰기</a>
     <aside className="sidebar">
       <a className="brand" href="#top" aria-label="팩트렌즈 홈"><span className="brand-symbol"><Icon name="lens" size={25}/></span><span><ScrambleText>FactLens</ScrambleText><small>팩트렌즈</small></span></a>
