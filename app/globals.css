@@ -8,20 +8,20 @@
 }
 
 :root {
-  --background: #0b0d10;
-  --foreground: #f0f2f3;
-  --muted: #a0a8b1;
-  --subtle: #68727d;
+  --background: #0a0a0a;
+  --foreground: #f4f4f4;
+  --muted: #a7a7a7;
+  --subtle: #737373;
   --line: rgb(255 255 255 / .1);
   --line-bright: rgb(255 255 255 / .18);
-  --surface: #15181d;
-  --surface-raised: #1b1f24;
-  --accent: #9bddd4;
-  --accent-strong: #c3f4ed;
-  --accent-soft: rgb(155 221 212 / .12);
-  --violet: #b8adf0;
-  --amber: #e1bf79;
-  --rose: #e89ba7;
+  --surface: #151515;
+  --surface-raised: #1d1d1d;
+  --accent: #f2f2f2;
+  --accent-strong: #ffffff;
+  --accent-soft: rgb(255 255 255 / .12);
+  --violet: #bdbdbd;
+  --amber: #9f9f9f;
+  --rose: #777777;
   --radius-panel: 18px;
   --radius-control: 12px;
 }
@@ -42,7 +42,7 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 button, a { touch-action: manipulation; transition: color .18s, background-color .18s, border-color .18s, box-shadow .18s, transform .18s; }
 a { color: inherit; text-decoration: none; }
 button:focus-visible, a:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; }
-::selection { background: rgb(155 221 212 / .25); color: #fff; }
+::selection { background: rgb(255 255 255 / .25); color: #fff; }
 svg { flex-shrink: 0; }
 h1, h2, h3, h4, p { margin: 0; }
 h1, h2, h3, h4 { font-weight: 600; letter-spacing: -.035em; text-wrap: balance; }
@@ -311,10 +311,10 @@ button, p, h3, dd { overflow-wrap: anywhere; }
 .line-sidebar--markers .line-sidebar__item:not(:last-child)::after { content: ''; position: absolute; top: calc(100% + var(--item-gap) / 2); left: calc(-1 * var(--marker-length) - var(--marker-gap)); width: calc(var(--marker-length) * var(--tick-scale)); height: 1px; background-color: var(--marker-color); opacity: .5; transform: translateY(-50%); }
 .line-sidebar--scale-tick .line-sidebar__item:not(:last-child)::after { transform: translateY(-50%) scaleX(calc(.7 + var(--effect, 0) * .6)); transform-origin: left center; }
 
-.floating-lines-background { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; isolation: isolate; background: radial-gradient(ellipse at 18% 16%, rgb(28 77 89 / .55), transparent 55%), radial-gradient(ellipse at 87% 31%, rgb(52 42 78 / .42), transparent 60%), #0b0d10; }
+.floating-lines-background { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; isolation: isolate; background: radial-gradient(ellipse at 18% 16%, rgb(255 255 255 / .08), transparent 55%), radial-gradient(ellipse at 87% 31%, rgb(255 255 255 / .045), transparent 60%), #0a0a0a; }
 .floating-lines-background::after { content: ''; position: absolute; inset: 0; z-index: 2; background: linear-gradient(180deg, rgb(7 10 14 / .48), rgb(7 10 14 / .7) 65%, rgb(7 10 14 / .88)); pointer-events: none; }
 .floating-lines-background canvas { position: relative; z-index: 0; display: block; }
-.background-toggle { position: fixed; right: 18px; bottom: 18px; z-index: 20; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 13px; border: 1px solid rgb(255 255 255 / .15); border-radius: 999px; color: #bac9db; background: rgb(11 18 30 / .9); box-shadow: 0 4px 24px rgb(0 0 0 / .25); font-size: 12px; }
+.background-toggle { position: fixed; right: 18px; bottom: 18px; z-index: 20; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 13px; border: 1px solid rgb(255 255 255 / .15); border-radius: 999px; color: #c7c7c7; background: rgb(15 15 15 / .92); box-shadow: 0 4px 24px rgb(0 0 0 / .25); font-size: 12px; }
 .background-toggle:hover { border-color: var(--accent); color: var(--accent); }
 
 @media (min-width: 1500px) {
@@ -432,3 +432,6 @@ button, p, h3, dd { overflow-wrap: anywhere; }
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* Monochrome theme: semantic states use luminance and existing marks, never hue. */
+.sidebar, .main-shell, .floating-lines-background, .background-toggle, .dialog { filter: grayscale(1); }

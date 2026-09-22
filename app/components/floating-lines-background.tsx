@@ -6,7 +6,7 @@ import type { ReactNode } from "react";
 
 const FloatingLines = dynamic(() => import("./floating-lines"), {ssr: false});
 
-const floatingLinesGradient = ["#a1bfc2", "#91ddd6", "#b5a6ef"];
+const floatingLinesGradient = ["#ffffff", "#d7d7d7", "#8f8f8f"];
 const floatingLinesWaves = ["top", "middle", "bottom"] as const;
 const floatingLinesCount = [6, 7, 6];
 const floatingLinesDistance = [5, 5, 5];
@@ -61,7 +61,7 @@ export default function FloatingLinesBackground() {
         parallax
         parallaxStrength={0.18}
         mixBlendMode="screen"
-        backgroundColor="#07131b"
+        backgroundColor="#080808"
       /></BackgroundBoundary>}
     </div>
     {supported && !reduced && <button

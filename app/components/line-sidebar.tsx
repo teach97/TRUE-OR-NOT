@@ -50,8 +50,8 @@ type LineSidebarStyle = CSSProperties & Record<`--${string}`, string | number>;
 
 export default function LineSidebar({
   items,
-  accentColor = '#91ddd6',
-  textColor = '#9ba5b6',
+  accentColor = '#f4f4f4',
+  textColor = '#9b9b9b',
   markerColor = '#ffffff30',
   showIndex = true,
   showMarker = true,
