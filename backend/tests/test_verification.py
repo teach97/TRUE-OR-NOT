@@ -415,6 +415,66 @@ def test_verify_claims_bounds_source_text_sent_to_model():
     assert result["claims"][0]["verdictCode"] == "insufficient_evidence"
 
 
+def test_verify_claims_supports_gemini_interactions_structured_output():
+    from providers import LLMProvider
+
+    quote = "The river reached record levels in 2024."
+    state = {
+        "claims": [claim("c1", "The river reached record levels.", "fact")],
+        "focus": "",
+        "sources": [{
+            "id": "s1",
+            "url": "https://example.org/report",
+            "title": "Annual report",
+            "publisher": "Example",
+            "accessStatus": "verified",
+        }],
+        "sourceTexts": {"s1": quote},
+    }
+
+    def handler(request):
+        assert str(request.url) == "https://generativelanguage.googleapis.com/v1beta/interactions"
+        assert request.headers["x-goog-api-key"] == "gemini-test-only"
+        body = json.loads(request.content)
+        assert body["model"] == "gemini-3.8-flash"
+        assert body["generation_config"]["thinking_level"] == "high"
+        assert body["response_format"]["mime_type"] == "application/json"
+        return httpx.Response(200, json={
+            "status": "completed",
+            "steps": [{
+                "type": "model_output",
+                "content": [{
+                    "type": "text",
+                    "text": json.dumps({"claims": [{
+                        "claimId": "c1",
+                        "verdictCode": "mostly_supported",
+                        "summary": "The source reports the record level.",
+                        "confirmed": ["The source reports record levels."],
+                        "unresolved": [],
+                        "evidence": [{
+                            "sourceId": "s1",
+                            "quote": quote,
+                            "relation": "supports",
+                            "comparison": "same",
+                        }],
+                    }]}),
+                }],
+            }],
+        })
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            return await verify_claims(
+                state,
+                client=client,
+                provider=LLMProvider("gemini", "gemini-3.8-flash", "high", "gemini-test-only"),
+            )
+
+    result = asyncio.run(run())
+    assert result["claims"][0]["verdictCode"] == "mostly_supported"
+    assert result["evidence"][0]["quote"] == quote
+
+
 def test_verify_claims_without_readable_sources_does_not_call_provider():
     state = {
         "claims": [claim("c1", "A factual claim.", "fact")],

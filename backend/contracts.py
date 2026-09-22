@@ -18,6 +18,7 @@ EvidenceRelation = Literal["supports", "contradicts", "context"]
 ClaimKind = Literal["fact", "opinion", "prediction", "unclear"]
 ClaimTone = Literal["positive", "negative", "neutral"]
 AccessStatus = Literal["verified", "unavailable"]
+Reasoning = Literal["max", "high"]
 
 
 class _ContractModel(BaseModel):
@@ -72,7 +73,7 @@ class FactCheckResult(_ContractModel):
     focus: str = Field(max_length=500)
     demo: Literal[False]
     model: str = Field(min_length=1, max_length=100)
-    reasoning: Literal["max"]
+    reasoning: Reasoning
     checkedAt: str = Field(min_length=1, max_length=100)
     claims: list[FactClaim] = Field(max_length=3)
     sources: list[FactSource] = Field(max_length=6)
@@ -134,6 +135,6 @@ class AgentStatus(_ContractModel):
     workflowReady: bool
     engine: Literal["langgraph"] = "langgraph"
     model: str | None
-    reasoning: Literal["max"] | None
+    reasoning: Reasoning | None
     webSearch: bool
     phase: Literal["api-foundation", "workflow-ready"]

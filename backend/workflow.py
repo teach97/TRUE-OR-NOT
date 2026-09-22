@@ -18,6 +18,8 @@ class FactCheckState(TypedDict, total=False):
     sourceTexts: dict[str, str]
     evidence: list[dict[str, Any]]
     result: dict[str, Any]
+    llmModel: str
+    llmReasoning: str
 
 
 Stage = Callable[[FactCheckState], Awaitable[dict[str, Any]]]

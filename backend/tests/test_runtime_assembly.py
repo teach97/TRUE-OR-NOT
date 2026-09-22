@@ -2,7 +2,7 @@
 import asyncio
 
 from contracts import FactCheckResponse
-from runtime import RuntimeAdapters, Settings, build_runtime_workflow
+from runtime import RuntimeAdapters, Settings, build_fact_check_result, build_runtime_workflow
 from pydantic import SecretStr
 
 
@@ -56,3 +56,18 @@ def test_runtime_graph_assembles_valid_final_result_after_four_stages():
     assert parsed.result.sources[0].url == "https://example.org/source"
     assert parsed.result.claims[0].evidenceIds == ["e1"]
     assert "sourceTexts" in state
+
+
+def test_result_reports_provider_used_by_the_final_stage():
+    result = build_fact_check_result(
+        {"text": "Claim", "focus": "", "consent": True, "sources": []},
+        {
+            "claims": [],
+            "evidence": [],
+            "llmModel": "gemini-3.8-flash",
+            "llmReasoning": "high",
+        },
+    )
+
+    assert result.model == "gemini-3.8-flash"
+    assert result.reasoning == "high"

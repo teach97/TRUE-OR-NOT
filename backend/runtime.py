@@ -12,6 +12,7 @@ from pydantic import BaseModel, SecretStr
 
 from contracts import FactCheckResult
 from extraction import extract_claims
+from providers import ProviderCallError, configured_providers, run_with_fallback
 from schemas import FactCheckRequest
 from search import search_sources
 from sources import read_sources
@@ -24,6 +25,7 @@ _MODEL = "gpt-5.6-luna"
 
 class Settings(BaseModel):
     api_key: SecretStr
+    gemini_api_key: SecretStr = SecretStr("")
 
 
 def load_settings(env_path: Path | None = None) -> Settings:
@@ -31,7 +33,8 @@ def load_settings(env_path: Path | None = None) -> Settings:
     path = env_path if env_path is not None else Path(__file__).with_name(".env")
     values = dotenv_values(path, encoding="utf-8-sig", interpolate=False)
     key = os.environ.get("OPENAI_API_KEY", values.get("OPENAI_API_KEY") or "")
-    return Settings(api_key=SecretStr(key.strip()))
+    gemini_key = os.environ.get("GEMINI_API_KEY", values.get("GEMINI_API_KEY") or "")
+    return Settings(api_key=SecretStr(key.strip()), gemini_api_key=SecretStr(gemini_key.strip()))
 
 
 @dataclass(frozen=True)
@@ -46,28 +49,65 @@ class RuntimeAdapters:
 
 def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
     """Create provider-backed stages without exposing credentials to graph state."""
-    api_key = settings.api_key.get_secret_value()
+    providers = configured_providers(settings)
 
     async def with_client(operation):
         async with httpx.AsyncClient(timeout=90) as client:
             return await operation(client)
 
+    async def with_fallback(operation, failure_code: str):
+        async def attempt(provider, client):
+            try:
+                return await operation(provider, client)
+            except ValueError as exc:
+                if str(exc) in {"INVALID_REQUEST", "NOT_CONFIGURED"}:
+                    raise
+                raise ProviderCallError("Provider stage failed") from None
+
+        try:
+            update, provider = await with_client(
+                lambda client: run_with_fallback(
+                    providers,
+                    lambda provider: attempt(provider, client),
+                )
+            )
+        except ProviderCallError:
+            raise ValueError(failure_code) from None
+        except ValueError as exc:
+            if str(exc) == "NOT_CONFIGURED":
+                raise
+            raise ValueError(failure_code) from None
+        return {
+            **update,
+            "llmModel": provider.model,
+            "llmReasoning": provider.reasoning,
+        }
+
     async def extract(state: FactCheckState):
-        return await with_client(
-            lambda client: extract_claims(state, api_key=api_key, client=client)
+        return await with_fallback(
+            lambda provider, client: extract_claims(
+                state, client=client, provider=provider
+            ),
+            "EXTRACTION_FAILED",
         )
 
     async def search(state: FactCheckState):
-        return await with_client(
-            lambda client: search_sources(state, api_key=api_key, client=client)
+        return await with_fallback(
+            lambda provider, client: search_sources(
+                state, client=client, provider=provider
+            ),
+            "SEARCH_FAILED",
         )
 
     async def read(state: FactCheckState):
         return await read_sources(state)
 
     async def verify(state: FactCheckState):
-        return await with_client(
-            lambda client: verify_claims(state, api_key=api_key, client=client)
+        return await with_fallback(
+            lambda provider, client: verify_claims(
+                state, client=client, provider=provider
+            ),
+            "VERIFICATION_FAILED",
         )
 
     return RuntimeAdapters(extract=extract, search=search, read=read, verify=verify)
@@ -120,16 +160,17 @@ def build_fact_check_result(
     checked_at: str | None = None,
 ) -> FactCheckResult:
     """Validate and assemble the only result shape exposed by the API."""
+    merged_state = {**state, **(update if isinstance(update, dict) else {})}
     request = FactCheckRequest.model_validate({
-        "text": state.get("text"),
-        "focus": state.get("focus"),
-        "consent": state.get("consent"),
+        "text": merged_state.get("text"),
+        "focus": merged_state.get("focus"),
+        "consent": merged_state.get("consent"),
     })
     if not isinstance(update, dict):
         raise ValueError("INVALID_STATE")
     claims = update.get("claims")
     evidence = update.get("evidence")
-    raw_sources = state.get("sources", [])
+    raw_sources = merged_state.get("sources", [])
     if not isinstance(claims, list) or not isinstance(evidence, list) or not isinstance(raw_sources, list):
         raise ValueError("INVALID_STATE")
 
@@ -139,8 +180,8 @@ def build_fact_check_result(
         "text": request.text,
         "focus": request.focus,
         "demo": False,
-        "model": _MODEL,
-        "reasoning": "max",
+        "model": merged_state.get("llmModel") or _MODEL,
+        "reasoning": merged_state.get("llmReasoning") or "max",
         "checkedAt": timestamp,
         "claims": claims,
         "sources": sources,

@@ -3,6 +3,7 @@ export const FACT_CHECK_MODEL = 'gpt-5.6-luna';
 export const FACT_CHECK_REASONING = 'max';
 export const VERDICTS = ['mostly_supported', 'partially_supported', 'missing_context', 'conflicting_sources', 'insufficient_evidence', 'not_checkable', 'contradicted'] as const;
 export type VerdictCode = typeof VERDICTS[number];
+export type Reasoning = 'max' | 'high';
 export type FactCheckRequest = { text: string; focus: string; consent: true };
 export type FactSource = {
   id: string; url: string; title: string; publisher: string; publishedAt: string | null;
@@ -20,7 +21,7 @@ export type FactClaim = {
   confirmed: string[]; unresolved: string[]; warnings: string[]; evidenceIds: string[];
 };
 export type FactCheckResult = {
-  text: string; focus: string; demo: false; model: string; reasoning: 'max'; checkedAt: string;
+  text: string; focus: string; demo: false; model: string; reasoning: Reasoning; checkedAt: string;
   claims: FactClaim[]; sources: FactSource[]; evidence: FactEvidence[]; warnings: string[];
 };
 export type AgentStage = 'extracting' | 'searching' | 'reading' | 'verifying';
@@ -28,4 +29,4 @@ export type AgentEvent =
   | {type: 'stage'; stage: AgentStage; message: string}
   | {type: 'result'; result: FactCheckResult}
   | {type: 'error'; code: string; message: string};
-export type AgentStatus = {configured: boolean; model: string; reasoning: 'max'; webSearch: true};
+export type AgentStatus = {configured: boolean; model: string | null; reasoning: Reasoning | null; webSearch: boolean};

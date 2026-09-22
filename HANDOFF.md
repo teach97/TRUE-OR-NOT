@@ -1,5 +1,17 @@
 # 팩트체크 에이전트 UI MVP 작업 인계서
 
+## 2026-09-22 다중 LLM fallback 구현 완료
+
+이 절은 현재 저장소의 가장 최신 구현·검증 상태입니다. 아래 과거 기록의 OpenAI 단일 provider 전제는 현재 fallback 구현에 맞게 해석해야 합니다.
+
+- **fallback 순서:** `OPENAI_API_KEY`가 있으면 `gpt-5.6-luna` + `reasoning: max`를 1순위로 사용합니다. 호출 실패 시 `GEMINI_API_KEY`의 `gemini-3.8-flash` + `thinking_level: high`, 다시 실패 시 같은 키의 `gemini-3.7-flash` + `thinking_level: high`를 사용합니다. 앞 provider의 키가 없으면 설정된 다음 provider부터 시작합니다.
+- **적용 단계:** 주장 추출, 웹 검색, 근거 검증 각각에서 같은 순서로 fallback을 시도합니다. 원문 읽기 단계는 LLM 호출이 아니므로 fallback 대상이 아닙니다. 어느 provider가 성공했는지는 최종 결과의 `model`과 `reasoning`에 반영하며, API 키는 graph state·스트림·응답에 넣지 않습니다.
+- **provider별 연결:** OpenAI는 기존 Responses API 구조를 유지합니다. Gemini는 Interactions API를 사용하고, 구조화 출력 schema와 `google_search` 도구를 provider adapter에서 변환합니다. 검색 결과는 Gemini의 URL citation을 수집한 뒤 기존 출처 URL 경계·원문 읽기·인용 grounding을 통과한 것만 결과에 사용합니다.
+- **설정:** 저장소 루트 `.env.example`를 참고하여 실제 값은 `backend/.env`에만 설정합니다. `OPENAI_API_KEY` 또는 `GEMINI_API_KEY` 중 하나만 있어도 workflow를 구성할 수 있으며, 두 키를 모두 넣으면 위 순서대로 동작합니다. 키 값은 로그·문서·커밋에 기록하지 않습니다.
+- **회귀 검증:** backend `114 passed`(기존 Starlette/AnyIO deprecation warning 1건), frontend Node `22 passed`, `tsc --noEmit --incremental false`, `uv lock --check`, `npm run build`, `git diff --check`를 통과했습니다. 추가 테스트는 provider 순서·1→2→3 retry, runtime stage retry, Gemini 구조화 출력, Gemini Google Search citation, Gemini-only status, 최종 provider metadata를 검증합니다.
+- **현재 환경의 live gate:** 현재 `backend/.env`/프로세스에는 OpenAI provider만 설정되어 있어 `gpt-5.6-luna` 실제 호출은 기존 smoke로 확인했고, Gemini 실제 호출은 `GEMINI_API_KEY`가 없어 수행하지 않았습니다. Gemini wire·schema·검색 citation과 fallback retry는 비밀키 없는 mock 회귀로 확인했습니다. Gemini live fallback까지 확인하려면 `backend/.env`에 키를 추가한 뒤 실패를 유도하지 않는 별도 비용 확인이 필요합니다.
+- **실행 반영 주의:** 현재 형님이 띄워 둔 `127.0.0.1:8010` backend는 이 변경 전 프로세스일 수 있으므로 새 fallback을 실제 UI에 적용하려면 backend 실행 터미널을 재시작해야 합니다. 사용 중인 `127.0.0.1:3000`과 `127.0.0.1:8010`은 작업 중 종료하지 않았습니다.
+
 ## 2026-09-22 LLM 검증 실패 원인 확정 및 수정
 
 이 절은 현재 저장소에서 실제 OpenAI provider 호출을 포함하여 재현·수정·재검증한 최신 결과입니다. 아래 과거 기록의 오래된 실행 결과보다 이 절을 우선합니다.

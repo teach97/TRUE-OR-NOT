@@ -21,7 +21,8 @@ export async function GET() {
     if(!response.ok) {await response.body?.cancel();throw new Error('BACKEND');}
     const value=JSON.parse(await limitedText(response,16000,signal));
     if(typeof value.configured!=='boolean' || typeof value.webSearch!=='boolean')throw new Error('PROTOCOL');
-    return Response.json({configured:value.configured,model:typeof value.model==='string'?value.model:null,reasoning:value.reasoning==='max'?'max':null,webSearch:value.webSearch},{headers});
+    const reasoning=value.reasoning==='max'||value.reasoning==='high'?value.reasoning:null;
+    return Response.json({configured:value.configured,model:typeof value.model==='string'?value.model:null,reasoning,webSearch:value.webSearch},{headers});
   }catch{return error(503,'BACKEND_UNAVAILABLE','검증 백엔드에 연결할 수 없습니다.');}
 }
 export async function POST(req: Request) {

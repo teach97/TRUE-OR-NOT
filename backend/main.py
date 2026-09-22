@@ -8,6 +8,7 @@ from streaming import stream_events
 from pydantic import BaseModel
 
 from contracts import AgentStatus, FactCheckResponse
+from providers import configured_providers
 from runtime import build_runtime_workflow, load_settings
 from schemas import FactCheckRequest
 
@@ -30,13 +31,15 @@ async def health():
 async def agent_status(response: Response):
     """Report whether the real four-stage workflow can be constructed."""
     response.headers["Cache-Control"] = "no-store"
-    configured = bool(load_settings().api_key.get_secret_value())
+    providers = configured_providers(load_settings())
+    configured = bool(providers)
+    primary = providers[0] if providers else None
     return AgentStatus(
         configured=configured,
         workflowReady=configured,
         engine="langgraph",
-        model="gpt-5.6-luna" if configured else None,
-        reasoning="max" if configured else None,
+        model=primary.model if primary else None,
+        reasoning=primary.reasoning if primary else None,
         webSearch=configured,
         phase="workflow-ready" if configured else "api-foundation",
     )
@@ -45,7 +48,7 @@ async def agent_status(response: Response):
 def get_workflow():
     """Build the provider-backed graph only when a server-side key is configured."""
     settings = load_settings()
-    if not settings.api_key.get_secret_value():
+    if not configured_providers(settings):
         return None
     return build_runtime_workflow(settings)
 
@@ -54,7 +57,7 @@ def get_workflow():
 async def fact_check(payload: FactCheckRequest, graph=Depends(get_workflow)):
     if graph is None:
         return JSONResponse(
-            {"code": "NOT_CONFIGURED", "message": "서버의 OpenAI API 설정이 필요합니다."},
+            {"code": "NOT_CONFIGURED", "message": "서버의 LLM provider 설정이 필요합니다."},
             status_code=503,
             headers={"Cache-Control": "no-store"},
         )
@@ -77,7 +80,7 @@ async def fact_check(payload: FactCheckRequest, graph=Depends(get_workflow)):
 @app.post("/api/fact-check/stream")
 async def fact_check_stream(payload: FactCheckRequest, graph=Depends(get_workflow)):
     if graph is None:
-        return JSONResponse({'code':'NOT_CONFIGURED','message':'서버의 OpenAI API 설정이 필요합니다.'}, status_code=503, headers={'Cache-Control':'no-store'})
+        return JSONResponse({'code':'NOT_CONFIGURED','message':'서버의 LLM provider 설정이 필요합니다.'}, status_code=503, headers={'Cache-Control':'no-store'})
     return StreamingResponse(stream_events(graph, payload.model_dump()), media_type='application/x-ndjson', headers={'Cache-Control':'no-store','X-Accel-Buffering':'no','X-Content-Type-Options':'nosniff'})
 
 

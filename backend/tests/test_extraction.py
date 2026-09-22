@@ -133,3 +133,35 @@ def test_extractor_drops_invented_claim_without_fabricating_source_text():
             )
 
     assert asyncio.run(run()) == {"claims": []}
+
+
+def test_extractor_supports_gemini_interactions_structured_output():
+    from extraction import extract_claims
+    from providers import LLMProvider
+
+    def handler(request):
+        assert str(request.url) == "https://generativelanguage.googleapis.com/v1beta/interactions"
+        assert request.headers["x-goog-api-key"] == "gemini-test-only"
+        body = json.loads(request.content)
+        assert body["model"] == "gemini-3.8-flash"
+        assert body["system_instruction"]
+        assert body["generation_config"]["thinking_level"] == "high"
+        assert body["response_format"]["mime_type"] == "application/json"
+        assert "minLength" not in json.dumps(body["response_format"]["schema"])
+        return httpx.Response(200, json={"status": "completed", "steps": [
+            {"type": "model_output", "content": [
+                {"type": "text", "text": json.dumps({"claims": [
+                    {"quote": "claim", "kind": "fact"},
+                ]})}
+            ]}
+        ]})
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            return await extract_claims(
+                {"text": "claim", "focus": "", "consent": True},
+                client=client,
+                provider=LLMProvider("gemini", "gemini-3.8-flash", "high", "gemini-test-only"),
+            )
+
+    assert asyncio.run(run())["claims"][0]["quote"] == "claim"

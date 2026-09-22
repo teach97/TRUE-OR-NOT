@@ -12,6 +12,12 @@ test('decodes fragmented UTF-8, CRLF and final unterminated result', async () =>
  const actual=await readFactCheckStream(response(JSON.stringify({type:'stage',stage:'reading',message:'읽는 중'})+'\r\n\n'+JSON.stringify({type:'result',result})), {onStage:event=>stages.push(event.message)});
  assert.deepEqual(actual,result); assert.deepEqual(stages,['읽는 중']);
 });
+test('accepts a Gemini fallback result with high reasoning', async () => {
+ const fallback = {...result, model:'gemini-3.8-flash', reasoning:'high'};
+ const actual = await readFactCheckStream(response(JSON.stringify({type:'result',result:fallback})));
+ assert.equal(actual.model,'gemini-3.8-flash');
+ assert.equal(actual.reasoning,'high');
+});
 test('surfaces structured HTTP and streamed errors; rejects malformed and incomplete streams', async () => {
  await assert.rejects(readFactCheckStream(new Response(JSON.stringify({code:'CONFIG_MISSING',message:'키 설정 필요'}),{status:503})), /키 설정 필요/);
  await assert.rejects(readFactCheckStream(response(JSON.stringify({type:'error',code:'UPSTREAM',message:'모델 접근 실패'}))), /모델 접근 실패/);
