@@ -9,8 +9,8 @@ export const documents = [
 ] as const;
 const base = createPreview({text: DEMO_TEXT, focus: DEMO_FOCUS});
 const results = [
-  {verdict: '대체로 확인됨', tone: 'cyan', summary: '예시 안내의 10월 12~14일은 원문에 나온 사흘간의 일정과 일치합니다.', evidenceIds: ['doc-1', 'doc-2']},
-  {verdict: '맥락이 생략됨', tone: 'amber', summary: '야외 전시와 공연은 무료이지만, 공예 체험에는 사전 예약과 재료비가 필요합니다.', evidenceIds: ['doc-1', 'doc-2']},
-  {verdict: '검증 대상 아님', tone: 'violet', summary: '미래 방문객에 대한 전망입니다. 예시 문서에는 추정 방식이나 비교 수치가 없습니다.', evidenceIds: []},
-];
+  {factScore: 94, scoreBand: 'verified', scoreLabel: '검증된 사실', verdict: '대체로 확인됨', tone: 'cyan', summary: '예시 안내의 10월 12~14일은 원문에 나온 사흘간의 일정과 일치합니다.', evidenceIds: ['doc-1', 'doc-2']},
+  {factScore: 50, scoreBand: 'neutral', scoreLabel: '중립(검증되지 않음)', verdict: '맥락이 생략됨', tone: 'amber', summary: '야외 전시와 공연은 무료이지만, 공예 체험에는 사전 예약과 재료비가 필요합니다.', evidenceIds: ['doc-1', 'doc-2']},
+  {factScore: 50, scoreBand: 'neutral', scoreLabel: '중립(검증되지 않음)', verdict: '검증 대상 아님', tone: 'violet', summary: '미래 방문객에 대한 전망입니다. 예시 문서에는 추정 방식이나 비교 수치가 없습니다.', evidenceIds: []},
+] as const;
 export const demoPreview: Preview = Object.freeze({...base, demo: true, claims: Object.freeze(base.claims.map((claim, i) => Object.freeze({...claim, ...results[i], evidenceIds: Object.freeze(results[i].evidenceIds)})))});

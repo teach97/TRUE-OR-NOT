@@ -15,6 +15,7 @@ from providers import (
     openai_provider,
     request_structured,
 )
+from scoring import normalize_fact_score, score_band, score_label
 
 
 _MAX_EVIDENCE_QUOTE = 2_000
@@ -65,6 +66,7 @@ class Judgment(BaseModel):
 
     claimId: str = Field(min_length=1, max_length=100)
     verdictCode: VerdictCode
+    factScore: int = Field(default=50, ge=0, le=100)
     summary: JudgmentText
     confirmed: list[JudgmentText] = Field(max_length=5)
     unresolved: list[JudgmentText] = Field(max_length=5)
@@ -234,9 +236,18 @@ def _reconcile_verdict(
     return "insufficient_evidence", None
 
 
-def _base_claim_result(claim: dict[str, Any], code: str, summary: str) -> dict[str, Any]:
+def _base_claim_result(
+    claim: dict[str, Any],
+    code: str,
+    summary: str,
+    requested_score: int = 50,
+) -> dict[str, Any]:
+    fact_score = normalize_fact_score(code, requested_score)
     return {
         **claim,
+        "factScore": fact_score,
+        "scoreBand": score_band(fact_score),
+        "scoreLabel": score_label(fact_score),
         "verdictCode": code,
         "verdict": _VERDICT_LABELS[code],
         "tone": "positive" if code == "mostly_supported" else "negative" if code == "contradicted" else "neutral",
@@ -319,7 +330,7 @@ def ground_judgments(
         elif code == "conflicting_sources" and not summary:
             summary = "동일한 비교 조건의 지지·반박 원문이 함께 확인되었습니다."
 
-        result = _base_claim_result(claim, code, summary)
+        result = _base_claim_result(claim, code, summary, judgment.factScore)
         result["confirmed"] = confirmed
         result["unresolved"] = unresolved
         result["warnings"] = warnings
@@ -338,6 +349,7 @@ def _empty_judgments(fact_claims: list[dict[str, Any]]) -> list[dict[str, Any]]:
         {
             "claimId": claim["id"],
             "verdictCode": "insufficient_evidence",
+            "factScore": 50,
             "summary": "직접 근거 또는 검증 조건이 부족합니다.",
             "confirmed": [],
             "unresolved": [],
@@ -400,6 +412,8 @@ async def verify_claims(
                 "when a mismatch is material and unknown when it cannot be established. "
                 "No direct evidence means insufficient_evidence. "
                 "conflicting_sources requires same-condition supports and contradicts from different sources. "
+                "Return factScore as an integer from 0 to 100. Use 80-100 for verified, 60-79 for mostly true, "
+                "40-59 for neutral or unverified, 20-39 for mostly false, and 0-19 for false. "
                 "Opinions and predictions are handled outside this request. Do not invent dates, sources, or certainty."
             ),
             input_data={

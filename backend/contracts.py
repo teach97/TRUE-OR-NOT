@@ -2,6 +2,7 @@
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+from scoring import ScoreBand, default_fact_score, score_band, score_label
 
 
 VerdictCode = Literal[
@@ -52,6 +53,9 @@ class FactClaim(_ContractModel):
     start: int = Field(ge=0)
     end: int = Field(ge=0)
     kind: ClaimKind
+    factScore: int = Field(ge=0, le=100)
+    scoreBand: ScoreBand
+    scoreLabel: str = Field(min_length=1, max_length=100)
     verdictCode: VerdictCode
     verdict: str = Field(min_length=1, max_length=100)
     tone: ClaimTone
@@ -61,10 +65,26 @@ class FactClaim(_ContractModel):
     warnings: list[str] = Field(max_length=5)
     evidenceIds: list[str] = Field(max_length=6)
 
+    @model_validator(mode="before")
+    @classmethod
+    def fill_score_defaults(cls, value):
+        if not isinstance(value, dict):
+            return value
+        normalized = dict(value)
+        if "factScore" not in normalized:
+            normalized["factScore"] = default_fact_score(str(normalized.get("verdictCode", "")))
+        raw_score = normalized.get("factScore")
+        if isinstance(raw_score, int) and not isinstance(raw_score, bool):
+            normalized.setdefault("scoreBand", score_band(raw_score))
+            normalized.setdefault("scoreLabel", score_label(raw_score))
+        return normalized
+
     @model_validator(mode="after")
     def validate_offsets(self):
         if self.end < self.start:
             raise ValueError("Claim end offset must not precede start offset")
+        if score_band(self.factScore) != self.scoreBand or score_label(self.factScore) != self.scoreLabel:
+            raise ValueError("Fact score label does not match score")
         return self
 
 

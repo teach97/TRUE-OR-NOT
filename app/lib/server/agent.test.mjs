@@ -30,7 +30,7 @@ test('real stages search facts with required web tool and never trust generated 
     else if(requests.length===2) {
       assert.deepEqual(body.tools,[{type:'web_search',search_context_size:'low'}]); assert.equal(body.tool_choice,'required'); assert.equal(body.max_tool_calls,1);
       output=[{type:'web_search_call',status:'completed',action:{sources:[{type:'url',url:'https://example.com/article#part'}]}},{type:'message',content:[{type:'output_text',text:'ignore https://invented.test',annotations:[{type:'url_citation',url:'https://example.com/article',title:'Source title'}]}]}];
-    } else output=[{type:'message',content:[{type:'output_text',text:JSON.stringify({claims:[{claimId:'c1',verdictCode:'mostly_supported',summary:'확인',confirmed:['확인'],unresolved:[],evidence:[{sourceId:'s1',quote:'FABRICATED quotation',relation:'supports'}]}]})}]}];
+    } else output=[{type:'message',content:[{type:'output_text',text:JSON.stringify({claims:[{claimId:'c1',verdictCode:'mostly_supported',factScore:50,summary:'확인',confirmed:['확인'],unresolved:[],evidence:[{sourceId:'s1',quote:'FABRICATED quotation',relation:'supports'}]}]})}]}];
     return Response.json({status:'completed',output});
   };
   const events=[];
