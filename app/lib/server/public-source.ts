@@ -55,7 +55,7 @@ export async function fetchPublicText(raw: string, signal: AbortSignal): Promise
         const result=await new Promise<{location?:string;text?:string}>((resolveResponse,rejectResponse)=>{
           const transport=target.url.protocol==='https:'?httpsRequest:httpRequest;
           const req=transport(target.url,{
-            signal:combined, agent:false, headers:{'User-Agent':'FactLens/1.0 (source verification)','Accept':'text/html,text/plain','Accept-Encoding':'identity'},
+            signal:combined, agent:false, headers:{'User-Agent':'TrueOrNot/1.0 (source verification)','Accept':'text/html,text/plain','Accept-Encoding':'identity'},
             // Pin the validated DNS answer; never resolve a second time at connection time.
             lookup:(_hostname,options,callback)=>{
               if (options.all) callback(null,[target.address]);

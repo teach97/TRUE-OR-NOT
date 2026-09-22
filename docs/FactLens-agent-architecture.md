@@ -1,4 +1,4 @@
-# FactLens 팩트 검증 에이전트 설계
+# True or Not 팩트 검증 에이전트 설계
 
 ## 선택한 연결 방식
 
@@ -14,7 +14,7 @@
 ## 구성
 
 ```text
-현재 FactLens UI
+현재 True or Not UI
   → GET /api/fact-check : 설정 유무 확인
   → POST /api/fact-check : 동의한 원문·확인 요청 전송
       → 주장 추출 (최대 3개, 원문 위치 검증)

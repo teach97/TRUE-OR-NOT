@@ -111,7 +111,7 @@ async def fetch_public_text(raw):
         async with aiohttp.ClientSession(connector=connector, trust_env=False,
                 cookie_jar=aiohttp.DummyCookieJar(), auto_decompress=False,
                 timeout=aiohttp.ClientTimeout(total=8), headers={
-                    'User-Agent':'FactLens/1.0 (source verification)',
+                    'User-Agent':'TrueOrNot/1.0 (source verification)',
                     'Accept':'text/html,text/plain', 'Accept-Encoding':'identity'}) as session:
             return await _read_url(session, raw)
 

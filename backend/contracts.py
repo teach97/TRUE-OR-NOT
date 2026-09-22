@@ -1,4 +1,4 @@
-"""Validated Python representation of the public FactLens result contract."""
+"""Validated Python representation of the public True or Not result contract."""
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator

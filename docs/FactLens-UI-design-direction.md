@@ -1,4 +1,4 @@
-# FactLens UI 고도화 디자인 방향
+# True or Not UI 고도화 디자인 방향
 
 ## 범위
 

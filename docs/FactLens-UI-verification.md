@@ -1,4 +1,4 @@
-# FactLens UI 고도화 구현·검증 기록
+# True or Not UI 고도화 구현·검증 기록
 
 ## 구현 범위
 
@@ -12,7 +12,7 @@
 - `app/components/demo-fixture.ts`: 명시적인 합성 예시와 문서
 - `app/components/lens-visual.tsx`: 지연 로딩 Paper Design 쉐이더와 정적 렌즈 fallback
 - `app/globals.css`: 반응형 다크 글래스 디자인, 포커스·reduced-motion, 모바일 가독성
-- `app/layout.tsx`: FactLens 페이지 제목
+- `app/layout.tsx`: True or Not 페이지 제목
 
 Motion은 선택·내용 전환에, Paper Design은 렌즈 장식에 사용합니다. Liquid Glass의 기존 폼 이중 렌더링은 제거하고 CSS 글래스로 대체했습니다. Three.js 계열과 사용하지 않는 패키지는 억지로 화면에 로드하지 않았으며 의존성 파일은 이번 작업에서 수정하지 않았습니다.
 

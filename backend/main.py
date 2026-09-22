@@ -1,4 +1,4 @@
-"""Local FactLens API backed by the assembled LangGraph workflow."""
+"""Local True or Not API backed by the assembled LangGraph workflow."""
 from typing import Literal
 
 from fastapi import Depends, FastAPI, Response
@@ -12,7 +12,7 @@ from runtime import build_runtime_workflow, load_settings
 from schemas import FactCheckRequest
 
 
-app = FastAPI(title="FactLens Backend", version="0.1.0")
+app = FastAPI(title="True or Not Backend", version="0.1.0")
 
 
 class HealthStatus(BaseModel):
