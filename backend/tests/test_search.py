@@ -6,6 +6,34 @@ import httpx
 import pytest
 
 
+@pytest.mark.parametrize(("urls", "expected"), [
+    (["https://a.example/1", "https://b.example/2", "https://youtube.com/watch?v=3"],
+     ["https://a.example/1", "https://b.example/2", "https://youtube.com/watch?v=3"]),
+    (["https://dailymotion.com/1", "https://dailymotion.com/2", "https://dailymotion.com/3"],
+     ["https://dailymotion.com/1", "https://dailymotion.com/2"]),
+    (["https://a.example/story?id=1&utm_source=x", "https://a.example/story?id=1&utm_source=y", "https://a.example/story?id=2"],
+     ["https://a.example/story?id=1&utm_source=x", "https://a.example/story?id=2"]),
+])
+def test_search_preserves_candidate_order_and_strict_duplicate_limits(urls, expected):
+    from search import search_sources
+
+    def handler(request):
+        return httpx.Response(200, json={"status": "completed", "output": [
+            {"type": "web_search_call", "status": "completed", "action": {
+                "sources": [{"url": url, "title": f"Result {i}"} for i, url in enumerate(urls)],
+            }},
+        ]})
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            return await search_sources({"claims": [{"id": "c1", "quote": "AGI", "kind": "fact"}],
+                                         "consent": True}, api_key="test-only", client=client)
+
+    result = asyncio.run(run())
+    assert [s["url"] for s in result["sources"]] == expected
+    assert [s["id"] for s in result["sources"]] == [f"s{i+1}" for i in range(len(expected))]
+
+
 def test_search_collects_deduplicated_candidates_without_evidence():
     assert importlib.util.find_spec("search") is not None, "Search adapter missing"
     from search import search_sources

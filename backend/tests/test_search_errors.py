@@ -60,14 +60,14 @@ def test_question_claims_are_searchable():
 
 
 def test_candidates_filter_unsafe_urls_and_limit_results():
-    urls = ["file:///etc/passwd", "http://localhost/a", "http://127.0.0.1/", "http://user:password@example.org", "https://example.org:8080/", "https://example.org/\nfoo"] + [f"https://example.org/{i}" for i in range(10)]
+    urls = ["file:///etc/passwd", "http://localhost/a", "http://127.0.0.1/", "http://user:password@example.org", "https://example.org:8080/", "https://example.org/\nfoo"] + [f"https://example{i}.org/article" for i in range(10)]
     def handler(request):
         return httpx.Response(200, json={"status":"completed", "output":[{"type":"web_search_call", "status":"completed", "action":{"sources":[{"url":u} for u in urls]}}]})
     async def run():
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             return await search_sources({"claims":[{"id":"c1", "kind":"fact", "quote":"claim"}], "consent":True}, api_key="test-only", client=client)
     sources = asyncio.run(run())["sources"]
-    assert [s["url"] for s in sources] == [f"https://example.org/{i}" for i in range(6)]
+    assert [s["url"] for s in sources] == [f"https://example{i}.org/article" for i in range(6)]
 
 
 def test_completed_empty_search_is_not_a_verdict():

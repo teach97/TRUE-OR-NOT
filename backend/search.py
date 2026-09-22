@@ -5,7 +5,7 @@ URL checks here are syntactic. The future fetcher must validate DNS and redirect
 import ipaddress
 import re
 from collections import Counter
-from urllib.parse import urlsplit, urlunsplit
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 import httpx
 from providers import (
@@ -174,40 +174,30 @@ def origin_group_for_url(raw_url: str) -> str:
 
 
 def _select_diverse_sources(candidates: list[dict], limit: int = 6) -> list[dict]:
-    """Keep relevant order while reserving room for different source types."""
+    """Preserve provider order with a strict site cap, not a Google rank claim."""
     selected: list[dict] = []
     selected_urls: set[str] = set()
-    type_seen: set[str] = set()
     group_counts: Counter[str] = Counter()
 
-    for diversify in (True, False):
-        for source in candidates:
-            if len(selected) >= limit:
-                return selected
-            if source["url"] in selected_urls:
-                continue
-            group = source["originGroupId"]
-            if group_counts[group] >= 2:
-                continue
-            source_type = source["sourceType"]
-            if diversify and source_type in type_seen:
-                continue
-            selected.append(source)
-            selected_urls.add(source["url"])
-            type_seen.add(source_type)
-            group_counts[group] += 1
-    # If the provider returned only a narrow set of publishers, keep useful
-    # candidates rather than making the UI look empty. The diversity cap is a
-    # preference when alternatives exist, not a hard evidence requirement.
     for source in candidates:
         if len(selected) >= limit:
             return selected
-        if source["url"] in selected_urls:
+        key = _source_identity(source["url"])
+        group = source["originGroupId"]
+        if key in selected_urls or group_counts[group] >= 2:
             continue
         selected.append(source)
-        selected_urls.add(source["url"])
-
+        selected_urls.add(key)
+        group_counts[group] += 1
     return selected
+
+
+def _source_identity(url: str) -> str:
+    """Ignore known tracking parameters only for deduplication, never fetching."""
+    parts = urlsplit(url)
+    query = [(key, value) for key, value in parse_qsl(parts.query, keep_blank_values=True)
+             if not key.lower().startswith("utm_") and key.lower() not in {"fbclid", "gclid", "msclkid"}]
+    return urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(query), ""))
 
 
 def build_search_query(text: str) -> str:
@@ -277,10 +267,16 @@ async def search_sources(
             if url is None:
                 continue
             host = urlsplit(url).hostname
-            previous = found.get(url, {})
+            key = _source_identity(url)
+            previous = found.get(key, {})
             title = candidate.get("title")
             title = title.strip()[:300] if isinstance(title, str) and title.strip() else previous.get("title", host)
-            found[url] = {
+            if previous:
+                # Enrich a bare host title without changing the first URL or position.
+                if previous["title"] in {host, _normalized_host(url)}:
+                    previous["title"] = title
+                continue
+            found[key] = {
                 "url": url,
                 "title": title,
                 "publisher": host,

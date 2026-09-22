@@ -4,6 +4,24 @@ import pytest
 import sources
 
 
+def test_read_node_attempts_sources_sequentially_even_after_failure():
+    events = []
+
+    async def reader(url):
+        events.append(("start", url))
+        await asyncio.sleep(0)
+        events.append(("end", url))
+        if url.endswith("/1"):
+            raise ValueError("UNAVAILABLE")
+        return "Actual source content", url
+
+    candidates = [{"id": f"s{i}", "url": f"https://example.org/{i}"} for i in range(1, 4)]
+    state = asyncio.run(sources.read_sources({"sources": candidates}, reader=reader))
+    assert events == [(event, source["url"]) for source in candidates for event in ("start", "end")]
+    assert [s["id"] for s in state["sources"]] == ["s1", "s2", "s3"]
+    assert [s["accessStatus"] for s in state["sources"]] == ["unavailable", "verified", "verified"]
+
+
 class Response:
     def __init__(self, status=200, headers=None, body=b'<p>Public source text.</p>'):
         self.status = status
