@@ -2,10 +2,11 @@
 
 import { AnimatePresence, MotionConfig, motion, useReducedMotion } from 'motion/react';
 import { useEffect, useReducer, useRef, useState } from 'react';
-import type { FormEvent, ReactNode } from 'react';
+import type { CSSProperties, FormEvent, ReactNode } from 'react';
 import { initialState, transition } from './demo-state';
 import type { Claim } from './demo-state';
 import type { FactCheckResult } from '../lib/fact-check-contract';
+import { scoreBand, scoreLabel } from '../lib/fact-score';
 import { FactCheckError, readFactCheckStream, safeSourceUrl } from './fact-check-client';
 import { DEMO_FOCUS, DEMO_TEXT, demoPreview, documents } from './demo-fixture';
 import ScrambleText from './scramble-text';
@@ -15,45 +16,80 @@ import CountUp from './count-up';
 import LatticeLoader from './lattice-loader';
 
 type IconName = 'lens' | 'grid' | 'book' | 'arrow' | 'file' | 'link' | 'close' | 'download' | 'plus' | 'shield' | 'check' | 'reset';
+
 function Icon({name, size = 18}: {name: IconName; size?: number}) {
   const paths: Record<IconName, ReactNode> = {
     lens: <><circle cx="10.5" cy="10.5" r="6.5"/><path d="m16 16 5 5M8 10.5h5M10.5 8v5"/></>,
     grid: <><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><rect x="14" y="14" width="6" height="6" rx="1"/></>,
     book: <><path d="M12 5v15M12 5C8 2 4 4 3 4v15c3-1 6-1 9 1 3-2 6-2 9-1V4c-3-1-6-1-9 1Z"/></>,
-    arrow: <path d="M4 12h16m-6-6 6 6-6 6"/>, file: <><path d="M14 3H5v18h14V8Zm0 0v5h5M8 12h8M8 16h5"/></>,
+    arrow: <path d="M4 12h16m-6-6 6 6-6 6"/>,
+    file: <><path d="M14 3H5v18h14V8Zm0 0v5h5M8 12h8M8 16h5"/></>,
     link: <><path d="m10 13 4-4M8 15l-2 2a3 3 0 0 1-4-4l5-5a3 3 0 0 1 4 0M13 16a3 3 0 0 0 4 0l5-5a3 3 0 0 0-4-4l-2 2"/></>,
-    close: <path d="m6 6 12 12M6 18 18 6"/>, download: <path d="M12 3v12m-4-4 4 4 4-4M4 17v4h16v-4"/>,
-    plus: <path d="M12 5v14M5 12h14"/>, shield: <><path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6Z"/><path d="m8 12 3 3 5-6"/></>,
-    check: <path d="m5 12 4 4L19 6"/>, reset: <><path d="M3 5v5h5M3 10a9 9 0 1 1 1 8"/></>,
+    close: <path d="m6 6 12 12M6 18 18 6"/>,
+    download: <path d="M12 3v12m-4-4 4 4 4-4M4 17v4h16v-4"/>,
+    plus: <path d="M12 5v14M5 12h14"/>,
+    shield: <><path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6Z"/><path d="m8 12 3 3 5-6"/></>,
+    check: <path d="m5 12 4 4L19 6"/>,
+    reset: <><path d="M3 5v5h5M3 10a9 9 0 1 1 1 8"/></>,
   };
   return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name]}</svg>;
 }
-function Badge({claim}: {claim: Claim}) { return <span className={`badge ${claim.tone}`}><span aria-hidden="true">{claim.tone === 'cyan' ? '✓' : claim.tone === 'amber' ? '!' : '—'}</span>{claim.verdict || '판정하지 않음'}</span>; }
+
+function Badge({claim}: {claim: Claim}) {
+  const mark = claim.scoreBand === 'verified' ? '✓' : claim.scoreBand === 'false' ? '×' : '!';
+  return <span className={`badge score-${claim.scoreBand}`}><span aria-hidden="true">{mark}</span>{claim.scoreLabel}</span>;
+}
+
 function FactScore({claim}: {claim: Pick<Claim, 'id' | 'factScore' | 'scoreBand' | 'scoreLabel'>}) {
   return <div className="fact-score" data-score-band={claim.scoreBand} data-testid="fact-score" aria-label={`${claim.scoreLabel}, ${claim.factScore}점`}>
-    <div className="fact-score-heading"><span>팩트 점수</span><span>0–100</span></div>
+    <div className="fact-score-heading"><span>팩트 점수</span><span>0-100</span></div>
     <div className="fact-score-value"><CountUp key={`${claim.id}-${claim.factScore}`} from={0} to={claim.factScore} duration={1.1} separator=","/><span>점</span></div>
     <strong>{claim.scoreLabel}</strong>
   </div>;
 }
+
+function TrustIndex({score, claimCount, sourceCount, evidenceCount, warningCount}: {score: number | null; claimCount: number; sourceCount: number; evidenceCount: number; warningCount: number}) {
+  const band = score === null ? 'neutral' : scoreBand(score);
+  const ringStyle = score === null ? undefined : ({'--trust-score': `${score}%`} as CSSProperties);
+  return <div className={`trust-index ${score === null ? 'is-empty' : ''}`} data-score-band={band}>
+    <div className="trust-index-head">
+      <div><span className="metric-label">종합 신뢰지수</span><h3>근거가 확인된 정도</h3></div>
+      {score !== null && <span className={`score-label score-${band}`}>{scoreLabel(score)}</span>}
+    </div>
+    <div className="trust-index-main">
+      <div className="trust-ring" style={ringStyle} aria-label={score === null ? '검증 대기 중' : `종합 신뢰지수 ${score}점`}>
+        <div className="trust-ring-inner">{score === null ? <span className="trust-empty">대기</span> : <><CountUp key={`trust-${score}`} from={0} to={score} duration={1.2}/><small>/ 100</small></>}</div>
+      </div>
+      <div className="trust-copy">
+        <strong>{score === null ? '검증을 시작하면 지수가 표시됩니다.' : '주장별 점수의 평균입니다.'}</strong>
+        <p>{score === null ? '원문을 보내면 주장, 출처, 인용을 한 화면에서 연결해 볼 수 있습니다.' : '출처의 개수만으로 점수를 올리지 않고, 확인된 인용과 남은 불확실성을 함께 반영합니다.'}</p>
+      </div>
+    </div>
+    <div className="dashboard-stats" aria-label="검증 요약">
+      <div><span>검증 주장</span><strong>{claimCount}</strong></div>
+      <div><span>검토 출처</span><strong>{sourceCount}</strong></div>
+      <div><span>연결 근거</span><strong>{evidenceCount}</strong></div>
+      <div><span>확인 필요</span><strong>{warningCount}</strong></div>
+    </div>
+  </div>;
+}
+
+type ChatMessage = {id: string; role: 'assistant' | 'user'; text: string; meta?: string; tone?: 'normal' | 'error'};
+const WELCOME_MESSAGE: ChatMessage = {id: 'welcome', role: 'assistant', text: '확인하고 싶은 주장이나 원문을 보내줘. 문장을 나누고, 직접 확인할 수 있는 출처와 인용을 연결해볼게.'};
+
 function Modal({open, title, onClose, children}: {open: boolean; title: string; onClose: () => void; children: ReactNode}) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     if (open && !ref.current?.open) ref.current?.showModal();
     else if (!open && ref.current?.open) ref.current.close();
   }, [open]);
-  return <dialog ref={ref} className="dialog" aria-labelledby="dialog-heading" onClose={onClose} onClick={e => {if (e.target === e.currentTarget) onClose();}}>
+  return <dialog ref={ref} className="dialog" aria-labelledby="dialog-heading" onClose={onClose} onClick={event => {if (event.target === event.currentTarget) onClose();}}>
     <div className="dialog-head"><span className="eyebrow">True or Not · 근거 워크스페이스</span><button className="icon-button" onClick={onClose} aria-label="대화상자 닫기"><Icon name="close"/></button></div>
     <h2 id="dialog-heading">{title}</h2>{children}<button className="secondary-button dialog-done" onClick={onClose}>확인했습니다</button>
   </dialog>;
 }
-type PanelProps = {
-  as?: 'div' | 'section' | 'article';
-  className?: string;
-  children: ReactNode;
-  'aria-labelledby'?: string;
-};
 
+type PanelProps = {as?: 'div' | 'section' | 'article'; className?: string; children: ReactNode; 'aria-labelledby'?: string};
 function Panel({as = 'div', className = '', children, 'aria-labelledby': labelledBy}: PanelProps) {
   const Element = as;
   return <Element className={`panel-host ${className}`} aria-labelledby={labelledBy}>{children}</Element>;
@@ -64,26 +100,33 @@ export default function FactCheckDashboard() {
   const [state, dispatch] = useReducer(transition, initialState);
   const [draft, setDraft] = useState('');
   const [focus, setFocus] = useState('');
-  const [url, setUrl] = useState('');
-  const [mode, setMode] = useState<'text' | 'url'>('text');
   const [sample, setSample] = useState(false);
   const [mobileTab, setMobileTab] = useState('results');
   const [dialog, setDialog] = useState<string | null>(null);
   const [notice, setNotice] = useState('');
+  const [messages, setMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE]);
   const request = useRef<AbortController | null>(null);
   const generation = useRef(0);
+  const messageCounter = useRef(0);
   const [consent, setConsent] = useState(false);
   const [configured, setConfigured] = useState<boolean | null>(null);
   const [configError, setConfigError] = useState(false);
   const [liveResult, setLiveResult] = useState<FactCheckResult | null>(null);
   const editor = useRef<HTMLTextAreaElement>(null);
   const snapshot = state.snapshot;
-  const selected = snapshot?.claims.find(c => c.id === state.selectedId);
-  const sourceDocs = snapshot?.demo && selected ? documents.filter(d => selected.evidenceIds.includes(d.id)) : [];
-  const activeDocument = documents.find(d => d.id === dialog);
+  const selected = snapshot?.claims.find(claim => claim.id === state.selectedId);
+  const sourceDocs = snapshot?.demo && selected ? documents.filter(document => selected.evidenceIds.includes(document.id)) : [];
+  const activeDocument = documents.find(document => document.id === dialog);
   const busy = state.status === 'loading';
   const configurationHelp = '서버 설정이 필요합니다. backend/.env에 OPENAI_API_KEY 또는 GEMINI_API_KEY를 설정한 뒤 서버를 다시 시작해 주세요. 키를 화면이나 채팅에 입력하지 마세요.';
   const serviceLabel = configured === true ? 'LLM fallback 설정됨 · 접근 미확인' : configured === false ? 'LLM 키 미설정' : configError ? '설정 확인 실패' : '서버 설정 확인 중';
+  const trustScore = snapshot?.claims.length ? Math.round(snapshot.claims.reduce((total, claim) => total + claim.factScore, 0) / snapshot.claims.length) : null;
+  const sourceCount = snapshot ? snapshot.demo ? documents.length : liveResult?.sources.length ?? 0 : 0;
+  const evidenceCount = snapshot ? snapshot.demo ? snapshot.claims.reduce((total, claim) => total + claim.evidenceIds.length, 0) : liveResult?.evidence.length ?? 0 : 0;
+  const warningCount = snapshot ? snapshot.demo ? snapshot.claims.filter(claim => claim.scoreBand !== 'verified').length : liveResult?.warnings.length ?? 0 : 0;
+  const selectedEvidence = selected && liveResult ? liveResult.evidence.filter(evidence => evidence.claimId === selected.id && selected.evidenceIds.includes(evidence.id)) : [];
+  const selectedLiveClaim = selected && liveResult ? liveResult.claims.find(claim => claim.id === selected.id) : null;
+
   useEffect(() => {
     const controller = new AbortController();
     fetch('/api/fact-check', {signal: controller.signal, cache: 'no-store'})
@@ -91,145 +134,189 @@ export default function FactCheckDashboard() {
       .catch(() => {if (!controller.signal.aborted) setConfigError(true);});
     return () => {controller.abort(); generation.current++; request.current?.abort();};
   }, []);
-  function stop() {generation.current++; request.current?.abort(); request.current = null;}
+
+  function addMessage(message: Omit<ChatMessage, 'id'>) {
+    setMessages(current => [...current, {...message, id: `message-${messageCounter.current++}`}]);
+  }
+
+  function stop() {
+    generation.current++;
+    request.current?.abort();
+    request.current = null;
+  }
+
   function loadSample() {
-    stop(); setLiveResult(null); dispatch({type: 'cancel'}); dispatch({type: 'load', snapshot: demoPreview});
-    setDraft(DEMO_TEXT); setFocus(DEMO_FOCUS); setMode('text'); setSample(true); setConsent(false);
+    stop();
+    setLiveResult(null);
+    dispatch({type: 'cancel'});
+    dispatch({type: 'load', snapshot: demoPreview});
+    setDraft(DEMO_TEXT);
+    setFocus(DEMO_FOCUS);
+    setSample(true);
+    setConsent(false);
+    setMessages([
+      WELCOME_MESSAGE,
+      {id: 'sample-user', role: 'user', text: DEMO_TEXT, meta: `확인 요청: ${DEMO_FOCUS}`},
+      {id: 'sample-assistant', role: 'assistant', text: '합성 예시를 준비했어. 아래 대시보드에서 주장별 점수와 같은 원자료를 공유하는 출처를 확인해봐.', meta: '외부 전송 없음'},
+    ]);
     setNotice('가상의 행사 예시를 불러왔습니다. 외부 전송 없이 예시 문서를 비교합니다.');
   }
+
   function reset() {
-    stop(); setLiveResult(null); setConsent(false); dispatch({type: 'reset'}); setDraft(''); setFocus(''); setUrl(''); setSample(false); setMode('text');
-    setNotice('새 문서를 시작합니다. 원문을 붙여넣어 주세요.'); editor.current?.focus();
+    stop();
+    setLiveResult(null);
+    setConsent(false);
+    dispatch({type: 'reset'});
+    setDraft('');
+    setFocus('');
+    setSample(false);
+    setMessages([WELCOME_MESSAGE]);
+    setNotice('');
+    editor.current?.focus();
   }
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busy || request.current) return;
-    if (mode === 'url') {setNotice('URL 수집은 아직 연결되지 않았습니다. 본문을 복사해 텍스트 탭에 붙여넣어 주세요.'); return;}
     if (!draft.trim()) {setNotice('검증할 원문을 입력해 주세요.'); return;}
     if (draft.length > 12000 || focus.length > 500) {setNotice('원문은 12,000자, 확인 요청은 500자 이내로 입력해 주세요.'); return;}
     if (sample) {dispatch({type: 'load', snapshot: {...demoPreview, focus}}); setNotice('합성 예시입니다. 실제 검증 요청은 전송하지 않았습니다.'); return;}
     if (configured === false) {setNotice(configurationHelp); return;}
     if (!consent) {setNotice('외부 전송과 유료 검증 안내를 확인하고 동의해 주세요.'); return;}
+
     stop();
-    const controller = new AbortController(); request.current = controller;
+    const controller = new AbortController();
+    request.current = controller;
     const current = generation.current;
     const submitted = {text: draft, focus, consent: true as const};
-    setLiveResult(null); dispatch({type: 'reset'}); dispatch({type: 'start'});
-    setNotice('검증 요청을 서버로 전송하고 있습니다. GPT Luna Max → Gemini 3.8 Flash → Gemini 3.7 Flash');
+    addMessage({role: 'user', text: draft, meta: focus ? `확인 요청: ${focus}` : undefined});
+    setLiveResult(null);
+    dispatch({type: 'reset'});
+    dispatch({type: 'start'});
+    setNotice('검증 요청을 서버로 전송하고 있습니다.');
     try {
-      const response = await fetch('/api/fact-check', {method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify(submitted), signal:controller.signal});
-      const result = await readFactCheckStream(response, {signal:controller.signal, onStage:event => {if (generation.current === current) setNotice(event.message);}});
+      const response = await fetch('/api/fact-check', {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify(submitted), signal: controller.signal});
+      const result = await readFactCheckStream(response, {signal: controller.signal, onStage: stage => {if (generation.current === current) setNotice(stage.message);}});
       if (generation.current !== current || controller.signal.aborted) return;
       if (result.text !== submitted.text || result.focus !== submitted.focus) throw new Error('제출한 원문과 검증 결과가 일치하지 않습니다. 다시 시도해 주세요.');
-      setLiveResult(result); dispatch({type:'load', snapshot:result}); setMobileTab('results');
-      setNotice(result.claims.length ? '검증이 완료되었습니다. 출처와 남은 불확실성을 함께 확인해 주세요.' : '검증 가능한 주장을 찾지 못했습니다. 결과의 경고를 확인해 주세요.');
+      setLiveResult(result);
+      dispatch({type: 'load', snapshot: result});
+      setMobileTab('results');
+      setNotice(result.claims.length ? '검증이 완료되었습니다. 아래에서 출처와 남은 불확실성을 확인해 주세요.' : '검증 가능한 주장을 찾지 못했습니다. 결과의 경고를 확인해 주세요.');
+      addMessage({role: 'assistant', text: result.claims.length ? `${result.claims.length}개의 주장을 확인했어. 아래 대시보드에서 점수와 근거를 함께 살펴봐.` : '검증 가능한 주장을 찾지 못했어. 원문에 사실 주장이나 확인 조건을 더해 다시 시도해봐.', meta: `${result.sources.length}개 출처 · ${result.evidence.length}개 인용`});
     } catch (error) {
       if (generation.current !== current || controller.signal.aborted) return;
-      dispatch({type:'cancel'});
-      if (error instanceof FactCheckError && /CONFIG|KEY_MISSING/i.test(error.code)) {setConfigured(false); setNotice(configurationHelp);}
-      else setNotice(error instanceof Error ? `검증 실패: ${error.message} 다시 시도하실 수 있습니다.` : '검증 요청에 실패했습니다. 네트워크를 확인하고 다시 시도해 주세요.');
-    } finally {if (generation.current === current) request.current = null;}
+      dispatch({type: 'cancel'});
+      const message = error instanceof FactCheckError && /CONFIG|KEY_MISSING/i.test(error.code) ? configurationHelp : error instanceof Error ? `검증 실패: ${error.message} 다시 시도하실 수 있습니다.` : '검증 요청에 실패했습니다. 네트워크를 확인하고 다시 시도해 주세요.';
+      if (error instanceof FactCheckError && /CONFIG|KEY_MISSING/i.test(error.code)) setConfigured(false);
+      setNotice(message);
+      addMessage({role: 'assistant', text: message, tone: 'error'});
+    } finally {
+      if (generation.current === current) request.current = null;
+    }
   }
+
   function download() {
     if (!snapshot) return;
     const content = snapshot.demo ? {title: 'True or Not 합성 예시', disclaimer: '실제 검증 결과가 아닙니다.', ...snapshot, documents} : {title: 'True or Not 검증 결과', disclaimer: 'AI 검증에는 오류가 있을 수 있습니다. 원출처를 확인해 주세요.', ...liveResult};
     const blobUrl = URL.createObjectURL(new Blob([JSON.stringify(content, null, 2)], {type: 'application/json;charset=utf-8'}));
-    const link = document.createElement('a'); link.href = blobUrl; link.download = snapshot.demo ? 'true-or-not-demo.json' : 'true-or-not-result.json'; link.click();
-    setTimeout(() => URL.revokeObjectURL(blobUrl), 1000); setNotice(snapshot.demo ? '합성 예시 JSON 다운로드를 요청했습니다.' : '원문·출처·불확실성을 포함한 검증 JSON 다운로드를 요청했습니다.');
+    const link = document.createElement('a');
+    link.href = blobUrl;
+    link.download = snapshot.demo ? 'true-or-not-demo.json' : 'true-or-not-result.json';
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+    setNotice(snapshot.demo ? '합성 예시 JSON 다운로드를 요청했습니다.' : '원문·출처·불확실성을 포함한 검증 JSON 다운로드를 요청했습니다.');
   }
+
   const select = (id: string) => dispatch({type: 'select', id});
   const original = snapshot && (() => {
-    const chunks: ReactNode[] = []; let cursor = 0;
-    snapshot.claims.forEach((claim, i) => {
+    const chunks: ReactNode[] = [];
+    let cursor = 0;
+    snapshot.claims.forEach((claim, index) => {
       chunks.push(snapshot.text.slice(cursor, claim.start));
-      chunks.push(<button key={claim.id} className={`sentence ${claim.id === state.selectedId ? 'selected' : ''}`} aria-pressed={claim.id === state.selectedId} onClick={() => select(claim.id)}><span className="sentence-number">0{i + 1}</span>{claim.quote}</button>);
+      chunks.push(<button key={claim.id} className={`sentence ${claim.id === state.selectedId ? 'selected' : ''}`} aria-pressed={claim.id === state.selectedId} onClick={() => select(claim.id)}><span className="sentence-number">{String(index + 1).padStart(2, '0')}</span>{claim.quote}</button>);
       cursor = claim.end;
     });
-    chunks.push(snapshot.text.slice(cursor)); return chunks;
+    chunks.push(snapshot.text.slice(cursor));
+    return chunks;
   })();
+
   return <MotionConfig reducedMotion="user"><div className="app-shell" id="top">
     <FloatingLinesBackground />
     <a className="skip-link" href="#workspace-main">본문으로 건너뛰기</a>
     <aside className="sidebar">
       <a className="brand" href="#top" aria-label="True or Not 홈"><span className="brand-symbol"><Icon name="lens" size={25}/></span><span><ScrambleText>True or Not</ScrambleText><small>TRUE OR NOT</small></span></a>
-      <div className="workspace-label"><span className="workspace-avatar">F</span><div>나의 워크스페이스<small>텍스트 검증 · 예시 체험</small></div></div>
+      <div className="workspace-label"><span className="workspace-avatar">F</span><div>나의 워크스페이스<small>대화형 팩트체크</small></div></div>
       <p className="nav-caption">워크스페이스</p>
       <LineSidebar
         className="workspace-nav"
         ariaLabel="주요 메뉴"
         items={[
-          {label: '근거 워크스페이스', icon: <Icon name="grid"/>},
-          {label: '새 문서 시작', icon: <Icon name="plus"/>},
-          {label: '검증 가이드', icon: <Icon name="book"/>},
+          {label: '대화 시작', icon: <Icon name="plus"/>},
+          {label: '검증 대시보드', icon: <Icon name="grid"/>},
+          {label: '검증 원칙', icon: <Icon name="book"/>},
         ]}
         defaultActive={0}
         onItemClick={index => {
-          if (index === 0) document.getElementById('review')?.scrollIntoView({behavior: reduce ? 'auto' : 'smooth', block: 'start'});
-          if (index === 1) reset();
+          if (index === 0) document.getElementById('top')?.scrollIntoView({behavior: reduce ? 'auto' : 'smooth', block: 'start'});
+          if (index === 1) document.getElementById('review')?.scrollIntoView({behavior: reduce ? 'auto' : 'smooth', block: 'start'});
           if (index === 2) setDialog('guide');
         }}
       />
-      <div className="sidebar-bottom"><div className="principle-card"><Icon name="shield"/><strong>결론보다, 근거를 먼저.</strong><p>확인된 내용과 아직 모르는 내용을 나란히 살펴보세요.</p><button onClick={() => setDialog('guide')}>우리의 검증 원칙 <Icon name="arrow" size={15}/></button></div><div className="local-status"><span/>{serviceLabel}</div><p className="sidebar-foot">TRUE OR NOT / EVIDENCE WORKSPACE</p></div>
+      <div className="sidebar-bottom"><div className="principle-card"><Icon name="shield"/><strong>결론보다, 근거를 먼저.</strong><p>확인된 내용과 아직 모르는 내용을 함께 살펴보세요.</p><button onClick={() => setDialog('guide')}>검증 원칙 보기 <Icon name="arrow" size={15}/></button></div><div className="local-status"><span/>{serviceLabel}</div><p className="sidebar-foot">TRUE OR NOT / EVIDENCE WORKSPACE</p></div>
     </aside>
     <div className="main-shell">
-      <header className="topbar"><div className="breadcrumb"><span className="mobile-brand">True or Not</span></div><div className="topbar-actions"><button className="text-button" aria-label="사용 가이드" onClick={() => setDialog('guide')}><Icon name="book"/><span>사용 가이드</span></button><span className="profile-mark" aria-label="로컬 워크스페이스">F</span></div></header>
+      <header className="topbar"><div className="breadcrumb"><span className="mobile-brand">True or Not</span><strong>대화형 팩트체크</strong></div><div className="topbar-actions"><button className="text-button" aria-label="사용 가이드" onClick={() => setDialog('guide')}><Icon name="book"/><span>사용 가이드</span></button><span className="profile-mark" aria-label="로컬 워크스페이스">F</span></div></header>
       <main id="workspace-main" className="page-content">
-        <Panel as="section" className="composer" aria-labelledby="composer-heading">
-          <div className="section-heading"><div><span className="step-label">01 / 문서 입력</span><h2 id="composer-heading"><ScrambleText>어떤 내용을 확인하고 싶으세요?</ScrambleText></h2></div><button className="text-button" aria-label="초기화" onClick={reset}><Icon name="reset" size={16}/><span>초기화</span></button></div>
-          <form onSubmit={submit}>
-            <div className="input-mode" role="group" aria-label="입력 방식"><button type="button" aria-pressed={mode === 'text'} onClick={() => setMode('text')}><Icon name="file" size={16}/>텍스트 입력</button><button type="button" aria-pressed={mode === 'url'} onClick={() => setMode('url')}><Icon name="link" size={16}/>URL 입력<span className="soon-label">준비 중</span></button></div>
-            {mode === 'text' ? <div className="editor-wrap"><label htmlFor="document-text">확인할 원문 {sample && <span className="inline-demo">· 합성 예시</span>}</label><textarea ref={editor} id="document-text" value={draft} onChange={e => {setDraft(e.target.value); setSample(false);}} placeholder="기사, 댓글, 궁금한 문장을 붙여넣어 주세요." rows={3} maxLength={12000} onKeyDown={e => {if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {e.preventDefault(); e.currentTarget.form?.requestSubmit();}}}/><span className="character-count">{draft.length.toLocaleString()} / 12,000</span></div> : <div className="url-wrap"><label htmlFor="document-url">확인할 페이지 주소</label><input id="document-url" type="url" value={url} onChange={e => setUrl(e.target.value)} placeholder="https://…"/><p>URL 수집은 아직 연결되지 않았습니다. 원문을 복사해 <button type="button" className="inline-link" onClick={() => setMode('text')}>텍스트로 붙여넣어 주세요.</button></p></div>}
-            <div className="focus-row"><label htmlFor="focus-request"><Icon name="lens" size={16}/>확인 요청 <span>선택</span></label><input id="focus-request" value={focus} maxLength={500} onChange={e => setFocus(e.target.value)} placeholder="예: 행사 일정과 무료 참여 조건이 궁금해요."/></div>
-            <div className="focus-note"><div><p>GPT Luna Max → Gemini 3.8 Flash → Gemini 3.7 Flash · reasoning max/high · 웹 검색 사용. 유료 요청이며 시간이 걸릴 수 있습니다.</p>{!sample && <label><input type="checkbox" checked={consent} onChange={e => setConsent(e.target.checked)} disabled={busy}/> 원문과 확인 요청을 서버·OpenAI 또는 Gemini에 보내고 웹 검색에 사용하는 데 동의합니다. 민감한 정보는 제외해 주세요.</label>}<p>{configured === false ? configurationHelp : serviceLabel}</p></div></div><div className="composer-bottom"><p><Icon name="shield" size={15}/>{sample ? '합성 예시는 외부로 전송하지 않습니다.' : '동의한 검증 요청만 외부로 전송합니다.'}</p><div className="submit-actions">{busy && <button type="button" className="secondary-button" onClick={() => {stop(); dispatch({type: 'cancel'}); setNotice('검증 요청을 취소했습니다. 이미 전송된 요청에는 비용이 발생할 수 있습니다.');}}>취소</button>}<button className="primary-button" disabled={busy || mode === 'url' || !draft.trim()}>{busy ? '검증 진행 중' : sample ? '예시 다시 보기' : '팩트 검증 시작'}<Icon name="arrow" size={17}/></button></div></div>
+        <section className="composer panel-host chat-hero" aria-labelledby="chat-heading">
+          <div className="chat-intro"><span className="chat-kicker"><Icon name="shield" size={15}/>근거를 연결하는 대화</span><h1 id="chat-heading">무엇을 확인해볼까요?</h1><p>주장이나 원문을 보내면, 확인된 사실과 남은 불확실성을 출처와 함께 보여줄게.</p></div>
+          <div className="chat-thread" aria-live="polite">
+            {messages.map(message => <motion.div key={message.id} className={`chat-message ${message.role === 'user' ? 'is-user' : 'is-assistant'} ${message.tone === 'error' ? 'is-error' : ''}`} initial={reduce ? false : {opacity: 0, y: 10}} animate={{opacity: 1, y: 0}} transition={{duration: reduce ? 0 : .22}}>
+              {message.role === 'assistant' && <span className="chat-avatar"><Icon name="lens" size={16}/></span>}
+              <div className="chat-bubble"><p>{message.text}</p>{message.meta && <small>{message.meta}</small>}</div>
+            </motion.div>)}
+            {busy && <div className="chat-message is-assistant chat-message--loading" data-testid="verification-loading"><span className="chat-avatar"><Icon name="lens" size={16}/></span><div className="chat-bubble"><div className="chat-loader-row"><LatticeLoader label="검증 중" doneLabel="검증 완료" errorLabel="검증 실패" pattern="orbit" grid={3} shape="round" cellSize={7} gap={3} fontSize={12} step={75} idleOpacity={0.15} glow color="#91ddd6" showTimer/><span>{notice || '근거를 모으고 사실 여부를 대조하고 있습니다.'}</span></div></div></div>}
+          </div>
+          <form className="chat-form" onSubmit={submit}>
+            <div className="chat-input-shell">
+              <label className="sr-only" htmlFor="document-text">확인할 원문</label>
+              <textarea ref={editor} id="document-text" value={draft} onChange={event => {setDraft(event.target.value); if (sample) {setSample(false); setMessages([WELCOME_MESSAGE]);}}} placeholder="확인하고 싶은 주장이나 원문을 입력해 주세요." rows={3} maxLength={12000} onKeyDown={event => {if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {event.preventDefault(); event.currentTarget.form?.requestSubmit();}}}/>
+              <div className="chat-input-meta"><span>{draft.length.toLocaleString()} / 12,000</span><span>Ctrl + Enter로 보내기</span></div>
+              <div className="chat-toolbar">
+                <div className="chat-tools"><button type="button" className="chat-tool" onClick={() => setDialog('guide')}><Icon name="plus" size={17}/><span>검증 조건</span></button><span className="chat-tool is-static"><Icon name="link" size={16}/><span>웹 검색</span></span><label className="chat-focus-control" htmlFor="focus-request"><Icon name="lens" size={15}/><span>확인 요청</span><input id="focus-request" value={focus} maxLength={500} onChange={event => setFocus(event.target.value)} placeholder="선택 입력"/></label></div>
+                <div className="chat-send-group"><span className="chat-model">GPT Luna Max <small>fallback</small></span><button type="submit" className="chat-send" disabled={busy || !draft.trim()} aria-label={busy ? '검증 진행 중' : sample ? '예시 다시 보기' : '팩트 검증 시작'}><Icon name="arrow" size={19}/></button></div>
+              </div>
+            </div>
+            <div className="chat-footer"><div>{!sample && <label className="consent-control"><input type="checkbox" checked={consent} onChange={event => setConsent(event.target.checked)} disabled={busy}/><span>외부 전송과 웹 검색 사용에 동의합니다.</span></label>}{sample && <span className="sample-state"><Icon name="shield" size={14}/>합성 예시는 외부로 전송하지 않습니다.</span>}</div><button type="button" className="sample-chip" onClick={loadSample}>예시로 시작하기 <Icon name="arrow" size={14}/></button></div>
           </form>
-          <div className="sample-row"><span>예시로 둘러보기</span><button onClick={loadSample}><span className="sample-dot"/>가상 도시의 문화 행사<Icon name="arrow" size={14}/></button><span className="sample-explainer">일정 · 참여 조건 · 예측</span></div>
-        </Panel>
-        <div className={`notice-line ${busy ? 'notice-line--loading' : ''}`} role="status" aria-live="polite">
-          {busy ? <div className="verification-loading" data-testid="verification-loading"><LatticeLoader label="검증 중" doneLabel="검증 완료" errorLabel="검증 실패" pattern="orbit" grid={3} shape="round" cellSize={7} gap={3} fontSize={13} step={75} idleOpacity={0.15} glow color="#91ddd6" showTimer/><span>{notice || '근거를 모으고 사실 여부를 대조하고 있습니다.'}</span></div> : notice || (configured === false ? configurationHelp : '원문을 입력해 실제 검증을 시작하거나, 합성 예시를 선택해 둘러보세요.')}
-        </div>
+          <div className={`chat-status ${busy ? 'is-busy' : ''}`} role="status" aria-live="polite">{busy ? notice || '검증을 진행하고 있습니다.' : notice || (configured === false ? configurationHelp : '원문을 입력하거나 예시로 시작해 근거를 확인해 보세요.')}</div>
+        </section>
+
         <section id="review" className="review-section" aria-labelledby="review-heading">
-          <div className="review-heading"><div><span className="step-label">02 / 원문과 근거</span><h2 id="review-heading"><ScrambleText>흩어진 근거를, 한눈에.</ScrambleText></h2></div><button className="secondary-button export-button" disabled={!snapshot || busy} onClick={download}><Icon name="download" size={16}/><span>{snapshot?.demo ? '예시 내보내기' : '결과 내보내기'}</span></button></div>
+          <div className="review-heading dashboard-heading"><div><span className="section-kicker">검증 대시보드</span><h2 id="review-heading">판정은 아래에서 근거를 만납니다.</h2><p>주장별 신뢰지수, 확인된 인용, 출처의 관계를 한 흐름으로 살펴보세요.</p></div><button className="secondary-button export-button" disabled={!snapshot || busy} onClick={download}><Icon name="download" size={16}/><span>{snapshot?.demo ? '예시 내보내기' : '결과 내보내기'}</span></button></div>
           {snapshot ? <>
-            <div className="review-meta"><span className="document-title"><Icon name="file" size={16}/>{snapshot.demo ? '가을빛 축제 안내 · 합성 예시' : '직접 입력한 문서 · 실제 검증'}</span><div><span>후보 <b>{snapshot.claims.length}</b></span><span>{snapshot.demo ? '예시 문서' : '수집 출처'} <b>{snapshot.demo ? documents.length : liveResult?.sources.length ?? 0}</b></span><span>원자료 그룹 <b>{snapshot.demo ? new Set(documents.map(d => d.group)).size : '관계별 확인'}</b></span></div></div>
-            <div className="mobile-tabs" role="group" aria-label="검토 화면 선택">{[['original','원문'],['results','결과'],['sources','출처']].map(([value, label]) => <button key={value} aria-pressed={mobileTab === value} onClick={() => setMobileTab(value)}>{label}</button>)}</div>
-            <div className={`review-body mobile-${mobileTab}`}>
-              <div className="claim-selector" aria-label="주장 후보 선택">{snapshot.claims.map((claim, index) => <motion.button key={claim.id} layout={!reduce} className={`claim-card ${selected?.id === claim.id ? 'is-selected' : ''}`} aria-pressed={selected?.id === claim.id} onClick={() => select(claim.id)}><div className="claim-card-top"><span>주장 0{index + 1}</span><Badge claim={claim}/></div><strong>{claim.quote}</strong><span className="claim-card-bottom">{selected?.id === claim.id ? '선택한 주장' : '근거 살펴보기'}<Icon name={selected?.id === claim.id ? 'check' : 'arrow'} size={15}/></span></motion.button>)}</div>
-              <Panel as="article" className="original-panel"><div className="panel-top"><h3><Icon name="file" size={17}/>원문 읽기</h3><span>{snapshot.demo ? '합성 문서' : '제출한 원문'}</span></div><div className="original-content"><span className="article-kicker">{snapshot.demo ? '문화 · 행사 / 가상의 사례' : '제출 원문 / 실제 fallback 모델 · 웹 검색 검증'}</span><h3>{snapshot.demo ? '달빛시 가을빛 축제,\n알아두면 좋은 세 가지' : '직접 입력한 원문'}</h3><p className="article-byline">{snapshot.demo ? 'True or Not 예시 편집실 · 실제 기사 아님' : '검증 요청 시점의 원문을 보존했습니다.'}</p><div className="original-text">{original}</div><div className="highlight-legend"><span/>노란 강조는 선택한 문장입니다. 판정 색상이 아닙니다.</div>{snapshot.focus && <div className="focus-note"><Icon name="lens" size={17}/><div><strong>확인하고 싶은 내용</strong><p>{snapshot.focus}</p><small>{snapshot.demo ? '예시의 비교 범위를 보여드립니다.' : '이 요청을 검증의 참고 범위로 전달했습니다.'}</small></div></div>}</div><div className="original-footer"><Icon name="shield" size={15}/>{snapshot.demo ? '실제 인물·지역·사건과 무관한 합성 예시입니다.' : '원문에서 추출한 최대 3개의 주장을 검증합니다.'}</div></Panel>
-              {selected && snapshot.demo && <Panel className="evidence-panel"><div className="panel-top"><h3><Icon name="lens" size={18}/>주장별 근거</h3><span>{snapshot.demo ? '예시 비교' : '백엔드 미연결'}</span></div><AnimatePresence mode="wait" initial={false}><motion.div className="detail-content" key={selected.id} initial={reduce ? false : {opacity: 0, y: 4}} animate={{opacity: 1, y: 0}} exit={{opacity: 0}} transition={{duration: reduce ? 0 : 0.16}}><div className="result-overview"><span className="article-kicker">선택한 주장 · {snapshot.demo ? '예시 판정' : '문장 후보'}</span><h3>{selected.quote}</h3><FactScore claim={selected}/><Badge claim={selected}/><p>{selected.summary}</p></div><div className="source-content"><div className="source-heading"><h4>근거 문서 비교</h4><span>{sourceDocs.length}개 예시 문서</span></div>{sourceDocs.length ? <><div className="comparison-note"><span className="group-symbol">A</span><p><strong>같은 원자료를 공유합니다.</strong><br/>문서 2개가 독립적인 근거 2개를 뜻하지 않습니다.</p></div>{sourceDocs.map((doc, i) => <button className="source-card" key={doc.id} onClick={() => setDialog(doc.id)}><div className="source-card-top"><span className="source-index">0{i + 1}</span><span className="source-kind">{doc.relation} · 예시</span><Icon name="arrow" size={16}/></div><strong>{doc.title}</strong><span className="source-publisher">{doc.publisher} · {doc.date}</span><blockquote>“{selected.id === 'claim-1' ? (doc.id === 'doc-1' ? '가을빛 축제는 10월 12일부터 14일까지 달빛공원에서 진행합니다.' : '행사는 10월 12일부터 14일까지 열립니다.') : (doc.id === 'doc-1' ? '공예 체험은 사전 예약이 필요하며 재료비 5,000원이 있습니다.' : '공예 체험은 별도 예약과 재료비가 필요합니다.')}”</blockquote><span className="source-footer">원자료 그룹 A <span>예시 문서 전문 보기</span></span></button>)}<p className="evidence-caution">인용 표현은 아래 문서 전문에서 확인해 주세요. 모든 문서는 시연용으로 작성되었습니다.</p></> : <div className="empty-evidence"><Icon name="file" size={27}/><h4>{snapshot.demo ? '비교할 근거가 없습니다' : '아직 검증하지 않았습니다'}</h4><p>{snapshot.demo ? '미래 전망을 현재 사실로 확정하지 않습니다. 예시 문서에도 방문객 추정 근거는 없습니다.' : '현재는 문장을 나누어 보여드리는 로컬 미리보기입니다. 검색·판정 API가 연결되기 전까지 출처와 판정을 생성하지 않습니다.'}</p></div>}</div></motion.div></AnimatePresence></Panel>}
-              {!snapshot.demo && liveResult && <Panel className="evidence-panel">
-                <div className="panel-top"><h3><Icon name="lens" size={18}/>주장별 근거</h3><span>수집된 원문 비교</span></div>
-                <div className="detail-content">
-                  {selected && <>
-                    <div className="result-overview"><h3>{selected.quote}</h3><FactScore claim={selected}/><Badge claim={selected}/><p>{selected.summary}</p></div>
-                    <div className="source-content"><h4>근거 문서 비교</h4>
-                      {liveResult.evidence.filter(e => e.claimId === selected.id && selected.evidenceIds.includes(e.id)).map(e => {
-                        const source = liveResult.sources.find(s => s.id === e.sourceId);
-                        const href = source && safeSourceUrl(source.url);
-                        return <div className="source-card" key={e.id}>
-                          <span className="source-kind">{e.relation === 'supports' ? '지지 근거' : e.relation === 'contradicts' ? '반박 근거' : '맥락 근거'}</span>
-                          {href ? <a href={href} target="_blank" rel="noopener noreferrer">{source?.title}</a> : <strong>{source?.title || '출처 확인 불가'}</strong>}
-                          <p className="source-publisher">{source?.publisher} · {source?.publishedAt || '발행일 미확인'}</p>
-                          <blockquote>“{e.quote}”</blockquote>
-                          <p>{e.quoteVerified ? '원문 인용 일치 확인' : '인용 일치 미확인'} · 출처 독립성은 별도 확인이 필요합니다.</p>
-                        </div>;
-                      })}
-                      {!selected.evidenceIds.length && <div className="empty-evidence"><h4>비교할 근거가 없습니다</h4><p>근거 부족은 거짓을 뜻하지 않습니다.</p></div>}
-                      {(() => {const claim = liveResult.claims.find(c => c.id === selected.id); return claim && <>
-                        <h4>확인된 내용</h4><ul>{claim.confirmed.map((text, i) => <li key={i}>{text}</li>)}</ul>
-                        <h4>남은 불확실성</h4><ul>{claim.unresolved.map((text, i) => <li key={i}>{text}</li>)}</ul>
-                        <h4>주장별 주의사항</h4><ul>{claim.warnings.map((text, i) => <li key={i}>{text}</li>)}</ul>
-                      </>;})()}
-                    </div>
-                  </>}
-                  <div className="source-content"><h4>검증 한계</h4><ul>{liveResult.warnings.map((text, i) => <li key={i}>{text}</li>)}</ul></div>
+            <div className="dashboard-meta"><span className="document-title"><Icon name={snapshot.demo ? 'book' : 'file'} size={16}/>{snapshot.demo ? '합성 예시 · 외부 전송 없음' : '직접 입력한 원문 · 실제 검증'}</span><div><span>{snapshot.claims.length}개 주장</span><span>{sourceCount}개 출처</span><span>{snapshot.demo ? '시연용 데이터' : liveResult?.checkedAt || '검증 시점 기록됨'}</span></div></div>
+            <div className="dashboard-top-grid">
+              <Panel className="trust-panel"><TrustIndex score={trustScore} claimCount={snapshot.claims.length} sourceCount={sourceCount} evidenceCount={evidenceCount} warningCount={warningCount}/></Panel>
+              <Panel className="claim-panel"><div className="panel-top"><h3><Icon name="grid" size={17}/>주장별 점수</h3><span>선택하면 근거가 바뀝니다</span></div><div className="claim-selector" aria-label="주장 후보 선택">{snapshot.claims.map((claim, index) => <motion.button key={claim.id} layout={!reduce} className={`claim-card ${selected?.id === claim.id ? 'is-selected' : ''}`} aria-pressed={selected?.id === claim.id} onClick={() => select(claim.id)}><div className="claim-card-top"><span>주장 {String(index + 1).padStart(2, '0')}</span><Badge claim={claim}/></div><div className="claim-card-score"><strong>{claim.factScore}</strong><span>점</span></div><p>{claim.quote}</p><span className="claim-card-bottom">{selected?.id === claim.id ? '선택한 주장' : '근거 살펴보기'}<Icon name={selected?.id === claim.id ? 'check' : 'arrow'} size={15}/></span></motion.button>)}</div></Panel>
+            </div>
+            <div className="mobile-tabs" role="group" aria-label="검토 화면 선택"><button aria-pressed={mobileTab === 'original'} onClick={() => setMobileTab('original')}>원문</button><button aria-pressed={mobileTab === 'results'} onClick={() => setMobileTab('results')}>결과</button><button aria-pressed={mobileTab === 'sources'} onClick={() => setMobileTab('sources')}>출처</button></div>
+            <div className={`dashboard-detail-layout mobile-${mobileTab}`}>
+              <Panel as="article" className="original-panel"><div className="panel-top"><h3><Icon name="file" size={17}/>원문</h3><span>{snapshot.demo ? '합성 문서' : '제출한 원문'}</span></div><div className="original-content"><span className="article-kicker">{snapshot.demo ? '문화 행사 · 가상의 사례' : '검증 요청 시점의 원문'}</span><h3>{snapshot.demo ? '달빛시 가을빛 축제, 알아두면 좋은 내용' : '검증한 원문'}</h3><p className="article-byline">{snapshot.demo ? 'True or Not 예시 편집실 · 실제 기사 아님' : '원문을 보존한 상태로 주장을 추출했습니다.'}</p><div className="original-text">{original}</div><div className="highlight-legend"><span/>강조된 문장을 선택하면 오른쪽 근거가 바뀝니다.</div>{snapshot.focus && <div className="focus-note"><Icon name="lens" size={17}/><div><strong>확인하고 싶은 내용</strong><p>{snapshot.focus}</p><small>{snapshot.demo ? '예시의 비교 범위를 보여드립니다.' : '검증의 참고 범위로 전달했습니다.'}</small></div></div>}</div><div className="original-footer"><Icon name="shield" size={15}/>{snapshot.demo ? '실제 인물·지역·사건과 무관한 합성 예시입니다.' : '원문에서 추출한 최대 3개의 주장을 검증합니다.'}</div></Panel>
+              <Panel className="evidence-panel"><div className="panel-top"><h3><Icon name="lens" size={18}/>선택한 주장과 근거</h3><span>{snapshot.demo ? '예시 비교' : '수집된 원문 비교'}</span></div><AnimatePresence mode="wait" initial={false}><motion.div className="detail-content" key={selected?.id || 'empty'} initial={reduce ? false : {opacity: 0, y: 5}} animate={{opacity: 1, y: 0}} exit={{opacity: 0}} transition={{duration: reduce ? 0 : 0.18}}>{selected ? <>
+                <div className="result-overview"><span className="article-kicker">선택한 주장</span><h3>{selected.quote}</h3><FactScore claim={selected}/><Badge claim={selected}/><p>{selected.summary}</p></div>
+                <div className="source-content"><div className="source-heading"><h4>근거 출처</h4><span>{snapshot.demo ? sourceDocs.length : selectedEvidence.length}개 연결</span></div>
+                  {snapshot.demo ? sourceDocs.length ? <><div className="comparison-note"><span className="group-symbol">A</span><p><strong>같은 원자료를 공유합니다.</strong><br/>출처 2개가 독립적인 근거 2개를 뜻하지 않습니다.</p></div>{sourceDocs.map((source, index) => <button className="source-card" key={source.id} onClick={() => setDialog(source.id)}><div className="source-card-top"><span className="source-index">{String(index + 1).padStart(2, '0')}</span><span className="source-kind">{source.relation} · 예시</span><Icon name="arrow" size={16}/></div><strong>{source.title}</strong><span className="source-publisher">{source.publisher} · {source.date}</span><blockquote>“{selected.id === 'claim-1' ? source.id === 'doc-1' ? '가을빛 축제는 10월 12일부터 14일까지 달빛공원에서 진행합니다.' : '행사는 10월 12일부터 14일까지 열립니다.' : source.id === 'doc-1' ? '공예 체험은 사전 예약이 필요하며 재료비 5,000원이 있습니다.' : '공예 체험은 별도 예약과 재료비가 필요합니다.'}”</blockquote><span className="source-footer">원자료 그룹 A <span>전문 보기</span></span></button>)}<p className="evidence-caution">인용은 시연용 문서 전문에서 확인해 주세요. 실제 검색 결과가 아닙니다.</p></> : <div className="empty-evidence"><Icon name="file" size={27}/><h4>비교할 근거가 없습니다</h4><p>미래 전망을 현재 사실로 확정하지 않습니다. 예시 문서에도 방문객 추정 근거는 없습니다.</p></div> : selectedEvidence.length ? <>{selectedEvidence.map((evidence, index) => {const source = liveResult?.sources.find(item => item.id === evidence.sourceId); const href = source && safeSourceUrl(source.url); return <article className="source-card" key={evidence.id}><div className="source-card-top"><span className="source-index">{String(index + 1).padStart(2, '0')}</span><span className="source-kind">{evidence.relation === 'supports' ? '지지 근거' : evidence.relation === 'contradicts' ? '반박 근거' : '맥락 근거'}</span><span className="source-verified">{evidence.quoteVerified ? '인용 확인' : '확인 필요'}</span></div>{href ? <a className="source-title-link" href={href} target="_blank" rel="noopener noreferrer">{source?.title || '출처 열기'} <Icon name="arrow" size={14}/></a> : <strong>{source?.title || '출처 확인 불가'}</strong>}<span className="source-publisher">{source?.publisher || '발행 기관 미확인'} · {source?.publishedAt || '발행일 미확인'}</span><blockquote>“{evidence.quote}”</blockquote><p className="source-caption">원문 인용 일치 확인 · 출처 독립성은 별도 확인이 필요합니다.</p></article>;})}</> : <div className="empty-evidence"><Icon name="file" size={27}/><h4>비교할 근거가 없습니다</h4><p>근거 부족은 거짓을 뜻하지 않습니다. 확인 가능한 원문이 없다는 의미입니다.</p></div>}
                 </div>
-              </Panel>}
-             </div>
-          </> : <Panel className="empty-workspace"><Icon name="lens" size={34}/><h3>첫 번째 문서를 기다리고 있습니다.</h3><p>원문을 붙여넣거나 예시를 불러와 근거 비교 화면을 둘러보세요.</p><button className="secondary-button" onClick={loadSample}>예시 불러오기<Icon name="arrow"/></button></Panel>}
+                {!snapshot.demo && selectedLiveClaim && <div className="detail-blocks"><div><h4>확인된 내용</h4>{selectedLiveClaim.confirmed.length ? <ul>{selectedLiveClaim.confirmed.map((text, index) => <li key={index}>{text}</li>)}</ul> : <p>직접 확인된 내용이 없습니다.</p>}</div><div><h4>남은 불확실성</h4>{selectedLiveClaim.unresolved.length ? <ul>{selectedLiveClaim.unresolved.map((text, index) => <li key={index}>{text}</li>)}</ul> : <p>현재 기록된 불확실성이 없습니다.</p>}</div>{selectedLiveClaim.warnings.length > 0 && <div><h4>주장별 주의사항</h4><ul>{selectedLiveClaim.warnings.map((text, index) => <li key={index}>{text}</li>)}</ul></div>}</div>}
+              </> : <div className="empty-evidence"><Icon name="lens" size={27}/><h4>주장을 선택해 주세요</h4><p>위의 주장 카드를 선택하면 연결된 출처와 인용이 표시됩니다.</p></div>}</motion.div></AnimatePresence></Panel>
+              <Panel className="source-index-panel"><div className="panel-top"><h3><Icon name="book" size={17}/>검토한 출처</h3><span>{sourceCount}개 수집</span></div><div className="source-index-grid">{snapshot.demo ? documents.map((source, index) => <button className="source-index-card" key={source.id} onClick={() => setDialog(source.id)}><span className="source-index-number">{String(index + 1).padStart(2, '0')}</span><span><strong>{source.title}</strong><small>{source.publisher}</small></span><Icon name="arrow" size={15}/></button>) : liveResult?.sources.map((source, index) => {const href = safeSourceUrl(source.url); const content = <><span className="source-index-number">{String(index + 1).padStart(2, '0')}</span><span><strong>{source.title}</strong><small>{source.publisher} · {source.accessStatus === 'verified' ? '원문 확인' : '접근 불가'}</small></span><Icon name="arrow" size={15}/></>; return href ? <a className="source-index-card" href={href} target="_blank" rel="noopener noreferrer" key={source.id}>{content}</a> : <div className="source-index-card" key={source.id}>{content}</div>;})}{!sourceCount && <div className="source-index-empty">아직 수집된 출처가 없습니다.</div>}</div></Panel>
+            </div>
+          </> : <Panel className="dashboard-empty"><div className="empty-orbit"><Icon name="lens" size={31}/></div><h3>검증 결과가 이곳에 쌓입니다.</h3><p>대화창에 원문을 보내면 주장별 신뢰지수와 근거 출처를 연결해 보여드립니다.</p><div className="empty-preview-stats"><span><strong>--</strong><small>신뢰지수</small></span><span><strong>--</strong><small>검토 출처</small></span><span><strong>--</strong><small>연결 근거</small></span></div><button className="secondary-button" onClick={loadSample}>예시 대시보드 보기 <Icon name="arrow"/></button></Panel>}
         </section>
         <footer className="page-footer"><span><span className="footer-mark">F</span>True or Not <span className="footer-divider">/</span>판단을 대신하지 않고, 근거를 연결합니다.</span><button className="text-button" onClick={() => setDialog('guide')}>검증 원칙<Icon name="arrow" size={15}/></button></footer>
       </main>
     </div>
-    <Modal open={dialog !== null} title={activeDocument?.title || (dialog === 'guide' ? '근거를 읽는 세 가지 원칙' : '실제 검증과 합성 예시 안내')} onClose={() => setDialog(null)}>{activeDocument ? <><p className="dialog-notice">합성 예시 문서 · 외부 출처 링크가 아닙니다.</p><dl className="document-metadata"><dt>작성 주체</dt><dd>{activeDocument.publisher}</dd><dt>설정 날짜</dt><dd>{activeDocument.date}</dd><dt>원자료 관계</dt><dd>그룹 {activeDocument.group} · {activeDocument.relation}</dd></dl><div className="document-fulltext">{activeDocument.text}</div></> : dialog === 'guide' ? <ol className="guide-list"><li><span>01</span><div><h3>주장을 작게 나누세요.</h3><p>누가, 언제, 어디서, 어떤 조건으로 한 말인지 원문과 함께 확인하세요.</p></div></li><li><span>02</span><div><h3>출처의 수보다 관계를 보세요.</h3><p>같은 발표를 옮긴 여러 문서는 하나의 원자료를 공유할 수 있습니다.</p></div></li><li><span>03</span><div><h3>모르는 것은 남겨 두세요.</h3><p>근거가 없다고 거짓은 아닙니다. 의견과 미래 예측을 확정된 사실처럼 판정하지 않습니다.</p></div></li></ol> : <div className="about-copy"><p>달빛시와 가을빛 축제는 가상의 사례입니다. 모든 예시 문서와 판정은 인터페이스를 설명하기 위해 작성했습니다.</p><p>동의 후 검증을 시작하면 원문과 확인 요청이 서버와 OpenAI에 전달되며 웹 검색을 사용합니다. gpt-5.6-luna · max 유료 요청입니다. URL 수집은 지원하지 않습니다. 예시는 외부로 전송하지 않습니다.</p><p>이 화면은 작업 이력을 저장하지 않으며 새로고침하면 사라집니다. 외부 서비스의 데이터 처리는 해당 서비스 정책을 따릅니다. 내보내기에는 원문이 포함되고 합성 예시와 실제 결과가 구분됩니다.</p></div>}</Modal>
+    <Modal open={dialog !== null} title={activeDocument?.title || (dialog === 'guide' ? '근거를 읽는 세 가지 원칙' : '검증 안내')} onClose={() => setDialog(null)}>{activeDocument ? <><p className="dialog-notice">합성 예시 문서 · 외부 출처 링크가 아닙니다.</p><dl className="document-metadata"><dt>작성 주체</dt><dd>{activeDocument.publisher}</dd><dt>설정 날짜</dt><dd>{activeDocument.date}</dd><dt>원자료 관계</dt><dd>그룹 {activeDocument.group} · {activeDocument.relation}</dd></dl><div className="document-fulltext">{activeDocument.text}</div></> : dialog === 'guide' ? <ol className="guide-list"><li><span>01</span><div><h3>주장을 작게 나누세요.</h3><p>누가, 언제, 어디서, 어떤 조건으로 한 말인지 원문과 함께 확인하세요.</p></div></li><li><span>02</span><div><h3>출처의 수보다 관계를 보세요.</h3><p>같은 발표를 옮긴 여러 문서는 하나의 원자료를 공유할 수 있습니다.</p></div></li><li><span>03</span><div><h3>모르는 것은 남겨 두세요.</h3><p>근거가 없다고 거짓은 아닙니다. 의견과 미래 예측을 확정된 사실처럼 판정하지 않습니다.</p></div></li></ol> : <div className="about-copy"><p>동의 후 검증을 시작하면 원문과 확인 요청이 서버와 외부 모델에 전달되며 웹 검색을 사용합니다.</p><p>이 화면은 작업 이력을 저장하지 않으며 새로고침하면 사라집니다. 예시는 외부로 전송하지 않습니다.</p></div>}</Modal>
   </div></MotionConfig>;
 }

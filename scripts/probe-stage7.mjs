@@ -8,8 +8,8 @@ const browser=await chromium.launch({headless:true,channel:'chrome'});
 const observations=[], responses=[], errors=[];
 let current;
 async function waitForAppReady(page) {
-  await page.locator('.composer.panel-host').waitFor();
-  await page.locator('.focus-note').getByText('API 키 설정됨 · 접근 미확인',{exact:true}).waitFor();
+  await page.locator('.composer.panel-host.chat-hero').waitFor();
+  await page.getByRole('heading',{name:'무엇을 확인해볼까요?',exact:true}).waitFor();
 }
 async function noOverflow(page, label) {
   const size=await page.evaluate(()=>({viewport:document.documentElement.clientWidth,document:document.documentElement.scrollWidth,body:document.body.scrollWidth}));
@@ -88,7 +88,7 @@ try {
     demo.on('request',r=>{if(r.method()==='POST' && r.url()===`${base}/api/fact-check`)demoPosts.push(r.url());});
     await demo.goto(base,{waitUntil:'domcontentloaded',timeout:120000});
     await waitForAppReady(demo);
-    await demo.getByRole('button',{name:'가상 도시의 문화 행사'}).click();
+    await demo.getByRole('button',{name:'예시로 시작하기',exact:true}).click();
     const demoCards=demo.locator('.claim-card');
     assert.equal(await demoCards.count(),3);
     await demoCards.nth(0).click();
