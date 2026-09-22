@@ -324,6 +324,7 @@ def test_verify_claims_sends_only_verified_source_text():
         assert body["model"] == "gpt-5.6-luna"
         assert body["reasoning"] == {"effort": "max"}
         assert body["store"] is False
+        assert body["max_output_tokens"] >= 12000
         assert body["text"]["format"]["strict"] is True
         assert [source["id"] for source in input_data["sources"]] == ["s1"]
         assert input_data["sources"][0]["text"] == quote
@@ -373,6 +374,45 @@ def test_verify_claims_sends_only_verified_source_text():
     result = asyncio.run(run())
     assert result["claims"][0]["verdictCode"] == "mostly_supported"
     assert result["evidence"][0]["quote"] == quote
+
+
+def test_verify_claims_bounds_source_text_sent_to_model():
+    source_text = "A factual claim is reported here. " + ("Additional source text. " * 600)
+    state = {
+        "claims": [claim("c1", "A factual claim.", "fact")],
+        "focus": "",
+        "sources": [{"id": "s1", "url": "https://example.org/report", "accessStatus": "verified"}],
+        "sourceTexts": {"s1": source_text},
+    }
+
+    def handler(request):
+        body = json.loads(request.content)
+        input_data = json.loads(body["input"])
+        assert len(input_data["sources"][0]["text"]) <= 6000
+        return httpx.Response(200, json={
+            "status": "completed",
+            "output": [{
+                "type": "message",
+                "content": [{
+                    "type": "output_text",
+                    "text": json.dumps({"claims": [{
+                        "claimId": "c1",
+                        "verdictCode": "insufficient_evidence",
+                        "summary": "The bounded source excerpt is not sufficient.",
+                        "confirmed": [],
+                        "unresolved": ["The complete source was not supplied to the model."],
+                        "evidence": [],
+                    }]}),
+                }],
+            }],
+        })
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            return await verify_claims(state, api_key="test-only", client=client)
+
+    result = asyncio.run(run())
+    assert result["claims"][0]["verdictCode"] == "insufficient_evidence"
 
 
 def test_verify_claims_without_readable_sources_does_not_call_provider():

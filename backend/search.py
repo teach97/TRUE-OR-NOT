@@ -62,14 +62,18 @@ async def search_sources(state, *, api_key: str, client: httpx.AsyncClient):
         data = json.loads(body)
         if data.get("status") != "completed":
             raise ValueError("Incomplete response")
-        calls = [item for item in data["output"] if item["type"] == "web_search_call"]
-        if not calls or any(call.get("status") != "completed" for call in calls):
+        calls = [
+            item
+            for item in data["output"]
+            if item.get("type") == "web_search_call" and item.get("status") == "completed"
+        ]
+        if not calls:
             raise ValueError("Search not completed")
         found, candidates = {}, []
         for item in data["output"]:
-            if item["type"] == "web_search_call":
+            if item.get("type") == "web_search_call" and item.get("status") == "completed":
                 candidates.extend(item.get("action", {}).get("sources", []))
-            if item["type"] == "message":
+            if item.get("type") == "message":
                 for part in item.get("content", []):
                     if part.get("type") == "refusal":
                         raise ValueError("Refusal")

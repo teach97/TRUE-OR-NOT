@@ -28,3 +28,33 @@ def test_search_collects_deduplicated_candidates_without_evidence():
 
     result = asyncio.run(run())
     assert result == {"sources": [{"id": "s1", "url": "https://example.org/article", "title": "Source title", "publisher": "example.org", "accessStatus": "pending"}]}
+
+
+def test_search_keeps_completed_sources_when_response_has_nonterminal_search_item():
+    from search import search_sources
+
+    def handler(request):
+        return httpx.Response(200, json={"status": "completed", "output": [
+            {"type": "web_search_call", "status": "completed", "action": {"sources": [
+                {"url": "https://example.org/primary", "title": "Primary source"}]}},
+            {"type": "web_search_call", "status": "searching"},
+            {"type": "message", "content": []},
+        ]})
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            return await search_sources(
+                {"claims": [{"id": "c1", "quote": "Claim", "kind": "fact"}], "focus": "", "consent": True},
+                api_key="test-only",
+                client=client,
+            )
+
+    assert asyncio.run(run()) == {
+        "sources": [{
+            "id": "s1",
+            "url": "https://example.org/primary",
+            "title": "Primary source",
+            "publisher": "example.org",
+            "accessStatus": "pending",
+        }]
+    }

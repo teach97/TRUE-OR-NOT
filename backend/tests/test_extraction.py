@@ -7,7 +7,7 @@ import httpx
 import pytest
 
 
-@pytest.mark.parametrize("case", ["missing_key", "http", "incomplete", "duplicate", "invented", "multiple", "refusal"])
+@pytest.mark.parametrize("case", ["missing_key", "http", "incomplete", "duplicate", "multiple", "refusal"])
 def test_extractor_rejects_unsafe_outputs(case):
     from extraction import extract_claims
 
@@ -57,3 +57,79 @@ def test_extractor_sends_documented_options_and_preserves_utf16_offsets():
             return await extract_claims({"text": "😀 claim", "focus": "", "consent": True}, api_key="test-only", client=client)
 
     assert asyncio.run(run()) == {"claims": [{"id": "c1", "quote": "claim", "kind": "fact", "start": 3, "end": 8}]}
+
+
+def test_extractor_uses_focus_to_prioritize_without_dropping_text_claims():
+    from extraction import extract_claims
+
+    def handler(request):
+        body = json.loads(request.content)
+        instructions = body["instructions"]
+        assert "Use the focus to prioritize claims, not as a hard filter" in instructions
+        assert "Do not discard a factual claim solely because the focus asks about details absent from the text" in instructions
+        return httpx.Response(200, json={"status": "completed", "output": [{"type": "message", "content": [
+            {"type": "output_text", "text": json.dumps({"claims": [{
+                "quote": "구글, '제미나이 노트북'에 맞춤형 학습 기능 추가",
+                "kind": "fact",
+            }]})}
+        ]}]})
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            return await extract_claims(
+                {
+                    "text": "구글, '제미나이 노트북'에 맞춤형 학습 기능 추가…'듣고 말하며 공부한다'",
+                    "focus": "행사 일정과 무료 참여 조건이 궁금해요.",
+                    "consent": True,
+                },
+                api_key="test-only",
+                client=client,
+            )
+
+    result = asyncio.run(run())
+    assert result["claims"][0]["quote"].startswith("구글")
+
+
+def test_extractor_keeps_valid_claims_when_one_model_quote_is_not_in_source():
+    from extraction import extract_claims
+
+    def handler(request):
+        return httpx.Response(200, json={"status": "completed", "output": [{"type": "message", "content": [
+            {"type": "output_text", "text": json.dumps({"claims": [
+                {"quote": "valid claim", "kind": "fact"},
+                {"quote": "model paraphrase not in source", "kind": "fact"},
+            ]})}
+        ]}]})
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            return await extract_claims(
+                {"text": "valid claim", "focus": "", "consent": True},
+                api_key="test-only",
+                client=client,
+            )
+
+    result = asyncio.run(run())
+    assert [claim["quote"] for claim in result["claims"]] == ["valid claim"]
+
+
+def test_extractor_drops_invented_claim_without_fabricating_source_text():
+    from extraction import extract_claims
+
+    def handler(request):
+        return httpx.Response(200, json={"status": "completed", "output": [{"type": "message", "content": [
+            {"type": "output_text", "text": json.dumps({"claims": [{
+                "quote": "invented claim",
+                "kind": "fact",
+            }]})}
+        ]}]})
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            return await extract_claims(
+                {"text": "source text", "focus": "", "consent": True},
+                api_key="test-only",
+                client=client,
+            )
+
+    assert asyncio.run(run()) == {"claims": []}
