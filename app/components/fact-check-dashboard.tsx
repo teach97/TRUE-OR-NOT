@@ -10,6 +10,7 @@ import { FactCheckError, readFactCheckStream, safeSourceUrl } from './fact-check
 import { DEMO_FOCUS, DEMO_TEXT, demoPreview, documents } from './demo-fixture';
 import ScrambleText from './scramble-text';
 import FloatingLinesBackground from './floating-lines-background';
+import LineSidebar from './line-sidebar';
 
 type IconName = 'lens' | 'grid' | 'book' | 'arrow' | 'file' | 'link' | 'close' | 'download' | 'plus' | 'shield' | 'check' | 'reset';
 function Icon({name, size = 18}: {name: IconName; size?: number}) {
@@ -144,7 +145,21 @@ export default function FactCheckDashboard() {
       <a className="brand" href="#top" aria-label="True or Not 홈"><span className="brand-symbol"><Icon name="lens" size={25}/></span><span><ScrambleText>True or Not</ScrambleText><small>TRUE OR NOT</small></span></a>
       <div className="workspace-label"><span className="workspace-avatar">F</span><div>나의 워크스페이스<small>텍스트 검증 · 예시 체험</small></div></div>
       <p className="nav-caption">워크스페이스</p>
-      <nav aria-label="주요 메뉴"><a className="nav-item active" href="#review"><Icon name="grid"/>근거 워크스페이스<span className="nav-indicator"/></a><button className="nav-item" onClick={reset}><Icon name="plus"/>새 문서 시작</button><button className="nav-item" onClick={() => setDialog('guide')}><Icon name="book"/>검증 가이드</button></nav>
+      <LineSidebar
+        className="workspace-nav"
+        ariaLabel="주요 메뉴"
+        items={[
+          {label: '근거 워크스페이스', icon: <Icon name="grid"/>},
+          {label: '새 문서 시작', icon: <Icon name="plus"/>},
+          {label: '검증 가이드', icon: <Icon name="book"/>},
+        ]}
+        defaultActive={0}
+        onItemClick={index => {
+          if (index === 0) document.getElementById('review')?.scrollIntoView({behavior: reduce ? 'auto' : 'smooth', block: 'start'});
+          if (index === 1) reset();
+          if (index === 2) setDialog('guide');
+        }}
+      />
       <div className="sidebar-bottom"><div className="principle-card"><Icon name="shield"/><strong>결론보다, 근거를 먼저.</strong><p>확인된 내용과 아직 모르는 내용을 나란히 살펴보세요.</p><button onClick={() => setDialog('guide')}>우리의 검증 원칙 <Icon name="arrow" size={15}/></button></div><div className="local-status"><span/>{serviceLabel}</div><p className="sidebar-foot">TRUE OR NOT / EVIDENCE WORKSPACE</p></div>
     </aside>
     <div className="main-shell">
