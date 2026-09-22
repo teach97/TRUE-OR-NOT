@@ -17,6 +17,7 @@ import httpx
 ProviderKind = Literal["openai", "gemini"]
 Reasoning = Literal["max", "high"]
 _MAX_RESPONSE_BYTES = 1_000_000
+_SEARCH_TIMEOUT_SECONDS = 120
 
 
 @dataclass(frozen=True, slots=True)
@@ -193,7 +194,9 @@ def _search_payload(
             "input": serialized_input,
             "tools": [{"type": "web_search", "search_context_size": "low"}],
             "tool_choice": "required",
-            "max_tool_calls": 1,
+            # Run several targeted search passes so one publisher cannot fill
+            # the entire candidate set before the diversity selector sees it.
+            "max_tool_calls": 4,
             "include": ["web_search_call.action.sources"],
         }
     return {
@@ -307,7 +310,7 @@ async def request_search(
             endpoint,
             json=payload,
             headers=headers,
-            timeout=90,
+            timeout=_SEARCH_TIMEOUT_SECONDS,
             follow_redirects=False,
         ) as response:
             response.raise_for_status()

@@ -76,6 +76,32 @@ def test_ground_judgments_accepts_a_verified_contiguous_quote():
     ]
 
 
+def test_ground_judgments_keeps_korean_translation_for_english_quote():
+    quote = "A research prototype for a universal AI assistant."
+    translation = "범용 AI 비서를 위한 연구용 프로토타입."
+    result = ground_judgments(
+        [claim("c1", "아스트라는 범용 AI 비서다", "unclear")],
+        [{
+            "claimId": "c1",
+            "verdictCode": "mostly_supported",
+            "summary": "출처가 해당 설명을 직접 제시합니다.",
+            "confirmed": [],
+            "unresolved": [],
+            "evidence": [{
+                "sourceId": "s1",
+                "quote": quote,
+                "quoteTranslation": translation,
+                "relation": "supports",
+                "comparison": "same",
+            }],
+        }],
+        [{"id": "s1", "url": "https://example.org/ai", "accessStatus": "verified"}],
+        {"s1": quote},
+    )
+
+    assert result["evidence"][0]["quoteTranslation"] == translation
+
+
 def test_ground_judgments_accepts_a_verified_quote_for_an_unclear_checkable_claim():
     quote = "Astra is not AGI yet."
     result = ground_judgments(
@@ -134,6 +160,40 @@ def test_invalid_quote_is_removed_and_downgrades_the_judgment():
     assert result["claims"][0]["confirmed"] == []
     assert result["claims"][0]["warnings"]
     assert result["evidence"] == []
+
+
+def test_valid_evidence_keeps_a_nuanced_summary_when_another_quote_is_rejected():
+    valid_quote = "The source says Astra is still a research project."
+    result = ground_judgments(
+        [claim("c1", "Astra is AGI.", "unclear")],
+        [{
+            "claimId": "c1",
+            "verdictCode": "mostly_supported",
+            "summary": "현재 확인된 자료만으로는 아스트라를 AGI라고 단정하기 어렵다는 쪽에 무게가 실립니다.",
+            "confirmed": [],
+            "unresolved": ["AGI의 기준과 아스트라의 실제 평가 범위가 더 필요합니다."],
+            "evidence": [
+                {
+                    "sourceId": "s1",
+                    "quote": valid_quote,
+                    "relation": "contradicts",
+                    "comparison": "same",
+                },
+                {
+                    "sourceId": "s1",
+                    "quote": "This quote is not present.",
+                    "relation": "supports",
+                    "comparison": "same",
+                },
+            ],
+        }],
+        [{"id": "s1", "url": "https://example.org/astra", "accessStatus": "verified"}],
+        {"s1": valid_quote},
+    )
+
+    assert result["claims"][0]["verdictCode"] == "insufficient_evidence"
+    assert result["claims"][0]["summary"].startswith("현재 확인된 자료만으로는")
+    assert result["evidence"][0]["quote"] == valid_quote
 
 
 def test_search_summary_is_not_used_when_source_text_is_missing():

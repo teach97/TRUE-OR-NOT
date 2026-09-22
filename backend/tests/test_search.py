@@ -13,7 +13,8 @@ def test_search_collects_deduplicated_candidates_without_evidence():
         body = json.loads(request.content)
         assert body["tools"][0]["type"] == "web_search"
         assert body["include"] == ["web_search_call.action.sources"]
-        assert body["max_tool_calls"] == 1
+        assert body["max_tool_calls"] == 4
+        assert len(body["input"]) > 0
         assert body["store"] is False
         return httpx.Response(200, json={"status": "completed", "output": [
             {"type": "web_search_call", "status": "completed", "action": {"sources": [
@@ -27,7 +28,15 @@ def test_search_collects_deduplicated_candidates_without_evidence():
             return await search_sources({"claims": [{"id": "c1", "quote": "Claim", "kind": "fact"}], "focus": "", "consent": True}, api_key="test-only", client=client)
 
     result = asyncio.run(run())
-    assert result == {"sources": [{"id": "s1", "url": "https://example.org/article", "title": "Source title", "publisher": "example.org", "accessStatus": "pending"}]}
+    assert result == {"sources": [{
+        "id": "s1",
+        "url": "https://example.org/article",
+        "title": "Source title",
+        "publisher": "example.org",
+        "sourceType": "웹 출처",
+        "originGroupId": "example.org",
+        "accessStatus": "pending",
+    }]}
 
 
 def test_search_keeps_completed_sources_when_response_has_nonterminal_search_item():
@@ -55,9 +64,57 @@ def test_search_keeps_completed_sources_when_response_has_nonterminal_search_ite
             "url": "https://example.org/primary",
             "title": "Primary source",
             "publisher": "example.org",
+            "sourceType": "웹 출처",
+            "originGroupId": "example.org",
             "accessStatus": "pending",
         }]
     }
+
+
+def test_search_selects_diverse_source_types_instead_of_one_publisher():
+    from search import search_sources
+
+    def handler(request):
+        body = json.loads(request.content)
+        plan = json.loads(body["input"])["searchPlan"]
+        assert {item["sourceType"] for item in plan} >= {
+            "한국 기사",
+            "한국 블로그",
+            "커뮤니티",
+            "유튜브",
+        }
+        return httpx.Response(200, json={"status": "completed", "output": [
+            {"type": "web_search_call", "status": "completed", "action": {"sources": [
+                {"url": "https://blog.google/one", "title": "Google one"},
+                {"url": "https://blog.google/two", "title": "Google two"},
+                {"url": "https://deepmind.google/three", "title": "Google three"},
+                {"url": "https://www.hankyung.com/ai/article", "title": "한국 경제 기사"},
+                {"url": "https://blog.naver.com/example/post", "title": "한국 블로그 글"},
+                {"url": "https://www.reddit.com/r/artificial/comments/example", "title": "Reddit discussion"},
+                {"url": "https://www.youtube.com/watch?v=example", "title": "YouTube interview"},
+                {"url": "https://www.nytimes.com/2026/01/01/ai.html", "title": "International report"},
+            ]}},
+            {"type": "message", "content": []},
+        ]})
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            return await search_sources(
+                {"claims": [{"id": "c1", "quote": "아스트라가 AGI인가", "kind": "unclear"}], "focus": "", "consent": True},
+                api_key="test-only",
+                client=client,
+            )
+
+    sources = asyncio.run(run())["sources"]
+    assert len(sources) == 6
+    assert {source["sourceType"] for source in sources} >= {
+        "공식·기술 문서",
+        "한국 기사",
+        "한국 블로그",
+        "Reddit",
+        "유튜브",
+    }
+    assert sum(source["originGroupId"] == "google" for source in sources) <= 2
 
 
 def test_search_supports_gemini_google_search_citations():
@@ -100,5 +157,7 @@ def test_search_supports_gemini_google_search_citations():
         "url": "https://example.org/gemini-source",
         "title": "Gemini source",
         "publisher": "example.org",
+        "sourceType": "웹 출처",
+        "originGroupId": "example.org",
         "accessStatus": "pending",
     }]

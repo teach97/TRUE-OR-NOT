@@ -43,6 +43,7 @@ class FactEvidence(_ContractModel):
     claimId: str = Field(min_length=1, max_length=100)
     sourceId: str = Field(min_length=1, max_length=100)
     quote: str = Field(min_length=1, max_length=2_000)
+    quoteTranslation: str | None = Field(default=None, max_length=2_000)
     quoteVerified: Literal[True]
     relation: EvidenceRelation
 

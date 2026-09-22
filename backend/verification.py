@@ -58,6 +58,9 @@ class JudgmentEvidence(BaseModel):
 
     sourceId: str = Field(min_length=1, max_length=100)
     quote: str = Field(min_length=1, max_length=_MAX_EVIDENCE_QUOTE)
+    # This is presentation-only: it translates the already verified quote and
+    # is never used to decide whether the claim is supported.
+    quoteTranslation: str = Field(default="", max_length=_MAX_EVIDENCE_QUOTE)
     relation: Relation
     comparison: Comparison
 
@@ -81,12 +84,20 @@ class JudgmentResponse(BaseModel):
 
 
 class _ValidatedEvidence:
-    __slots__ = ("item", "source_id", "quote", "relation", "comparison")
+    __slots__ = (
+        "item",
+        "source_id",
+        "quote",
+        "quote_translation",
+        "relation",
+        "comparison",
+    )
 
     def __init__(self, item: dict[str, Any], quote: str, comparison: str):
         self.item = item
         self.source_id = item["sourceId"]
         self.quote = quote
+        self.quote_translation = item.get("quoteTranslation", "")
         self.relation = item["relation"]
         self.comparison = comparison
 
@@ -185,7 +196,7 @@ def _validate_evidence(
 
 
 def _evidence_dict(item: _ValidatedEvidence, claim_id: str, evidence_id: str) -> dict[str, Any]:
-    return {
+    evidence = {
         "id": evidence_id,
         "claimId": claim_id,
         "sourceId": item.source_id,
@@ -193,6 +204,9 @@ def _evidence_dict(item: _ValidatedEvidence, claim_id: str, evidence_id: str) ->
         "quoteVerified": True,
         "relation": item.relation,
     }
+    if item.quote_translation:
+        evidence["quoteTranslation"] = item.quote_translation
+    return evidence
 
 
 def _reconcile_verdict(
@@ -326,7 +340,8 @@ def ground_judgments(
 
         if rejected or code == "insufficient_evidence":
             code = "insufficient_evidence"
-            summary = "검증 가능한 직접 인용이 부족하여 결론을 유보합니다."
+            if not valid:
+                summary = "검증 가능한 직접 인용이 부족하여 결론을 유보합니다."
             confirmed = []
         elif code == "conflicting_sources" and not summary:
             summary = "동일한 비교 조건의 지지·반박 원문이 함께 확인되었습니다."
@@ -413,6 +428,9 @@ async def verify_claims(
                 "when a mismatch is material and unknown when it cannot be established. "
                 "No direct evidence means insufficient_evidence. "
                 "Write summary as a direct, nuanced answer to the claim in one or two sentences: state what the sources establish and what remains unresolved. "
+                "Write summary, confirmed, unresolved, and quoteTranslation in Korean. "
+                "For an English or other non-Korean quote, quoteTranslation must be a faithful Korean translation of that exact quote; use an empty string when the quote is already Korean. "
+                "A translation is presentation only and must not add facts or be used as evidence. "
                 "Do not defer to the user with generic wording such as 'check the sources' or 'verify it yourself'. "
                 "conflicting_sources requires same-condition supports and contradicts from different sources. "
                 "Return factScore as an integer from 0 to 100. Use 80-100 for verified, 60-79 for mostly true, "

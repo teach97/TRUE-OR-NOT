@@ -57,3 +57,22 @@ def test_read_node_records_failure_without_inventing_text():
     state = asyncio.run(sources.read_sources({'sources':[{'id':'s1','url':'https://example.org/good'}, {'id':'s2','url':'https://example.org/bad'}]}, reader=reader))
     assert [s['accessStatus'] for s in state['sources']] == ['verified','unavailable']
     assert state['sourceTexts'] == {'s1':'Actual source content'}
+
+
+def test_read_node_uses_page_title_when_search_only_provided_a_host():
+    async def reader(url):
+        return sources.SourceReadResult(
+            'Actual source content',
+            url,
+            'Astra research update · Example newsroom',
+        )
+
+    state = asyncio.run(sources.read_sources({
+        'sources': [{
+            'id': 's1',
+            'url': 'https://example.org/good',
+            'title': 'example.org',
+        }],
+    }, reader=reader))
+
+    assert state['sources'][0]['title'] == 'Astra research update · Example newsroom'

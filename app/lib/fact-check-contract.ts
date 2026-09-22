@@ -14,6 +14,7 @@ export type FactSource = {
 };
 export type FactEvidence = {
   id: string; claimId: string; sourceId: string; quote: string;
+  quoteTranslation?: string | null;
   quoteVerified: boolean; relation: 'supports' | 'contradicts' | 'context';
 };
 export type FactClaim = {

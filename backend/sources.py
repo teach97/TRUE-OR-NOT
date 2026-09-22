@@ -56,10 +56,51 @@ class _TextParser(HTMLParser):
             self.parts.append(data)
 
 
+class _TitleParser(HTMLParser):
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.in_title = False
+        self.parts = []
+
+    def handle_starttag(self, tag, attrs):
+        if tag == 'title':
+            self.in_title = True
+
+    def handle_endtag(self, tag):
+        if tag == 'title':
+            self.in_title = False
+
+    def handle_data(self, data):
+        if self.in_title:
+            self.parts.append(data)
+
+
 def html_text(raw):
     parser = _TextParser()
     parser.feed(raw)
     return ' '.join(' '.join(parser.parts).split())
+
+
+def html_title(raw):
+    parser = _TitleParser()
+    parser.feed(raw)
+    return ' '.join(' '.join(parser.parts).split())[:300]
+
+
+class SourceReadResult:
+    """Reader result with optional metadata and backwards-compatible unpacking."""
+
+    __slots__ = ('text', 'url', 'title')
+
+    def __init__(self, text, url, title=''):
+        self.text = text
+        self.url = url
+        self.title = title
+
+    def __iter__(self):
+        # Existing test and custom readers unpack only (text, url).
+        yield self.text
+        yield self.url
 
 
 def checked_url(raw):
@@ -76,7 +117,7 @@ def checked_url(raw):
     return url
 
 
-async def _read_url(session, raw):
+async def _read_url(session, raw, *, include_title=False):
     current = raw
     for attempt in range(3):
         current = checked_url(current)
@@ -97,9 +138,12 @@ async def _read_url(session, raw):
                     raise ValueError('SOURCE_TOO_LARGE')
                 body.extend(chunk)
             decoded = body.decode('utf-8', errors='replace')
+            title = html_title(decoded) if media == 'text/html' else ''
             text = html_text(decoded) if media == 'text/html' else ' '.join(decoded.split())
             if not text:
                 raise ValueError('SOURCE_EMPTY')
+            if include_title:
+                return SourceReadResult(text[:18000], current, title)
             return text[:18000], current
     raise ValueError('SOURCE_REDIRECT_LIMIT')
 
@@ -113,7 +157,15 @@ async def fetch_public_text(raw):
                 timeout=aiohttp.ClientTimeout(total=8), headers={
                     'User-Agent':'TrueOrNot/1.0 (source verification)',
                     'Accept':'text/html,text/plain', 'Accept-Encoding':'identity'}) as session:
-            return await _read_url(session, raw)
+            return await _read_url(session, raw, include_title=True)
+
+
+def _generic_title(title, raw_url):
+    if not isinstance(title, str) or not title.strip():
+        return True
+    host = (urlsplit(raw_url).hostname or '').lower().removeprefix('www.')
+    normalized = title.strip().lower().rstrip('/')
+    return normalized in {host, f'www.{host}', 'source', 'untitled'}
 
 
 async def read_sources(state, *, reader=fetch_public_text):
@@ -121,9 +173,16 @@ async def read_sources(state, *, reader=fetch_public_text):
     for source in state['sources'][:6]:
         item = {**source, 'accessStatus':'unavailable', 'retrievedAt':datetime.now(timezone.utc).isoformat()}
         try:
-            text, final_url = await reader(source['url'])
+            result = await reader(source['url'])
+            if isinstance(result, SourceReadResult):
+                text, final_url, page_title = result.text, result.url, result.title
+            else:
+                text, final_url = result
+                page_title = ''
             if not text.strip():
                 raise ValueError('SOURCE_EMPTY')
+            if page_title and _generic_title(item.get('title'), source['url']):
+                item['title'] = page_title
             item.update(accessStatus='verified', resolvedUrl=final_url)
             texts[source['id']] = text
         except (ValueError, OSError, aiohttp.ClientError, TimeoutError):
