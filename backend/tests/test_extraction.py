@@ -7,6 +7,34 @@ import httpx
 import pytest
 
 
+def test_extractor_keeps_forecast_and_returns_search_keywords_separately():
+    from extraction import extract_claims
+
+    question = "AGI는 2030년 안에 오나?"
+
+    def handler(request):
+        body = json.loads(request.content)
+        assert "Retain forecast questions" in body["instructions"]
+        return httpx.Response(200, json={"status": "completed", "output": [
+            {"type": "message", "content": [{"type": "output_text", "text": json.dumps({
+                "claims": [{"quote": question, "kind": "prediction", "searchQuery": "AGI 2030년"}],
+            })}]},
+        ]})
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            return await extract_claims(
+                {"text": question, "focus": "", "consent": True},
+                api_key="test-only", client=client,
+            )
+
+    result = asyncio.run(run())
+    assert result["searchQueries"] == {"c1": "AGI 2030년"}
+    assert result["claims"][0]["quote"] == question
+    assert result["claims"][0]["kind"] == "prediction"
+    assert "searchQuery" not in result["claims"][0]
+
+
 @pytest.mark.parametrize("case", ["missing_key", "http", "incomplete", "duplicate", "multiple", "refusal"])
 def test_extractor_rejects_unsafe_outputs(case):
     from extraction import extract_claims

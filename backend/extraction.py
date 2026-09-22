@@ -16,6 +16,7 @@ class ExtractedClaim(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
     quote: str = Field(min_length=1, max_length=12000)
     kind: Literal["fact", "opinion", "prediction", "unclear"]
+    searchQuery: str = Field(default="", max_length=300)
 
 
 class Extraction(BaseModel):
@@ -45,7 +46,11 @@ async def extract_claims(
                 "Use the focus to prioritize claims, not as a hard filter. "
                 "Do not discard a factual claim solely because the focus asks about details absent from the text; "
                 "extract the closest factual claims present and let later stages report missing context or insufficient evidence. "
-                "If the text contains no factual or otherwise checkable claim, return an empty claims list. "
+                "If the text contains no factual claim or researchable forecast, return an empty claims list. "
+                "Retain forecast questions as prediction claims so research can find expert forecasts and interviews. "
+                "For every claim, write searchQuery as concise search keywords in the user's language. "
+                "Preserve named entities, dates, numbers, negation and material conditions; remove conversational filler. "
+                "Do not invent names, years or a conclusion. For example, AGI는 2030년 안에 오나? becomes AGI 2030년. "
                 "Quote exact nonempty contiguous substrings of text. "
                 "A question asking whether a named person, product, model, event, or statement is true is still a checkable claim; "
                 "classify it as fact when it asserts a checkable proposition, or unclear when the proposition needs context, "
@@ -58,6 +63,7 @@ async def extract_claims(
         )
         parsed = Extraction.model_validate_json(text)
         claims, seen = [], set()
+        search_queries = {}
         for claim in parsed.claims:
             if claim.quote in seen or not claim.quote.strip():
                 raise ValueError("Duplicate or blank quote")
@@ -67,8 +73,11 @@ async def extract_claims(
                 # Keep valid claims when the model paraphrases another candidate.
                 continue
             utf16_start = len(request.text[:start].encode("utf-16-le")) // 2
-            claims.append({"id": f"c{len(claims) + 1}", **claim.model_dump(), "start": utf16_start,
+            claim_id = f"c{len(claims) + 1}"
+            claims.append({"id": claim_id, **claim.model_dump(exclude={"searchQuery"}), "start": utf16_start,
                            "end": utf16_start + len(claim.quote.encode("utf-16-le")) // 2})
-        return {"claims": claims}
+            if claim.searchQuery.strip():
+                search_queries[claim_id] = " ".join(claim.searchQuery.split())
+        return {"claims": claims, **({"searchQueries": search_queries} if search_queries else {})}
     except (ProviderCallError, httpx.HTTPError, ValueError, KeyError, TypeError) as exc:
         raise ValueError("EXTRACTION_FAILED") from None

@@ -3,6 +3,7 @@ import asyncio
 import importlib.util
 import json
 import httpx
+import pytest
 
 
 def test_search_collects_deduplicated_candidates_without_evidence():
@@ -161,3 +162,61 @@ def test_search_supports_gemini_google_search_citations():
         "originGroupId": "example.org",
         "accessStatus": "pending",
     }]
+
+
+def test_build_search_query_keeps_entity_and_year_from_forecast_question():
+    from search import build_search_query
+
+    assert build_search_query("AGI는 2030년 안에 오나?") == "AGI 2030년"
+
+
+@pytest.mark.parametrize(("question", "expected"), [
+    ("  AGI는   2030년 안에 오나요?  ", "AGI 2030년"),
+    ("AGI는 2030년까지 오지 않는다", "AGI 2030년까지 오지 않는다"),
+    ("Is AGI unlikely before 2030?", "Is AGI unlikely before 2030"),
+    ("가수 아이유 은퇴설", "가수 아이유 은퇴설"),
+    ("GPT-5.6 가격 20달러", "GPT-5.6 가격 20달러"),
+])
+def test_query_fallback_preserves_negation_names_and_numbers(question, expected):
+    from search import build_search_query
+
+    assert build_search_query(question) == expected
+
+
+def test_prediction_claims_are_searched_with_primary_query_in_provider_order():
+    from search import search_sources
+
+    requested = False
+
+    def handler(request):
+        nonlocal requested
+        requested = True
+        body = json.loads(request.content)
+        search_input = json.loads(body["input"])
+        assert search_input["primaryQueries"] == ["AGI 2030년"]
+        assert search_input["claims"][0]["searchQuery"] == "AGI 2030년"
+        return httpx.Response(200, json={"status": "completed", "output": [
+            {"type": "web_search_call", "status": "completed", "action": {"sources": [
+                {"url": "https://first.example/report", "title": "First result"},
+                {"url": "https://second.example/report", "title": "Second result"},
+            ]}},
+        ]})
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            return await search_sources(
+                {
+                    "claims": [{"id": "c1", "quote": "AGI는 2030년 안에 오나?", "kind": "prediction"}],
+                    "focus": "",
+                    "consent": True,
+                },
+                api_key="test-only",
+                client=client,
+            )
+
+    result = asyncio.run(run())
+    assert requested is True
+    assert [source["url"] for source in result["sources"]] == [
+        "https://first.example/report",
+        "https://second.example/report",
+    ]

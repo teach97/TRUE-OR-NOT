@@ -14,6 +14,7 @@ class FactCheckState(TypedDict, total=False):
     focus: str
     consent: bool
     claims: list[dict[str, Any]]
+    searchQueries: dict[str, str]
     sources: list[dict[str, Any]]
     sourceTexts: dict[str, str]
     evidence: list[dict[str, Any]]

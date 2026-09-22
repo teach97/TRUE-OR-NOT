@@ -6,6 +6,62 @@ from runtime import RuntimeAdapters, Settings, build_fact_check_result, build_ru
 from pydantic import SecretStr
 
 
+def test_forecast_keywords_reach_search_through_graph_without_leaking_into_result():
+    import json
+    import httpx
+    from extraction import extract_claims
+    from search import search_sources
+    from verification import verify_claims
+
+    question = "AGI는 2030년 안에 오나?"
+    # Distinct from the fallback query to detect a graph-state field being dropped.
+    keywords = "AGI 2030년 전문가 전망"
+    requests = []
+
+    def handler(request):
+        body = json.loads(request.content)
+        requests.append(body)
+        if len(requests) == 1:
+            return httpx.Response(200, json={"status": "completed", "output": [
+                {"type": "message", "content": [{"type": "output_text", "text": json.dumps({
+                    "claims": [{"quote": question, "kind": "prediction", "searchQuery": keywords}],
+                })}]},
+            ]})
+        assert json.loads(body["input"])["primaryQueries"] == [keywords]
+        return httpx.Response(200, json={"status": "completed", "output": [
+            {"type": "web_search_call", "status": "completed", "action": {"sources": []}},
+        ]})
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            async def extract(state):
+                return await extract_claims(state, api_key="test-only", client=client)
+
+            async def search(state):
+                return await search_sources(state, api_key="test-only", client=client)
+
+            async def read(state):
+                return {"sources": state["sources"], "sourceTexts": {}}
+
+            async def verify(state):
+                return await verify_claims(state, api_key="test-only", client=client)
+
+            graph = build_runtime_workflow(
+                Settings(api_key=SecretStr("test-only")),
+                adapters=RuntimeAdapters(extract=extract, search=search, read=read, verify=verify),
+            )
+            return await graph.ainvoke({"text": question, "focus": "", "consent": True})
+
+    state = asyncio.run(run())
+    assert len(requests) == 2
+    assert state["searchQueries"] == {"c1": keywords}
+    result = FactCheckResponse.model_validate({"result": state["result"]}).result
+    assert result.claims[0].kind == "prediction"
+    assert result.claims[0].verdictCode == "not_checkable"
+    assert "searchQueries" not in result.model_dump()
+    assert "searchQuery" not in result.claims[0].model_dump()
+
+
 def test_runtime_graph_assembles_valid_final_result_after_four_stages():
     seen = []
 
