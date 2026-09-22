@@ -1,5 +1,12 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: 'Pretendard';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/pretendard@1.0/Pretendard-Black.woff2') format('woff2');
+  font-weight: 900;
+  font-display: swap;
+}
+
 :root {
   --background: #0b0e14;
   --foreground: #eef1f6;
@@ -12,10 +19,10 @@
   --violet: #b5a6ef;
   --amber: #e3c383;
 }
-@theme inline { --color-background: var(--background); --color-foreground: var(--foreground); --font-sans: ui-sans-serif, system-ui, sans-serif; }
+@theme inline { --color-background: var(--background); --color-foreground: var(--foreground); --font-sans: 'Pretendard', ui-sans-serif, system-ui, sans-serif; }
 * { box-sizing: border-box; }
 html { background: var(--background); color-scheme: dark; scroll-behavior: smooth; scroll-padding-top: 24px; }
-body { margin: 0; color: var(--foreground); background: var(--background); font-family: ui-sans-serif, system-ui, sans-serif; font-size: 14px; -webkit-font-smoothing: antialiased; line-height: 1.6; }
+body { margin: 0; color: var(--foreground); background: var(--background); font-family: 'Pretendard', ui-sans-serif, system-ui, sans-serif; font-size: 14px; -webkit-font-smoothing: antialiased; line-height: 1.6; }
 button, input, textarea { font: inherit; }
 button, a, input, textarea { -webkit-tap-highlight-color: transparent; }
 button { color: inherit; cursor: pointer; border: 0; background: none; min-height: 44px; }
