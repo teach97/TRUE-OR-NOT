@@ -97,6 +97,29 @@ def _gemini_schema(schema: dict[str, Any]) -> dict[str, Any]:
     return clean(deepcopy(schema))
 
 
+def _openai_schema(schema: dict[str, Any]) -> dict[str, Any]:
+    """Normalize Pydantic schemas for OpenAI strict structured output."""
+
+    def clean(value: Any) -> Any:
+        if isinstance(value, dict):
+            normalized = {
+                key: clean(item)
+                for key, item in value.items()
+                if key != "default"
+            }
+            properties = normalized.get("properties")
+            if isinstance(properties, dict):
+                # OpenAI strict mode does not support optional object keys.
+                # Nullable values remain nullable, but every property is required.
+                normalized["required"] = list(properties)
+            return normalized
+        if isinstance(value, list):
+            return [clean(item) for item in value]
+        return value
+
+    return clean(deepcopy(schema))
+
+
 def _endpoint_and_headers(provider: LLMProvider) -> tuple[str, dict[str, str]]:
     if provider.kind == "openai":
         return (
@@ -131,7 +154,7 @@ def _structured_payload(
                     "type": "json_schema",
                     "name": "structured_result",
                     "strict": True,
-                    "schema": schema,
+                    "schema": _openai_schema(schema),
                 }
             },
         }

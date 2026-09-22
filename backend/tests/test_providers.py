@@ -78,6 +78,24 @@ def test_run_with_fallback_reaches_third_provider_when_first_two_fail():
     ]
 
 
+def test_openai_structured_schema_requires_defaulted_properties_too():
+    from providers import LLMProvider, _structured_payload
+    from verification import JudgmentResponse
+
+    schema = JudgmentResponse.model_json_schema()
+    payload = _structured_payload(
+        LLMProvider("openai", "gpt-5.6-luna", "max", "test-only"),
+        instructions="test",
+        input_data={},
+        schema=schema,
+        max_output_tokens=100,
+    )
+    judgment_schema = payload["text"]["format"]["schema"]["$defs"]["Judgment"]
+
+    assert set(judgment_schema["required"]) == set(judgment_schema["properties"])
+    assert "default" not in judgment_schema["properties"]["factScore"]
+
+
 def test_runtime_stage_retries_next_provider_after_adapter_failure(monkeypatch):
     import runtime
     from runtime import Settings, make_runtime_adapters
