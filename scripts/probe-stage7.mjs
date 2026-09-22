@@ -55,6 +55,7 @@ try {
     await page.locator('input[type=checkbox]:visible').check();
     await page.getByRole('button',{name:'팩트 검증 시작',exact:true}).click();
     await page.getByRole('status').filter({hasText:'검증이 완료되었습니다'}).waitFor();
+    await page.locator('.chat-thread').getByText('TEST ONLY summary 0',{exact:false}).waitFor();
     const cards=page.locator('.claim-card');
     assert.equal(await cards.count(),2);
     await cards.filter({hasText:'TEST ONLY first claim'}).click();

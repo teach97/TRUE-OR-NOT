@@ -29,6 +29,36 @@ def test_nonfacts_skip_network():
     assert asyncio.run(run()) == {"sources": []}
 
 
+def test_question_claims_are_searchable():
+    requested = False
+
+    def handler(request):
+        nonlocal requested
+        requested = True
+        return httpx.Response(200, json={"status": "completed", "output": [
+            {"type": "web_search_call", "status": "completed", "action": {"sources": [
+                {"url": "https://example.org/astra-agi", "title": "Astra AGI source"},
+                {"url": "https://example.org/agi-definition", "title": "AGI definition source"},
+            ]}},
+        ]})
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            return await search_sources(
+                {
+                    "claims": [{"id": "c1", "quote": "아스트라가 AGI라는게 사실이야?", "kind": "unclear"}],
+                    "focus": "AGI 여부",
+                    "consent": True,
+                },
+                api_key="test-only",
+                client=client,
+            )
+
+    result = asyncio.run(run())
+    assert requested
+    assert len(result["sources"]) == 2
+
+
 def test_candidates_filter_unsafe_urls_and_limit_results():
     urls = ["file:///etc/passwd", "http://localhost/a", "http://127.0.0.1/", "http://user:password@example.org", "https://example.org:8080/", "https://example.org/\nfoo"] + [f"https://example.org/{i}" for i in range(10)]
     def handler(request):

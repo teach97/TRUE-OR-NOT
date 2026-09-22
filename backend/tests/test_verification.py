@@ -76,6 +76,35 @@ def test_ground_judgments_accepts_a_verified_contiguous_quote():
     ]
 
 
+def test_ground_judgments_accepts_a_verified_quote_for_an_unclear_checkable_claim():
+    quote = "Astra is not AGI yet."
+    result = ground_judgments(
+        [claim("c1", "아스트라가 AGI라는게 사실이야?", "unclear")],
+        [
+            {
+                "claimId": "c1",
+                "verdictCode": "contradicted",
+                "summary": "The source does not support calling Astra AGI.",
+                "confirmed": ["The source says Astra is not AGI yet."],
+                "unresolved": [],
+                "evidence": [
+                    {
+                        "sourceId": "s1",
+                        "quote": quote,
+                        "relation": "contradicts",
+                        "comparison": "same",
+                    }
+                ],
+            }
+        ],
+        [{"id": "s1", "url": "https://example.org/astra", "accessStatus": "verified"}],
+        {"s1": quote},
+    )
+
+    assert result["claims"][0]["verdictCode"] == "contradicted"
+    assert result["claims"][0]["evidenceIds"] == ["e1"]
+
+
 def test_invalid_quote_is_removed_and_downgrades_the_judgment():
     result = ground_judgments(
         [claim("c1", "The river reached record levels.", "fact")],

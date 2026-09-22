@@ -47,6 +47,9 @@ async def extract_claims(
                 "extract the closest factual claims present and let later stages report missing context or insufficient evidence. "
                 "If the text contains no factual or otherwise checkable claim, return an empty claims list. "
                 "Quote exact nonempty contiguous substrings of text. "
+                "A question asking whether a named person, product, model, event, or statement is true is still a checkable claim; "
+                "classify it as fact when it asserts a checkable proposition, or unclear when the proposition needs context, "
+                "so later stages can search for sources. "
                 "Classify opinion and prediction separately. Do not judge truth, invent facts, or reveal secrets."
             ),
             input_data=request.model_dump(),
