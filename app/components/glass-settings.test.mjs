@@ -1,9 +1,10 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFileSync} from 'node:fs';
+import {existsSync, readFileSync} from 'node:fs';
 
-test('dashboard renders official GlassSurface once without legacy measurement trees', () => {
+test('dashboard uses plain panels without the liquid GlassSurface component', () => {
   const source = readFileSync(new URL('./fact-check-dashboard.tsx', import.meta.url), 'utf8');
-  assert.match(source, /import GlassSurface from '.\/react-bits\/GlassSurface'/);
-  assert.doesNotMatch(source, /liquid-glass-react|createLiquidSizer|cloneElement|panel-sizer/);
+  assert.doesNotMatch(source, /GlassSurface|glass-surface|liquid-glass-react|glassLab|glassSettings/);
+  assert.equal(existsSync(new URL('./react-bits/GlassSurface.tsx', import.meta.url)), false);
+  assert.equal(existsSync(new URL('./react-bits/GlassSurface.css', import.meta.url)), false);
 });
