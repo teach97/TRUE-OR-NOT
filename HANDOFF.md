@@ -1,10 +1,21 @@
 # 팩트체크 에이전트 UI MVP 작업 인계서
 
+## 2026-09-22 현재 환경 검증 업데이트
+
+이 절은 현재 `C:/Users/Playdata/Desktop/프로젝트/TRUE-OR-NOT` 환경에서 수행한 최신 실행 결과입니다. 아래 과거 기록의 오래된 `C:/Users/rlagn/.../my-app` 경로와 당시 미완료 표시는 현재 상태로 해석하지 않습니다.
+
+- **실제 LLM 호출 성공:** 현재 저장소의 FastAPI를 `127.0.0.1:8011`에서 실행하고 비민감한 문장으로 `POST /api/fact-check/stream`을 호출했습니다. HTTP 200과 `extracting → searching → reading → verifying` 네 단계 이벤트, `demo: false` 최종 결과, `gpt-5.6-luna` / `reasoning: max`를 확인했습니다. 결과 판정은 호출 실패가 아니라 수집 원문 조건 불일치에 따른 `insufficient_evidence`였습니다.
+- **실제 UI 경로 성공:** `127.0.0.1:3000`에서 원문 입력·동의·검증 시작을 수행했고, 진행 단계와 `검증이 완료되었습니다`, 실제 검증 후보 1개·수집 출처 6개를 확인했습니다.
+- **오프라인 회귀:** backend `101 passed`(기존 Starlette/AnyIO deprecation warning 1건), frontend Node `21 passed`, `tsc --noEmit --incremental false`, `npm run build`를 통과했습니다.
+- **브라우저 7단계 회귀:** 테스트 전용 FastAPI와 기본 Turbopack scratch 실행으로 데스크톱 1440×1000·모바일 390×844에서 POST `[200, 200]`, overflow 0, 중복 ID 0, 실제 결과 선택·내보내기, 독립 데모의 POST 0건, pageerror 0을 확인했습니다. 소유한 임시 서버와 포트는 runner가 정리했습니다.
+- **검증 스크립트 정합성:** Next 개발 서버의 HMR 연결 때문에 `networkidle`을 readiness 신호로 사용하지 않도록 `domcontentloaded`와 실제 hydrated 상태 selector를 사용하도록 고쳤습니다. Liquid Glass 제거 이후 남아 있던 `.factlens-glass`·`.glass-surface__content` 기대를 현재 `.panel-host`·`.detail-content` 구조로 갱신했습니다. 운영 앱 코드는 변경하지 않았습니다.
+- **환경 경계:** 실제 키는 `backend/.env`에만 존재하며 값은 로그·문서에 기록하지 않았습니다. 실제 검증 실행은 비용이 발생할 수 있으므로 비민감한 한 문장으로만 수행했습니다.
+
 ## 최종 실행 인계 — 6단계 핵심 및 7단계 고정 범위 완료
 
 ### 최종 7단계 회귀 결과 (이 절이 아래 과거 체크포인트보다 우선)
 
-- **완료:** Python 전체 101 passed(기존 Starlette/AnyIO deprecation 1건), Node 전체 5개 파일 20 passed, `uv lock --check`, `npm run typecheck`, `npm run build` 통과. 빌드는 Next.js 16.3.5 기본 Turbopack production build입니다.
+- **완료:** Python 전체 101 passed(기존 Starlette/AnyIO deprecation 1건), Node 전체 5개 파일 21 passed, `uv lock --check`, `npm run typecheck`, `npm run build` 통과. 빌드는 Next.js 16.3.5 기본 Turbopack production build입니다.
 - **브라우저 통과:** 설치된 Chrome headless, 데스크톱 1440×1000 / 모바일 390×844 각각 실제 Next → test-only FastAPI 스트림 POST 200. 첫 주장 인용·HTTPS 출처·불확실성, 둘째 주장 선택 시 이전 인용 제거·근거 없음, JSON 결과 export의 demo=false 및 claim/source/evidence 참조를 확인했습니다. 별도 새 문서에서 데모 3개 주장·근거·근거 없는 주장·demo=true JSON export를 확인했고 데모 POST 및 backend 실행 증가가 없었습니다. 측정 복제본 대신 `.liquid-panel-live:visible` 사용. 가로 overflow 및 pageerror 0개입니다.
 - **기본 개발 번들러 통과:** `next dev --hostname 127.0.0.1 --port <자동 빈 포트>`에 webpack 옵션 없이 실행하고 로그의 `Next.js 16.3.5 (Turbopack)` 및 실제 페이지/API/browser smoke를 확인했습니다. 기존 3000 서버/lock을 건드리지 않도록 scratch 복제본을 사용했습니다. node_modules junction을 해결하기 위해 **scratch의 next.config.ts만** 설치된 Next 문서에 따라 두 경로의 공통 부모를 `turbopack.root`로 지정했습니다. 원본 config 변경 없음. 원본 루트의 기존 3000 프로세스 자체를 재검증한 것은 아닙니다.
 - **증거:** `C:/Users/rlagn/AppData/Local/hermes/cache/scratch/factlens-stage7-p80au0mu/`의 `browser-evidence.json`, `cleanup.json`, `next.log`, `backend.log`, `browser.stdout`, `browser.stderr`, `desktop-result.png`, `desktop-second-claim.png`, `desktop-demo.png`, `mobile-result.png`, `mobile-second-claim.png`, `mobile-demo.png`, 양 viewport의 `*-result.json`/`*-demo.json`. 모바일 결과/데스크톱 데모 스크린샷 직접 확인. 소유 포트 14181/14182 종료 및 browser Node exit 0 확인. 서버 exit 1은 runner의 Windows taskkill 종료 결과이며 실행 실패가 아닙니다.
@@ -16,11 +27,11 @@
 
 ```bash
 # 터미널 1: 실제 backend (사용자 backend/.env, 실제 검증 제출 시 비용 발생 가능)
-cd C:/Users/rlagn/Desktop/Develop/frontend_tools/React/my-app/backend
+cd C:/Users/Playdata/Desktop/프로젝트/TRUE-OR-NOT/backend
 uv run uvicorn main:app --host 127.0.0.1 --port 8010
 
 # 터미널 2: 기본 Turbopack frontend
-cd C:/Users/rlagn/Desktop/Develop/frontend_tools/React/my-app
+cd C:/Users/Playdata/Desktop/프로젝트/TRUE-OR-NOT
 FACTLENS_BACKEND_URL=http://127.0.0.1:8010 npm run dev -- --port 3000
 # 브라우저: http://127.0.0.1:3000
 ```
@@ -28,7 +39,7 @@ FACTLENS_BACKEND_URL=http://127.0.0.1:8010 npm run dev -- --port 3000
 유료 호출 없는 이번 회귀 재현:
 
 ```bash
-cd C:/Users/rlagn/Desktop/Develop/frontend_tools/React/my-app
+cd C:/Users/Playdata/Desktop/프로젝트/TRUE-OR-NOT
 (cd backend && uv run pytest -q && uv lock --check)
 node --experimental-strip-types --test app/lib/server/*.test.mjs app/components/*.test.mjs
 npm run typecheck
@@ -42,7 +53,7 @@ git diff --check
 ### 알려진 한계 / 마감 상태
 
 - 6단계 핵심 및 **7단계의 합의된 고정 범위 완료**. 아래 역사 기록의 미완료·다음 6-C·7단계 확대 제안은 현재 TODO가 아닙니다. 새 기능/리디자인/추가 provider 호출 없이 여기서 마감합니다.
-- 이번 결과는 명시적 TEST ONLY fixture의 비데모 UI 경로이며 실제 사실 검증 품질 증거가 아닙니다. 이전 유료 전체 결과/export 성공 기록을 유지하고 이번에는 유료 provider를 호출하지 않았습니다.
+- 최종 브라우저 회귀는 명시적 TEST ONLY fixture이므로 실제 사실 검증 품질의 증거가 아닙니다. 별도로 현재 backend와 UI에서 비민감한 실제 provider smoke를 수행해 OpenAI 호출·네 단계 스트림·최종 결과 반환을 확인했으며, 해당 결과의 판정 품질 전체를 보증하는 것은 아닙니다.
 - `next.log`에 React Fragment의 `id` prop 경고와 reduced-motion 안내가 있습니다. 화면의 Next 개발 issue badge도 남습니다. pageerror 0은 console 경고 0이라는 뜻이 아닙니다. 기능 smoke를 차단하지 않아 이 고정 범위에서 디자인/의존성 수정으로 확대하지 않았습니다.
 - 브라우저 smoke는 reduced-motion/headless Chrome이며 모든 브라우저·애니메이션·접근성 감사가 아닙니다. 실제 provider 내부 취소/과금 중단, 모든 실행 중 서버 강제 종료 조건, 공개 배포·인증·영속 저장은 보장하지 않습니다.
 - production build 성공은 production 유료 요청 허용을 의미하지 않습니다. `next start`의 POST 차단은 유지된 의도적 정책입니다.

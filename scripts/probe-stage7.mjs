@@ -7,6 +7,10 @@ const base=process.env.PROBE_FRONTEND, backend=process.env.PROBE_BACKEND, dir=pr
 const browser=await chromium.launch({headless:true,channel:'chrome'});
 const observations=[], responses=[], errors=[];
 let current;
+async function waitForAppReady(page) {
+  await page.locator('.composer.panel-host').waitFor();
+  await page.locator('.focus-note').getByText('API 키 설정됨 · 접근 미확인',{exact:true}).waitFor();
+}
 async function noOverflow(page, label) {
   const size=await page.evaluate(()=>({viewport:document.documentElement.clientWidth,document:document.documentElement.scrollWidth,body:document.body.scrollWidth}));
   assert.ok(size.document<=size.viewport && size.body<=size.viewport, `${label}: ${JSON.stringify(size)}`);
@@ -14,11 +18,11 @@ async function noOverflow(page, label) {
     const ids = [...document.querySelectorAll('[id]')].map(node => node.id);
     return {duplicates: ids.filter((id, i) => ids.indexOf(id) !== i), forms: document.querySelectorAll('.composer form').length,
       editors: document.querySelectorAll('#document-text').length, sizers: document.querySelectorAll('[class*="panel-sizer"]').length,
-      surfaces: document.querySelectorAll('.factlens-glass').length};
+      panels: document.querySelectorAll('.panel-host').length};
   });
   assert.deepEqual(dom.duplicates, [], `${label}: duplicate ids`);
   assert.equal(dom.forms, 1); assert.equal(dom.editors, 1); assert.equal(dom.sizers, 0);
-  assert.ok(dom.surfaces >= 2);
+  assert.ok(dom.panels >= 2);
   observations.push({case:label,...size,...dom});
 }
 async function exportJson(page, name, file) {
@@ -35,26 +39,18 @@ try {
     const page=await context.newPage(); current=page;
     page.on('pageerror',e=>errors.push({label,error:String(e)}));
     page.on('response',r=>{if(r.url()===`${base}/api/fact-check`&&r.request().method()==='POST')responses.push({label,status:r.status()});});
-    await page.goto(base,{waitUntil:'networkidle',timeout:120000});
+    // Next dev keeps a live HMR connection, so networkidle is not a stable
+    // readiness signal. Hydration is verified by the first required locator.
+    await page.goto(base,{waitUntil:'domcontentloaded',timeout:120000});
     await noOverflow(page,`${label}_initial`);
-    await page.locator('.composer .glass-surface--svg').waitFor();
-    await page.getByRole('button',{name:'UI 조정',exact:true}).click();
-    const radius = page.getByRole('slider',{name:'모서리 반경',exact:true});
-    await radius.fill('27');
-    await page.waitForFunction(() => document.querySelector('.composer .factlens-glass').style.borderRadius === '27px');
-    await page.getByRole('button',{name:'UI 조정 닫기',exact:true}).click();
+    await waitForAppReady(page);
     await page.setViewportSize({width:viewport.width-30,height:viewport.height});
     await page.waitForTimeout(250);
-    const map = await page.locator('.composer feImage').getAttribute('href');
-    assert.ok(decodeURIComponent(map).includes('rx="27"'), 'resize must preserve current settings (not initial closure)');
-    const geometry = await page.locator('.composer .factlens-glass').evaluate(el => ({width:el.getBoundingClientRect().width,filter:getComputedStyle(el).backdropFilter}));
-    assert.ok(geometry.filter.includes('url('));
-    assert.ok(decodeURIComponent(map).includes(`viewBox="0 0 ${geometry.width} `));
     await noOverflow(page,`${label}_resized`);
     await page.setViewportSize(viewport);
-    await page.reload({waitUntil:'networkidle'});
-    assert.equal(await page.locator('.composer .factlens-glass').evaluate(el => el.style.borderRadius),'27px');
-    observations.push({case:`${label}_settings_resize_persistence`,...geometry});
+    await page.reload({waitUntil:'domcontentloaded'});
+    await waitForAppReady(page);
+    observations.push({case:`${label}_responsive_resize`});
     await page.locator('#document-text:visible').fill('TEST ONLY first claim | TEST ONLY second claim');
     await page.locator('input[type=checkbox]:visible').check();
     await page.getByRole('button',{name:'팩트 검증 시작',exact:true}).click();
@@ -63,7 +59,7 @@ try {
     assert.equal(await cards.count(),2);
     await cards.filter({hasText:'TEST ONLY first claim'}).click();
     if(label==='mobile')await page.getByRole('group',{name:'검토 화면 선택'}).getByRole('button',{name:'출처',exact:true}).click();
-    const details=page.locator('.evidence-panel .glass-surface__content:visible');
+    const details=page.locator('.evidence-panel .detail-content:visible');
     await details.getByText('TEST ONLY evidence quotation, not a factual finding.',{exact:false}).waitFor();
     assert.equal(await details.getByRole('link',{name:'TEST ONLY source',exact:true}).getAttribute('href'),'https://example.org/test-only-source');
     assert.ok((await details.innerText()).includes('TEST ONLY uncertainty 0'));
@@ -90,13 +86,14 @@ try {
     const before=await (await fetch(`${backend}/__test__/recovery`)).json();
     const demoPosts=[];
     demo.on('request',r=>{if(r.method()==='POST' && r.url()===`${base}/api/fact-check`)demoPosts.push(r.url());});
-    await demo.goto(base,{waitUntil:'networkidle',timeout:120000});
+    await demo.goto(base,{waitUntil:'domcontentloaded',timeout:120000});
+    await waitForAppReady(demo);
     await demo.getByRole('button',{name:'가상 도시의 문화 행사'}).click();
     const demoCards=demo.locator('.claim-card');
     assert.equal(await demoCards.count(),3);
     await demoCards.nth(0).click();
     if(label==='mobile')await demo.getByRole('group',{name:'검토 화면 선택'}).getByRole('button',{name:'출처',exact:true}).click();
-    const demoDetails=demo.locator('.evidence-panel .glass-surface__content:visible');
+    const demoDetails=demo.locator('.evidence-panel .detail-content:visible');
     assert.equal(await demoDetails.locator('.source-card').count(),2);
     await noOverflow(demo,`${label}_demo_evidence`);
     await demo.screenshot({path:`${dir}/${label}-demo.png`,fullPage:true});
