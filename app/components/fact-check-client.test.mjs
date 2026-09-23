@@ -34,6 +34,23 @@ test('requires a well-formed answer and source-grounded citations', async () => 
  const accepted=await readFactCheckStream(response(JSON.stringify({type:'result',result:groundedResult()})));
  assert.equal(accepted.answer.status,'grounded');
 });
+test('accepts an AGI forecast answer with separate verifier and synthesis model metadata', async () => {
+ const sources=[verifiedSource,{...verifiedSource,id:'s2',url:'https://example.org/agi-timeline',title:'전망 불확실성',publisher:'예시 연구소'}];
+ const forecast={...result,text:'AGI는 2030년 안에 오나?',sources,answer:{
+  status:'grounded',
+  overview:{text:'일부 전망은 2030년 이전 가능성을 말하지만 조건부입니다.',citations:[{sourceId:'s1',quote:'early timeline quotation'}]},
+  sections:[
+   {kind:'supporting',title:'조기 도래 전망',items:[{text:'현재 추세의 지속을 전제로 한 전망입니다.',citations:[{sourceId:'s1',quote:'early timeline quotation'}]}]},
+   {kind:'uncertainty',title:'불확실성',items:[{text:'정의와 시점에 합의가 없습니다.',citations:[{sourceId:'s2',quote:'uncertainty quotation'}]}]},
+  ],
+  conclusion:{text:'2030년 내 도래 여부는 예측으로 남습니다.',citations:[{sourceId:'s2',quote:'uncertainty quotation'}]},
+  model:'gemini-3.8-flash',reasoning:'high',
+ }};
+ const actual=await readFactCheckStream(response(JSON.stringify({type:'result',result:forecast})));
+ assert.deepEqual(actual.answer.sections.map(section=>section.kind),['supporting','uncertainty']);
+ assert.equal(actual.model,'gpt-6-luna');
+ assert.equal(actual.answer.model,'gemini-3.8-flash');
+});
 test('accepts a safe insufficient-evidence answer without answer model metadata', async () => {
  const actual=await readFactCheckStream(response(JSON.stringify({type:'result',result:{...result,answer:insufficientAnswer}})));
  assert.deepEqual(actual.answer,insufficientAnswer);

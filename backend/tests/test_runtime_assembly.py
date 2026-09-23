@@ -143,6 +143,148 @@ def test_runtime_graph_assembles_valid_final_result_after_five_stages():
     assert "sourceTexts" in state
 
 
+def test_forecast_synthesis_preserves_prediction_and_citations(monkeypatch):
+    import json
+    import re
+
+    import httpx
+    import runtime
+    from runtime import make_runtime_adapters
+
+    question = "AGI는 2030년 안에 오나?"
+    early_text = "Several researchers expect AGI-capable systems before 2030 if current scaling continues."
+    uncertainty_text = "The field has no agreed definition of AGI, and experts cannot provide a reliable timeline."
+    source_texts = {"s1": early_text, "s2": uncertainty_text}
+    sources = [
+        {
+            "id": "s1", "url": "https://example.org/early-forecast", "title": "Early timeline forecast",
+            "publisher": "Example Lab", "publishedAt": None,
+            "retrievedAt": "2026-09-23T00:00:00+00:00", "accessStatus": "verified",
+            "sourceType": "기사", "originGroupId": None,
+        },
+        {
+            "id": "s2", "url": "https://example.org/agi-uncertainty", "title": "AGI timeline uncertainty",
+            "publisher": "Example Institute", "publishedAt": None,
+            "retrievedAt": "2026-09-23T00:00:00+00:00", "accessStatus": "verified",
+            "sourceType": "기사", "originGroupId": None,
+        },
+    ]
+    early_quote = "expect AGI-capable systems before 2030 if current scaling continues"
+    uncertainty_quote = "no agreed definition of AGI, and experts cannot provide a reliable timeline"
+    answer_draft = {
+        "status": "grounded",
+        "overview": {
+            "text": "일부 전망은 현재 추세가 이어지면 2030년 이전에 AGI 역량이 나타날 수 있다고 봅니다.",
+            "citations": [{"sourceId": "s1", "quote": early_quote}],
+        },
+        "sections": [
+            {
+                "kind": "supporting",
+                "title": "조기 도래 전망",
+                "items": [{
+                    "text": "한 연구자 그룹은 현재 추세가 이어지는 경우를 전제로 전망합니다.",
+                    "citations": [{"sourceId": "s1", "quote": early_quote}],
+                }],
+            },
+            {
+                "kind": "uncertainty",
+                "title": "남은 불확실성",
+                "items": [{
+                    "text": "AGI 정의에 합의가 없고 신뢰할 수 있는 일정도 제시되지 않았습니다.",
+                    "citations": [{"sourceId": "s2", "quote": uncertainty_quote}],
+                }],
+            },
+        ],
+        "conclusion": {
+            "text": "따라서 2030년 안에 도래할지는 확정된 사실이 아니라 불확실한 예측입니다.",
+            "citations": [{"sourceId": "s2", "quote": uncertainty_quote}],
+        },
+    }
+    attempted_models = []
+
+    def provider_response(request):
+        body = json.loads(request.content)
+        attempted_models.append(body["model"])
+        assert body["model"] == "gemini-3.8-flash"
+        synthesis_input = json.loads(body["input"])
+        assert synthesis_input["question"] == question
+        assert {item["id"]: item["text"] for item in synthesis_input["sources"]} == source_texts
+        return httpx.Response(200, json={
+            "status": "completed",
+            "steps": [{
+                "type": "model_output",
+                "content": [{"type": "text", "text": json.dumps(answer_draft, ensure_ascii=False)}],
+            }],
+        })
+
+    real_async_client = httpx.AsyncClient
+
+    def mock_client(*args, **kwargs):
+        return real_async_client(*args, transport=httpx.MockTransport(provider_response), **kwargs)
+
+    monkeypatch.setattr(runtime.httpx, "AsyncClient", mock_client)
+    settings = Settings(
+        api_key=SecretStr("openai-test-only"),
+        gemini_api_key=SecretStr("gemini-test-only"),
+    )
+    provider_adapters = make_runtime_adapters(settings)
+
+    async def extract(state):
+        return {"claims": [{
+            "id": "c1", "quote": question, "start": 0, "end": len(question),
+            "kind": "prediction",
+        }]}
+
+    async def search(state):
+        return {"sources": sources}
+
+    async def read(state):
+        return {"sources": sources, "sourceTexts": source_texts}
+
+    async def verify(state):
+        claim = state["claims"][0]
+        return {
+            "claims": [{
+                **claim, "verdictCode": "not_checkable", "verdict": "검증 대상 아님",
+                "tone": "neutral", "summary": "미래 예측은 현재 사실처럼 확정할 수 없습니다.",
+                "confirmed": [], "unresolved": ["실현 시기는 불확실합니다."],
+                "warnings": ["예측은 사실 판정과 구분합니다."], "evidenceIds": [],
+            }],
+            "evidence": [], "llmModel": "gpt-6-luna", "llmReasoning": "max",
+        }
+
+    graph = build_runtime_workflow(
+        settings,
+        adapters=RuntimeAdapters(
+            extract=extract, search=search, read=read, verify=verify,
+            synthesize=provider_adapters.synthesize,
+        ),
+    )
+    state = asyncio.run(graph.ainvoke({"text": question, "focus": "", "consent": True}))
+    result = FactCheckResponse.model_validate({"result": state["result"]}).result
+
+    assert attempted_models == ["gemini-3.8-flash"]
+    assert result.claims[0].kind == "prediction"
+    assert result.claims[0].verdictCode == "not_checkable"
+    assert result.claims[0].summary == "미래 예측은 현재 사실처럼 확정할 수 없습니다."
+    assert result.evidence == []
+    assert result.model == "gpt-6-luna"
+    assert result.answer.model == "gemini-3.8-flash"
+    assert result.answer.status == "grounded"
+    assert [section.kind for section in result.answer.sections] == ["supporting", "uncertainty"]
+
+    blocks = [result.answer.overview, result.answer.conclusion]
+    blocks.extend(item for section in result.answer.sections for item in section.items)
+    citations = [citation for block in blocks for citation in block.citations]
+    assert citations
+    assert {citation.sourceId for citation in citations} == {"s1", "s2"}
+    assert all(citation.quote in source_texts[citation.sourceId] for citation in citations)
+    answer_text = " ".join(block.text for block in blocks)
+    assert re.search(r"\b\d+(?:\.\d+)?\s?%", answer_text) is None
+    assert "확률" not in answer_text
+    assert "전문가들의 의견이 일치합니다" not in answer_text
+
+
 def test_result_reports_provider_used_by_the_final_stage():
     result = build_fact_check_result(
         {

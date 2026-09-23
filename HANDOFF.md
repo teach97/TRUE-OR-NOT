@@ -8,7 +8,19 @@
 | 2 | 검색 후보 순서 보존 및 중복 출처 정리 | 완료. 현재 결과는 기존 검색 공급자 후보이며 Google 자연 검색 순위와 동일하다고 보장하지 않음 |
 | 3 | 기사·페이지 본문 추출 및 화면 UI 문구 제거 | 완료 |
 | 4 | YouTube 자막 대신 영상 제목과 공개 댓글(최대 10개) 수집·표시 | 구현·오프라인 검증 완료. `YOUTUBE_API_KEY` 미설정으로 실제 API 호출은 미검증 |
-| 5 | 전망 질문의 찬반·불확실성 종합 및 본문 인라인 출처 표시 | 미착수 |
+| 5 | 전망 질문의 찬반·불확실성 종합 및 본문 인라인 출처 표시 | 완료 (오프라인 모의 검증; 실제 provider 호출 미실행) |
+
+### 5단계 구현 및 검증
+
+- **최종 답변:** 기존 4단계 그래프 뒤에 원문 근거 기반 합성 단계를 추가해 `AI 개요`, 근거 유형별 섹션, 정리를 구조화 응답으로 만듭니다. 예측 claim의 `prediction` / `not_checkable` 판정과 검증기 결과는 합성 단계와 분리해 보존합니다. 검증기 모델은 결과 `model`에, 답변 합성 모델은 `answer.model`에 따로 기록합니다.
+- **인용 경계:** 합성 입력은 원문을 읽은 verified 비-YouTube 출처 최대 6개이며 출처별 텍스트는 6,000자로 제한합니다. 검색 snippet·YouTube 영상 제목·댓글은 답변 근거에 넣지 않습니다. 모든 답변 블록의 출처 ID와 인용 문자열을 허용된 출처 및 원문 부분 문자열에 대조하고, 불일치 시 provider fallback을 시도합니다. 합성이 불가능하면 기존 claim·evidence를 유지하면서 `insufficient_evidence` 답변을 반환합니다.
+- **화면:** AI 개요·조건부 전망·불확실성·정리를 응답 그대로 표시하고 인라인 출처 칩을 연결합니다. verified 비-YouTube 출처이며 안전한 HTTP(S) URL인 경우에만 새 탭 링크를 렌더링합니다. 근거 부족은 AI가 생성한 답처럼 보이지 않도록 고정 안내 문구를 표시합니다.
+- **모델 순서:** 답변 합성도 Gemini 3.8 Flash → Gemini 3.7 Flash → GPT-6 Luna 순서를 사용합니다. 각 실제 provider 접근성과 계정별 호출 성공은 확인하지 않았습니다.
+- **AGI 오프라인 회귀:** `AGI는 2030년 안에 오나?`를 5단계 그래프에 통과시키고, 조기 전망과 불확실성 원문에 정확히 포함되는 인용, 예측의 `not_checkable` 유지, 검증기/합성기 모델 분리, 확률·합의 과장 문구 부재를 고정 mock 응답으로 확인했습니다. 외부 네트워크 및 실제 LLM 호출은 사용하지 않았습니다.
+- **Google 검색 한계:** 기존 검색 provider가 고른 후보와 실제 Google 자연 검색 상위 순위는 동일하다고 보장할 수 없습니다. 실제 Google SERP 순위 수집은 이 단계에서 구현하지 않았습니다. 원문 추출은 기존 공개 페이지 reader를 사용하며, YouTube 자막·트랜스크립트는 수집하지 않습니다.
+- **최종 검증:** backend `uv run --no-sync pytest -q` **194 passed**, `uv lock --check` 통과, Node `node --experimental-strip-types --test` **33 passed**, `npm run typecheck` 통과, `git diff --check` 통과. 기존 Starlette/AnyIO deprecation warning 1건이 남습니다.
+- **프로덕션 빌드:** 기본 `npm run build`의 Turbopack은 격리 worktree의 `node_modules` Junction이 worktree 밖을 가리켜 실패했습니다. 코드나 설정은 바꾸지 않고 `node node_modules/next/dist/bin/next build --webpack`으로 빌드·정적 페이지 생성을 완료했습니다. 따라서 Turbopack 빌드 자체는 미검증입니다.
+- **후속 확인:** 실제 사용 전 비민감 질문으로 Gemini/OpenAI provider 연결과 응답 품질을 별도 확인해야 합니다. 그때도 답변 인용이 화면에 연결된 출처 원문과 일치하는지 확인하고, 실제 Google 상위 순위를 제품 요구로 삼는다면 순위 제공 검색 공급자 연동을 별도 결정해야 합니다.
 
 ### 4단계 구현 및 검증
 
