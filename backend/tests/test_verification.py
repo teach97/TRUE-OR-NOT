@@ -5,6 +5,7 @@ import json
 
 import httpx
 
+from sources import html_text
 from verification import ground_judgments, verify_claims
 
 
@@ -228,6 +229,38 @@ def test_search_summary_is_not_used_when_source_text_is_missing():
     )
 
     assert result["claims"][0]["verdictCode"] == "insufficient_evidence"
+    assert result["evidence"] == []
+
+
+def test_player_controls_cannot_be_grounded_as_source_evidence():
+    page = '''
+        <main><article>
+          <p>전문가들은 AGI 도달 시점에 관해 서로 다른 전망을 제시했다.</p>
+          <div id="video-player">LIVE 00:00 / 20:00 Captions Settings</div>
+        </article></main>
+    '''
+    extracted_text = html_text(page)
+    result = ground_judgments(
+        [claim("c1", "AGI will arrive by 2030.", "fact")],
+        [{
+            "claimId": "c1",
+            "verdictCode": "mostly_supported",
+            "summary": "The source confirms the timeline.",
+            "confirmed": ["The source confirms the timeline."],
+            "unresolved": [],
+            "evidence": [{
+                "sourceId": "s1",
+                "quote": "LIVE 00:00 / 20:00 Captions Settings",
+                "relation": "supports",
+                "comparison": "same",
+            }],
+        }],
+        [{"id": "s1", "url": "https://example.org/report", "accessStatus": "verified"}],
+        {"s1": extracted_text},
+    )
+
+    assert result["claims"][0]["verdictCode"] == "insufficient_evidence"
+    assert result["claims"][0]["evidenceIds"] == []
     assert result["evidence"] == []
 
 

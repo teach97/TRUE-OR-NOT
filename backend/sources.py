@@ -1,6 +1,7 @@
 """Bounded public-source reader. TLS validation stays enabled; no credentials."""
 import asyncio
 import ipaddress
+import re
 import socket
 from html.parser import HTMLParser
 from datetime import datetime, timezone
@@ -36,24 +37,119 @@ class PublicResolver(AbstractResolver):
 
 
 class _TextParser(HTMLParser):
+    _HIDDEN_TAGS = {
+        'head', 'script', 'style', 'noscript', 'template', 'svg', 'nav',
+        'header', 'footer', 'aside', 'button', 'input', 'select', 'option',
+        'textarea', 'form', 'dialog', 'iframe', 'video', 'audio',
+    }
+    _VOID_TAGS = {
+        'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link',
+        'meta', 'param', 'source', 'track', 'wbr',
+    }
+    _CONTENT_HINTS = {
+        'article-body', 'articlebody', 'article-content', 'articlecontent',
+        'story-body', 'storybody', 'story-content', 'storycontent',
+        'post-body', 'postbody', 'post-content', 'postcontent',
+        'entry-content', 'entrycontent', 'news-body', 'newsbody',
+        'news-content', 'newscontent', 'main-content', 'maincontent',
+        'content-body', 'contentbody',
+    }
+    _UI_HINTS = {
+        'nav', 'navigation', 'navbar', 'menu', 'sidebar', 'toolbar', 'player',
+        'playlist', 'related', 'recommend', 'recommended', 'cookie', 'consent',
+        'advert', 'advertisement', 'ad-container', 'promo', 'promotion',
+        'share-tool', 'share-tools',
+    }
+
     def __init__(self):
         super().__init__(convert_charrefs=True)
-        self.hidden = []
-        self.parts = []
+        self.stack = []
+        self.fallback_parts = []
+        self.content_parts = []
+
+    @staticmethod
+    def _normalized_token(value):
+        value = re.sub(r'([a-z0-9])([A-Z])', r'\1-\2', value)
+        return re.sub(r'[^a-zA-Z0-9]+', '-', value).strip('-').lower()
+
+    @classmethod
+    def _is_content_root(cls, tag, attrs):
+        if tag in {'main', 'article'} or attrs.get('role', '').lower() == 'main':
+            return True
+        if attrs.get('itemprop', '').lower() == 'articlebody':
+            return True
+        for name in ('id', 'class'):
+            tokens = attrs.get(name, '').split()
+            if any(cls._normalized_token(token) in cls._CONTENT_HINTS for token in tokens):
+                return True
+        return False
+
+    @classmethod
+    def _is_ui(cls, tag, attrs):
+        role = attrs.get('role', '').lower()
+        normalized_tag = cls._normalized_token(tag)
+        if (
+            tag in cls._HIDDEN_TAGS
+            or 'player' in normalized_tag.split('-')
+            or role in {
+                'navigation', 'banner', 'complementary', 'contentinfo', 'search',
+                'dialog', 'menu', 'toolbar',
+            }
+        ):
+            return True
+        if (
+            'hidden' in attrs
+            or 'inert' in attrs
+            or attrs.get('aria-hidden', '').lower() == 'true'
+        ):
+            return True
+        for name in ('id', 'class', 'aria-label'):
+            tokens = attrs.get(name, '').split()
+            for token in tokens:
+                normalized = cls._normalized_token(token)
+                pieces = set(normalized.split('-'))
+                if normalized in cls._UI_HINTS or pieces.intersection(cls._UI_HINTS):
+                    return True
+        return False
 
     def handle_starttag(self, tag, attrs):
-        if tag in {'script', 'style', 'noscript', 'template'}:
-            self.hidden.append(tag)
+        attributes = {name.lower(): value or '' for name, value in attrs}
+        parent = self.stack[-1] if self.stack else {'excluded': False, 'content': False}
+        excluded = parent['excluded'] or self._is_ui(tag, attributes)
+        content = not excluded and (parent['content'] or self._is_content_root(tag, attributes))
+        if not excluded:
+            self.fallback_parts.append(' ')
+            if content:
+                self.content_parts.append(' ')
+        if tag not in self._VOID_TAGS:
+            self.stack.append({'tag': tag, 'excluded': excluded, 'content': content})
 
     def handle_endtag(self, tag):
-        if self.hidden and self.hidden[-1] == tag:
-            self.hidden.pop()
-        if not self.hidden:
-            self.parts.append(' ')
+        match = next((i for i in range(len(self.stack) - 1, -1, -1)
+                      if self.stack[i]['tag'] == tag), None)
+        if match is None:
+            return
+        frame = self.stack[match]
+        if not frame['excluded']:
+            self.fallback_parts.append(' ')
+            if frame['content']:
+                self.content_parts.append(' ')
+        del self.stack[match:]
 
     def handle_data(self, data):
-        if not self.hidden:
-            self.parts.append(data)
+        if self.stack and self.stack[-1]['excluded']:
+            return
+        self.fallback_parts.append(data)
+        if self.stack and self.stack[-1]['content']:
+            self.content_parts.append(data)
+
+    @staticmethod
+    def _normalize(parts):
+        return ' '.join(' '.join(parts).split())
+
+    def text(self):
+        content = self._normalize(self.content_parts)
+        return content or self._normalize(self.fallback_parts)
 
 
 class _TitleParser(HTMLParser):
@@ -78,7 +174,7 @@ class _TitleParser(HTMLParser):
 def html_text(raw):
     parser = _TextParser()
     parser.feed(raw)
-    return ' '.join(' '.join(parser.parts).split())
+    return parser.text()
 
 
 def html_title(raw):
