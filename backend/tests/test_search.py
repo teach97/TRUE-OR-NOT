@@ -157,6 +157,8 @@ def test_search_supports_gemini_google_search_citations():
         assert body["model"] == "gemini-3.8-flash"
         assert body["tools"] == [{"type": "google_search"}]
         assert body["generation_config"]["thinking_level"] == "high"
+        assert body["generation_config"]["tool_choice"] == "any"
+        assert "tool_choice" not in body
         return httpx.Response(200, json={
             "status": "completed",
             "steps": [

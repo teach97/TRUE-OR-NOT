@@ -205,11 +205,11 @@ def _search_payload(
         "input": serialized_input,
         "store": False,
         "tools": [{"type": "google_search"}],
-        "tool_choice": "any",
         "generation_config": {
             "max_output_tokens": 6000,
             "thinking_level": provider.reasoning,
             "thinking_summaries": "none",
+            "tool_choice": "any",
         },
     }
 
