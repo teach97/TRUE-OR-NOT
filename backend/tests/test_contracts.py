@@ -51,11 +51,131 @@ def result_payload():
     }
 
 
+def grounded_answer():
+    citation = {"sourceId": "s1", "quote": "Claim is supported."}
+    return {
+        "status": "grounded",
+        "overview": {"text": "AGI 전망은 아직 불확실합니다.", "citations": [citation]},
+        "sections": [],
+        "conclusion": {"text": "확정할 수 없습니다.", "citations": [citation]},
+        "model": "gemini-3.8-flash",
+        "reasoning": "high",
+    }
+
+
 def test_final_contract_accepts_frontend_shape_and_wrapper():
     parsed = FactCheckResponse.model_validate({"result": result_payload()})
     assert parsed.result.demo is False
     assert parsed.result.claims[0].evidenceIds == ["e1"]
     assert parsed.model_dump(mode="json")["result"]["sources"][0]["publishedAt"] is None
+
+
+def test_result_serializes_safe_insufficient_answer_by_default():
+    serialized = FactCheckResult.model_validate(result_payload()).model_dump(mode="json")
+
+    assert serialized["answer"] == {
+        "status": "insufficient_evidence",
+        "overview": None,
+        "sections": [],
+        "conclusion": None,
+        "model": None,
+        "reasoning": None,
+    }
+
+
+def test_result_accepts_grounded_answer_with_verified_source_reference():
+    payload = result_payload()
+    payload["answer"] = grounded_answer()
+
+    parsed = FactCheckResult.model_validate(payload)
+
+    assert parsed.answer.status == "grounded"
+    assert parsed.answer.overview.citations[0].sourceId == "s1"
+
+
+def test_result_accepts_insufficient_answer_without_provider_metadata():
+    payload = result_payload()
+    payload["answer"] = {
+        "status": "insufficient_evidence",
+        "overview": None,
+        "sections": [],
+        "conclusion": None,
+        "model": None,
+        "reasoning": None,
+    }
+
+    answer = FactCheckResult.model_validate(payload).answer
+
+    assert answer.status == "insufficient_evidence"
+    assert answer.model is None
+    assert answer.reasoning is None
+
+
+@pytest.mark.parametrize("mutation", [
+    "missing_citation",
+    "unknown_source",
+    "unavailable_source",
+    "youtube_source",
+    "too_many_sections",
+    "too_many_items",
+    "too_many_citations",
+    "text_too_long",
+    "quote_too_long",
+    "title_too_long",
+    "insufficient_with_sections",
+])
+def test_result_rejects_invalid_grounded_answer(mutation):
+    payload = result_payload()
+    answer = grounded_answer()
+    citation = answer["overview"]["citations"][0]
+
+    if mutation == "missing_citation":
+        answer["overview"]["citations"] = []
+    elif mutation == "unknown_source":
+        citation["sourceId"] = "unknown"
+    elif mutation == "unavailable_source":
+        payload["sources"].append({
+            **payload["sources"][0], "id": "s2", "accessStatus": "unavailable",
+        })
+        citation["sourceId"] = "s2"
+    elif mutation == "youtube_source":
+        payload["sources"][0]["sourceType"] = "유튜브"
+    elif mutation == "too_many_sections":
+        section = {
+            "kind": "supporting", "title": "근거",
+            "items": [{"text": "뒷받침합니다.", "citations": [citation]}],
+        }
+        answer["sections"] = [section] * 5
+    elif mutation == "too_many_items":
+        answer["sections"] = [{
+            "kind": "supporting", "title": "근거",
+            "items": [{"text": "뒷받침합니다.", "citations": [citation]}] * 4,
+        }]
+    elif mutation == "too_many_citations":
+        answer["overview"]["citations"] = [citation] * 4
+    elif mutation == "text_too_long":
+        answer["overview"]["text"] = "가" * 1_201
+    elif mutation == "quote_too_long":
+        citation["quote"] = "가" * 2_001
+    elif mutation == "title_too_long":
+        answer["sections"] = [{
+            "kind": "supporting", "title": "가" * 121,
+            "items": [{"text": "뒷받침합니다.", "citations": [citation]}],
+        }]
+    elif mutation == "insufficient_with_sections":
+        answer = {
+            "status": "insufficient_evidence", "overview": None,
+            "sections": [{
+                "kind": "supporting", "title": "근거",
+                "items": [{"text": "확인됐습니다.", "citations": [citation]}],
+            }],
+            "conclusion": None, "model": None, "reasoning": None,
+        }
+
+    payload["answer"] = answer
+
+    with pytest.raises(ValidationError):
+        FactCheckResult.model_validate(payload)
 
 
 @pytest.mark.parametrize("change", [
