@@ -70,6 +70,22 @@ def test_final_contract_accepts_frontend_shape_and_wrapper():
     assert parsed.model_dump(mode="json")["result"]["sources"][0]["publishedAt"] is None
 
 
+def test_source_discovery_order_is_explicitly_not_a_google_rank():
+    payload = result_payload()
+    payload["sources"][0].update({
+        "searchProvider": "openai_web_search",
+        "searchQuery": "AGI 2030년",
+        "candidateOrder": 4,
+    })
+    source = FactCheckResult.model_validate(payload).sources[0]
+    assert source.searchProvider == "openai_web_search"
+    assert source.candidateOrder == 4
+
+    payload["sources"][0]["candidateOrder"] = 0
+    with pytest.raises(ValidationError):
+        FactCheckResult.model_validate(payload)
+
+
 def test_result_serializes_safe_insufficient_answer_by_default():
     serialized = FactCheckResult.model_validate(result_payload()).model_dump(mode="json")
 

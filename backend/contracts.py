@@ -37,6 +37,9 @@ class FactSource(_ContractModel):
     accessStatus: AccessStatus
     sourceType: str = Field(min_length=1, max_length=100)
     originGroupId: str | None
+    searchProvider: Literal["openai_web_search", "gemini_google_search"] | None = None
+    searchQuery: str | None = Field(default=None, max_length=300)
+    candidateOrder: int | None = Field(default=None, ge=1, le=1000)
     youtubeTitle: str | None = Field(default=None, max_length=300)
     youtubeComments: list[Annotated[str, Field(max_length=10_000)]] = Field(
         default_factory=list,

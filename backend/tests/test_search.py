@@ -41,6 +41,8 @@ def test_search_collects_deduplicated_candidates_without_evidence():
     def handler(request):
         body = json.loads(request.content)
         assert body["tools"][0]["type"] == "web_search"
+        assert body["tools"][0]["search_context_size"] == "medium"
+        assert "user_location" not in body["tools"][0]
         assert body["include"] == ["web_search_call.action.sources"]
         assert body["max_tool_calls"] == 4
         assert len(body["input"]) > 0
@@ -65,6 +67,9 @@ def test_search_collects_deduplicated_candidates_without_evidence():
         "sourceType": "웹 출처",
         "originGroupId": "example.org",
         "accessStatus": "pending",
+        "searchProvider": "openai_web_search",
+        "searchQuery": "Claim",
+        "candidateOrder": 1,
     }]}
 
 
@@ -96,6 +101,9 @@ def test_search_keeps_completed_sources_when_response_has_nonterminal_search_ite
             "sourceType": "웹 출처",
             "originGroupId": "example.org",
             "accessStatus": "pending",
+            "searchProvider": "openai_web_search",
+            "searchQuery": "Claim",
+            "candidateOrder": 1,
         }]
     }
 
@@ -243,6 +251,9 @@ def test_search_supports_gemini_google_search_citations():
         "sourceType": "웹 출처",
         "originGroupId": "example.org",
         "accessStatus": "pending",
+        "searchProvider": "gemini_google_search",
+        "searchQuery": "Claim",
+        "candidateOrder": 1,
     }]
 
 
@@ -275,6 +286,7 @@ def test_prediction_claims_are_searched_with_primary_query_in_provider_order():
         requested = True
         body = json.loads(request.content)
         search_input = json.loads(body["input"])
+        assert body["tools"][0]["user_location"] == {"type": "approximate", "country": "KR"}
         assert search_input["primaryQueries"] == ["AGI 2030년"]
         assert search_input["claims"][0]["searchQuery"] == "AGI 2030년"
         return httpx.Response(200, json={"status": "completed", "output": [
@@ -302,3 +314,5 @@ def test_prediction_claims_are_searched_with_primary_query_in_provider_order():
         "https://first.example/report",
         "https://second.example/report",
     ]
+    assert [source["candidateOrder"] for source in result["sources"]] == [1, 2]
+    assert {source["searchQuery"] for source in result["sources"]} == {"AGI 2030년"}

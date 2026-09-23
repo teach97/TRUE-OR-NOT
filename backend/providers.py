@@ -207,6 +207,13 @@ def _search_payload(
 ) -> dict[str, Any]:
     serialized_input = json.dumps(input_data, ensure_ascii=False)
     if provider.kind == "openai":
+        web_search: dict[str, Any] = {"type": "web_search", "search_context_size": "medium"}
+        primary_queries = input_data.get("primaryQueries", [])
+        if isinstance(primary_queries, list) and any(
+            isinstance(query, str) and any("가" <= char <= "힣" for char in query)
+            for query in primary_queries
+        ):
+            web_search["user_location"] = {"type": "approximate", "country": "KR"}
         return {
             "model": provider.model,
             "reasoning": {"effort": provider.reasoning},
@@ -214,7 +221,7 @@ def _search_payload(
             "max_output_tokens": 6000,
             "instructions": instructions,
             "input": serialized_input,
-            "tools": [{"type": "web_search", "search_context_size": "low"}],
+            "tools": [web_search],
             "tool_choice": "required",
             # Run several targeted search passes so one publisher cannot fill
             # the entire candidate set before the diversity selector sees it.

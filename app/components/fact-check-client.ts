@@ -10,6 +10,11 @@ export class FactCheckError extends Error {
 export function safeSourceUrl(value: string): string | null {
   try {const url = new URL(value); return ['http:', 'https:'].includes(url.protocol) ? url.href : null;} catch {return null;}
 }
+function validSourceMetadata(source: FactSource): boolean {
+  return (source.searchProvider == null || ['openai_web_search', 'gemini_google_search'].includes(source.searchProvider))
+    && (source.searchQuery == null || (typeof source.searchQuery === 'string' && source.searchQuery.length <= 300))
+    && (source.candidateOrder == null || (Number.isInteger(source.candidateOrder) && source.candidateOrder >= 1 && source.candidateOrder <= 1000 && source.searchProvider != null));
+}
 function validAnswer(value: unknown, sources: FactSource[]): value is FactCheckAnswer {
   if (!value || typeof value !== 'object') return false;
   const answer = value as FactCheckAnswer;
@@ -42,6 +47,7 @@ function validResult(value: unknown): value is FactCheckResult {
   return r.demo === false && typeof r.text === 'string' && typeof r.focus === 'string' && typeof r.checkedAt === 'string' && typeof r.model === 'string' && (r.reasoning === 'max' || r.reasoning === 'high')
     && Array.isArray(r.claims) && r.claims.length <= 3 && r.claims.every(c => typeof c.id === 'string' && typeof c.quote === 'string' && Number.isInteger(c.start) && Number.isInteger(c.end) && c.start >= 0 && c.end > c.start && r.text.slice(c.start, c.end) === c.quote && Number.isInteger(c.factScore) && c.factScore >= 0 && c.factScore <= 100 && FACT_SCORE_BANDS.includes(c.scoreBand) && c.scoreBand === scoreBand(c.factScore) && c.scoreLabel === scoreLabel(c.factScore) && typeof c.summary === 'string' && typeof c.tone === 'string' && typeof c.verdict === 'string' && [c.confirmed,c.unresolved,c.warnings,c.evidenceIds].every(a=>Array.isArray(a)&&a.every(s=>typeof s==='string')))
     && Array.isArray(r.sources) && r.sources.every(s => ['id','url','title','publisher','retrievedAt','sourceType'].every(k=>typeof s[k as keyof typeof s]==='string') && ['verified','unavailable'].includes(s.accessStatus) && (s.publishedAt === null || typeof s.publishedAt === 'string') && (s.originGroupId === null || typeof s.originGroupId === 'string') && (s.youtubeTitle === null || (typeof s.youtubeTitle === 'string' && s.youtubeTitle.length <= 300)) && Array.isArray(s.youtubeComments) && s.youtubeComments.length <= 10 && s.youtubeComments.every(comment => typeof comment === 'string' && comment.length <= 10000) && ['not_applicable','not_configured','collected','unavailable'].includes(s.youtubeDataStatus) && (s.sourceType === '유튜브' ? s.youtubeDataStatus !== 'not_applicable' : s.youtubeDataStatus === 'not_applicable'))
+    && r.sources.every(validSourceMetadata)
     && Array.isArray(r.evidence) && r.evidence.every(e=>['id','claimId','sourceId','quote'].every(k=>typeof e[k as keyof typeof e]==='string') && (e.quoteTranslation === undefined || e.quoteTranslation === null || typeof e.quoteTranslation === 'string') && typeof e.quoteVerified === 'boolean')
     && Array.isArray(r.warnings) && r.warnings.every(w=>typeof w==='string') && validAnswer(r.answer,r.sources);
 }
