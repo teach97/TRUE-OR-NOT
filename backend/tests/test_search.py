@@ -13,6 +13,8 @@ import pytest
      ["https://dailymotion.com/1", "https://dailymotion.com/2"]),
     (["https://a.example/story?id=1&utm_source=x", "https://a.example/story?id=1&utm_source=y", "https://a.example/story?id=2"],
      ["https://a.example/story?id=1&utm_source=x", "https://a.example/story?id=2"]),
+    (["https://www.a.example/story/?utm_source=x", "https://a.example/story/"],
+     ["https://www.a.example/story/?utm_source=x"]),
 ])
 def test_search_preserves_candidate_order_and_strict_duplicate_limits(urls, expected):
     from search import search_sources
@@ -32,6 +34,18 @@ def test_search_preserves_candidate_order_and_strict_duplicate_limits(urls, expe
     result = asyncio.run(run())
     assert [s["url"] for s in result["sources"]] == expected
     assert [s["id"] for s in result["sources"]] == [f"s{i+1}" for i in range(len(expected))]
+
+
+def test_search_candidates_exclude_japanese_pages_across_providers():
+    from search import _project_candidates
+
+    sources = _project_candidates([
+        {"url": "https://dx.mri.co.jp/agi", "title": "AGI forecast", "searchProvider": "openai_web_search", "searchQuery": "AGI 2030"},
+        {"url": "https://example.com/jp", "title": "AGI ニュース", "searchProvider": "gemini_google_search", "searchQuery": "AGI 2030"},
+        {"url": "https://news.example.kr/agi", "title": "한국 AGI 전망", "searchProvider": "openai_web_search", "searchQuery": "AGI 2030"},
+    ])
+
+    assert [source["url"] for source in sources] == ["https://news.example.kr/agi"]
 
 
 def test_search_collects_deduplicated_candidates_without_evidence():

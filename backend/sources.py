@@ -6,10 +6,20 @@ import socket
 from html.parser import HTMLParser
 from datetime import datetime, timezone
 from urllib.parse import urljoin, urlsplit
-from search import candidate_url
+from search import _source_identity, candidate_url
 
 import aiohttp
 from aiohttp.abc import AbstractResolver
+
+
+_JAPANESE_SCRIPT = re.compile(r'[\u3040-\u30ff]')
+_KOREAN_SCRIPT = re.compile(r'[\uac00-\ud7a3]')
+
+
+def _is_japanese_page_text(text):
+    japanese = len(_JAPANESE_SCRIPT.findall(text))
+    korean = len(_KOREAN_SCRIPT.findall(text))
+    return japanese >= 8 and japanese > korean
 
 
 def public_ip(raw):
@@ -306,6 +316,8 @@ async def read_sources(state, *, reader=fetch_public_text, youtube_reader=None):
                 page_title = ''
             if not text.strip():
                 raise ValueError('SOURCE_EMPTY')
+            if _is_japanese_page_text(text):
+                continue
             if page_title and _generic_title(item.get('title'), source['url']):
                 item['title'] = page_title
             item.update(accessStatus='verified', resolvedUrl=final_url)
@@ -313,5 +325,18 @@ async def read_sources(state, *, reader=fetch_public_text, youtube_reader=None):
         except (ValueError, OSError, aiohttp.ClientError, TimeoutError):
             pass
         sources.append(item)
-    return {'sources':sources, 'sourceTexts':texts}
+
+    # Redirect aliases often point at the same article. Keep the first
+    # (highest-ranked) source and its text so one page cannot count twice.
+    unique_sources, unique_texts, seen_pages = [], {}, set()
+    for source in sources:
+        identity = _source_identity(source.get('resolvedUrl') or source['url'])
+        if identity in seen_pages:
+            continue
+        seen_pages.add(identity)
+        unique_sources.append(source)
+        source_id = source.get('id')
+        if source_id in texts:
+            unique_texts[source_id] = texts[source_id]
+    return {'sources':unique_sources, 'sourceTexts':unique_texts}
 

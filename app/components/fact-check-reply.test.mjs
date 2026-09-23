@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {composeAssistantReply, resolveAnswerCitationSource} from './fact-check-reply.ts';
+import {answerCitationAnchorId, composeAssistantReply, createAnswerCitationDisplayState, presentAnswerCitations, resolveAnswerCitationSource} from './fact-check-reply.ts';
 
 const source = {id:'s1',url:'https://example.com/article',title:'AGI 전망',publisher:'예시 연구소',accessStatus:'verified',sourceType:'웹'};
 const answer = {
@@ -54,4 +54,25 @@ test('citation resolution never links missing, unverified, YouTube or unsafe sou
   assert.equal(resolveAnswerCitationSource(citation,[{...source,accessStatus:'unavailable'}]),null);
   assert.equal(resolveAnswerCitationSource(citation,[{...source,sourceType:'유튜브'}]),null);
   assert.equal(resolveAnswerCitationSource(citation,[{...source,url:'javascript:alert(1)'}]),null);
+});
+
+test('answer view links each unique source once and uses compact references afterwards', () => {
+  const secondSource={...source,id:'s2',url:'https://example.org/report',title:'전망 보고서'};
+  const state=createAnswerCitationDisplayState([source,secondSource]);
+  const overview=presentAnswerCitations([
+    {sourceId:'s1',quote:'첫 인용'},
+    {sourceId:'s1',quote:'같은 링크의 다른 인용'},
+    {sourceId:'s2',quote:'둘째 출처'},
+  ],[source,secondSource],state);
+  const claim=presentAnswerCitations([
+    {sourceId:'s1',quote:'첫 인용을 다시 사용'},
+    {sourceId:'s2',quote:'둘째 출처를 다시 사용'},
+  ],[source,secondSource],state);
+
+  assert.deepEqual(overview.map(item=>[item.number,item.linkTarget]),[[1,'external'],[2,'external']]);
+  assert.deepEqual(claim.map(item=>[item.number,item.linkTarget]),[[1,'reference'],[2,'reference']]);
+  assert.equal([...overview,...claim].filter(item=>item.linkTarget==='external').length,2);
+  assert.notEqual(answerCitationAnchorId('message-1',1),answerCitationAnchorId('message-2',1));
+  const rankState=createAnswerCitationDisplayState([source,secondSource]);
+  assert.equal(presentAnswerCitations([{sourceId:'s2',quote:'둘째 출처'}],[source,secondSource],rankState)[0].number,2);
 });

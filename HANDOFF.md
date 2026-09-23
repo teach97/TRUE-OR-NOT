@@ -1,5 +1,14 @@
 # 팩트체크 에이전트 UI MVP 작업 인계서
 
+## 2026-09-23 중복 링크·일본어 검색 결과 보정
+
+- **원인:** SerpApi 요청은 `gl=kr`, `hl=ko`만 설정해 검색 지역과 화면 언어를 지정했으며, 검색 문서 언어 제한이 없었습니다. URL 중복 제거도 검색 결과 단계에만 적용되어 다른 URL이 같은 최종 기사로 리디렉션되면 중복으로 남았습니다. AI 답변 UI는 문단마다 출처 전체 링크를 반복해서 렌더링했습니다.
+- **검색 언어:** Google 요청에 `lr=lang_ko|lang_en`을 추가하고, 모든 검색 공급자 결과에서 `.jp` 도메인과 제목·요약에 일본어 가나가 있는 결과를 제외합니다. 원문 읽기 후에도 일본어 본문을 판별해 제외합니다. `candidateOrder`는 필터 전 Google 원래 순위를 유지합니다. 영어 페이지가 `.jp` 도메인을 쓰는 경우도 제외될 수 있습니다. SerpApi의 `lr` 언어 제한은 [공식 Google Search API 문서](https://serpapi.com/search-api)에 따릅니다.
+- **중복 제거:** `www`, 끝 슬래시, 추적 매개변수와 쿼리 매개변수 순서를 정규화해 검색 단계에서 합치고, 원문 읽기 뒤 리디렉션 최종 URL도 비교합니다. 같은 페이지면 검색 순위가 높은 첫 항목과 그 원문만 유지합니다.
+- **답변 표시:** AI 개요 안에서 동일한 출처 ID의 외부 링크는 한 번만 표시합니다. 같은 출처를 다시 인용하면 첫 링크를 가리키는 번호 참조로 보여주며, 한 문단 안의 반복 인용은 하나로 합칩니다.
+- **실검색:** 무료 검색 1회로 `AGI 2030년`을 확인했습니다. 6개 출처는 startuprecipe.co.kr, m.joseilbo.com, brunch.co.kr, www.reddit.com, www.aitimes.kr, www.news1.kr이었으며 일본 `.jp` 사이트는 반환되지 않았습니다. 검색 시점·지역 및 Google 결과 개인화에 따라 순위는 달라질 수 있습니다.
+- **회귀 검증:** backend `229 passed`(기존 Starlette/AnyIO deprecation warning 1건), Node `40 passed`, `npm run typecheck`, `npm run build` 통과. 브라우저에서 렌더링된 실제 UI 비교는 실행하지 않았습니다.
+
 ## 2026-09-23 무료 Google 자연검색 연동 및 GPT 실검증
 
 - **검색 경로:** `backend/google_serp.py`가 `SERPAPI_API_KEY`가 설정된 경우에만 SerpApi 계정 API로 `Free`/`Free Plan`, 월 요금 0, 추가 크레딧 0, 주장별 검색어 수 이상 남은 무료 쿼터를 확인합니다. 조건을 충족할 때만 한국 설정(`hl=ko`, `gl=kr`)의 Google 자연검색 첫 페이지를 검색합니다. 최대 3개 고유 검색어를 사용하고 순위별 후보를 교차 배치해 전체 최대 6개를 읽습니다. 계정 확인 API는 무료이며 검색 쿼터를 차감하지 않습니다.

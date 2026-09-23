@@ -11,7 +11,7 @@ import { sourceDiscoveryLabel } from '../lib/source-discovery';
 import { scoreBand, scoreLabel } from '../lib/fact-score';
 import { stripYoutubeApiDataForExport } from '../lib/youtube-context';
 import { FactCheckError, readFactCheckStream, safeSourceUrl } from './fact-check-client';
-import { composeAssistantReply, resolveAnswerCitationSource } from './fact-check-reply';
+import { answerCitationAnchorId, composeAssistantReply, createAnswerCitationDisplayState, presentAnswerCitations } from './fact-check-reply';
 import { DEMO_FOCUS, DEMO_TEXT, demoPreview, documents } from './demo-fixture';
 import ScrambleText from './scramble-text';
 import FloatingLinesBackground from './floating-lines-background';
@@ -123,40 +123,42 @@ function Panel({as = 'div', className = '', children, 'aria-labelledby': labelle
   return <Element className={`panel-host ${className}`} aria-labelledby={labelledBy}>{children}</Element>;
 }
 
-function AnswerBlockView({block, sources}: {block: AnswerBlock; sources: FactSource[]}) {
+function AnswerBlockView({block, sources, citationState, messageId}: {block: AnswerBlock; sources: FactSource[]; citationState: ReturnType<typeof createAnswerCitationDisplayState>; messageId: string}) {
+  const citations = presentAnswerCitations(block.citations, sources, citationState);
   return <div className="answer-block">
     <p className="answer-block-text">{block.text}</p>
-    {block.citations.length > 0 && <ul className="answer-citations" aria-label="답변 근거 출처">
-      {block.citations.map((citation, index) => {
-        const resolved = resolveAnswerCitationSource(citation, sources);
-        const number = index + 1;
-        return <li key={`${citation.sourceId}-${index}`}>
-          {resolved
-            ? <a className="answer-citation-chip" href={resolved.href} target="_blank" rel="noopener noreferrer" title={citation.quote} aria-label={`출처 ${number}: ${resolved.source.publisher}, ${resolved.source.title}. 새 탭에서 원문 열기`}>
-                <span className="answer-citation-index">[{number}]</span><span>{resolved.source.publisher} · {resolved.source.title}</span><span aria-hidden="true">↗</span>
+    {citations.length > 0 && <ul className="answer-citations" aria-label="답변 근거 출처">
+      {citations.map(({citation, number, source, href, linkTarget}) => <li key={citation.sourceId}>
+          {linkTarget === 'external' && source && href
+            ? <a id={answerCitationAnchorId(messageId, number)} className="answer-citation-chip" href={href} target="_blank" rel="noopener noreferrer" title={citation.quote} aria-label={`출처 ${number}: ${source.publisher}, ${source.title}. 새 탭에서 원문 열기`}>
+                <span className="answer-citation-index">[{number}]</span><span>{source.publisher} · {source.title}</span><span aria-hidden="true">↗</span>
               </a>
-            : <span className="answer-citation-chip is-unavailable" aria-label={`출처 ${number}: 확인된 원문 연결 없음`}>
+            : linkTarget === 'reference' && source
+              ? <a className="answer-citation-reference" href={`#${answerCitationAnchorId(messageId, number)}`} title={`${source.publisher} · ${source.title}`} aria-label={`출처 ${number} 다시 참조`}>
+                  <span className="answer-citation-index">[{number}]</span>
+                </a>
+              : <span className="answer-citation-chip is-unavailable" aria-label={`출처 ${number}: 확인된 원문 연결 없음`}>
                 <span className="answer-citation-index">[{number}]</span><span>확인된 원문 연결 없음</span>
               </span>}
-        </li>;
-      })}
+        </li>)}
     </ul>}
   </div>;
 }
 
-function AnswerOverview({answer, sources}: {answer: FactCheckAnswer; sources: FactSource[]}) {
+function AnswerOverview({answer, sources, messageId}: {answer: FactCheckAnswer; sources: FactSource[]; messageId: string}) {
+  const citationState = createAnswerCitationDisplayState(sources);
   return <section className="ai-answer" aria-label="AI 개요">
     <div className="ai-answer-heading"><span className="answer-spark" aria-hidden="true">✦</span><h3>AI 개요</h3></div>
     {answer.status === 'insufficient_evidence'
       ? <p className="answer-insufficient" role="note">확인된 원문 근거가 부족해 AI 개요를 만들지 않았어. 아래 출처 목록과 주장별 판정에서 확인 가능한 내용을 살펴봐.</p>
       : <>
-          {answer.overview && <div className="answer-overview-block"><AnswerBlockView block={answer.overview} sources={sources}/></div>}
+          {answer.overview && <div className="answer-overview-block"><AnswerBlockView block={answer.overview} sources={sources} citationState={citationState} messageId={messageId}/></div>}
           {answer.sections.map((section, sectionIndex) => <section className={`answer-section answer-section--${section.kind}`} key={`${section.kind}-${sectionIndex}`} aria-label={section.title}>
             <h4>{section.title}</h4>
-            <ul className="answer-section-items">{section.items.map((item, itemIndex) => <li key={itemIndex}><AnswerBlockView block={item} sources={sources}/></li>)}</ul>
+            <ul className="answer-section-items">{section.items.map((item, itemIndex) => <li key={itemIndex}><AnswerBlockView block={item} sources={sources} citationState={citationState} messageId={messageId}/></li>)}</ul>
           </section>)}
           {answer.conclusion && <section className="answer-conclusion" aria-label="정리">
-            <h4>정리</h4><AnswerBlockView block={answer.conclusion} sources={sources}/>
+            <h4>정리</h4><AnswerBlockView block={answer.conclusion} sources={sources} citationState={citationState} messageId={messageId}/>
           </section>}
         </>}
   </section>;
@@ -365,7 +367,7 @@ export default function FactCheckDashboard() {
             {messages.map(message => <motion.div key={message.id} className={`chat-message ${message.role === 'user' ? 'is-user' : 'is-assistant'} ${message.answer ? 'has-answer' : ''} ${message.tone === 'error' ? 'is-error' : ''}`} initial={reduce ? false : {opacity: 0, y: 10}} animate={{opacity: 1, y: 0}} transition={{duration: reduce ? 0 : .22}}>
               {message.role === 'assistant' && <span className="chat-avatar"><Icon name="lens" size={16}/></span>}
               <div className={`chat-bubble ${message.answer ? 'chat-bubble--answer' : ''}`}>
-                {message.answer ? <AnswerOverview answer={message.answer} sources={message.sources ?? []}/> : message.text ? <p>{message.text}</p> : null}
+                {message.answer ? <AnswerOverview answer={message.answer} sources={message.sources ?? []} messageId={message.id}/> : message.text ? <p>{message.text}</p> : null}
                 {message.meta && <small>{message.meta}</small>}
               </div>
             </motion.div>)}

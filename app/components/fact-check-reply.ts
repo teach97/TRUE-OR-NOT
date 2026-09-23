@@ -11,12 +11,68 @@ export type AssistantReply = {
 };
 
 export type ResolvedAnswerCitation = {source: FactSource; href: string};
+export type AnswerCitationDisplay = {
+  citation: AnswerCitation;
+  number: number;
+  source: FactSource | null;
+  href: string | null;
+  linkTarget: 'external' | 'reference' | 'unavailable';
+};
+
+export type AnswerCitationDisplayState = {
+  sourceNumbers: Map<string, number>;
+  linkedSourceIds: Set<string>;
+};
+
+export function createAnswerCitationDisplayState(sources: FactSource[] = []): AnswerCitationDisplayState {
+  return {
+    sourceNumbers: new Map(sources.map((source, index) => [source.id, index + 1])),
+    linkedSourceIds: new Set(),
+  };
+}
+
+export function answerCitationAnchorId(messageId: string, sourceNumber: number): string {
+  const safeMessageId = messageId.replace(/[^A-Za-z0-9_-]/g, '-');
+  return `answer-citation-${safeMessageId}-${sourceNumber}`;
+}
 
 export function resolveAnswerCitationSource(citation: AnswerCitation, sources: FactSource[]): ResolvedAnswerCitation | null {
   const source = sources.find(item => item.id === citation.sourceId);
   if (!source || source.accessStatus !== 'verified' || source.sourceType === '유튜브') return null;
   const href = safeSourceUrl(source.url);
   return href ? {source, href} : null;
+}
+
+export function presentAnswerCitations(
+  citations: AnswerCitation[],
+  sources: FactSource[],
+  state: AnswerCitationDisplayState,
+): AnswerCitationDisplay[] {
+  const seenInBlock = new Set<string>();
+  const displays: AnswerCitationDisplay[] = [];
+
+  for (const citation of citations) {
+    if (seenInBlock.has(citation.sourceId)) continue;
+    seenInBlock.add(citation.sourceId);
+
+    let number = state.sourceNumbers.get(citation.sourceId);
+    if (number === undefined) {
+      number = state.sourceNumbers.size + 1;
+      state.sourceNumbers.set(citation.sourceId, number);
+    }
+
+    const resolved = resolveAnswerCitationSource(citation, sources);
+    if (!resolved) {
+      displays.push({citation, number, source: null, href: null, linkTarget: 'unavailable'});
+      continue;
+    }
+
+    const linkTarget = state.linkedSourceIds.has(citation.sourceId) ? 'reference' : 'external';
+    state.linkedSourceIds.add(citation.sourceId);
+    displays.push({citation, number, source: resolved.source, href: resolved.href, linkTarget});
+  }
+
+  return displays;
 }
 
 export function composeAssistantReply(result: ReplyResult): AssistantReply {

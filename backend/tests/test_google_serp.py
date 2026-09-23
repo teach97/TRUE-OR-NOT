@@ -131,6 +131,40 @@ def test_organic_results_follow_google_position_even_if_api_array_is_unsorted():
     assert [source["candidateOrder"] for source in result["sources"]] == [1, 3]
 
 
+def test_google_results_exclude_japanese_pages_and_request_korean_or_english():
+    from google_serp import search_google_free
+
+    def handler(request):
+        if request.url.path == "/account.json":
+            return httpx.Response(200, json={
+                "plan_name": "Free", "plan_monthly_price": 0,
+                "plan_searches_left": 1, "extra_credits": 0,
+            })
+        assert request.url.params["lr"] == "lang_ko|lang_en"
+        return httpx.Response(200, json={
+            "search_metadata": {"status": "Success"},
+            "organic_results": [
+                {"position": 1, "title": "2030年のAGI", "snippet": "人工知能の予測", "link": "https://dx.mri.co.jp/agi"},
+                {"position": 2, "title": "한국어 전망", "snippet": "2030년 AGI 예측", "link": "https://news.example.kr/agi"},
+                {"position": 3, "title": "AGI ニュース", "snippet": "予測と人工知能", "link": "https://example.com/japanese"},
+                {"position": 4, "title": "English AGI forecast", "snippet": "A 2030 outlook", "link": "https://example.com/english"},
+            ],
+        })
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            return await search_google_free(
+                {"consent": True, "claims": [{"id": "c1", "kind": "prediction", "quote": "AGI 2030년"}]},
+                api_key="test-serp-key", client=client,
+            )
+
+    sources = asyncio.run(run())["sources"]
+    assert [source["url"] for source in sources] == [
+        "https://news.example.kr/agi", "https://example.com/english",
+    ]
+    assert [source["candidateOrder"] for source in sources] == [2, 4]
+
+
 def test_each_distinct_claim_query_gets_its_own_ranked_search_when_free_quota_covers_all():
     from google_serp import search_google_free
 

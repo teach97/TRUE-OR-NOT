@@ -174,6 +174,21 @@ def origin_group_for_url(raw_url: str) -> str:
     return ".".join(parts[-2:]) if len(parts) >= 2 else host
 
 
+_JAPANESE_TEXT = re.compile(r"[\u3040-\u30ff]")
+
+
+def is_japanese_candidate(candidate: dict) -> bool:
+    """Reject Japanese-domain or Japanese-script pages across search providers."""
+    normalized_url = candidate_url(candidate.get("url"))
+    if normalized_url and _normalized_host(normalized_url).endswith(".jp"):
+        return True
+    text = " ".join(
+        value for value in (candidate.get("title"), candidate.get("snippet"))
+        if isinstance(value, str)
+    )
+    return bool(_JAPANESE_TEXT.search(text))
+
+
 def _select_diverse_sources(candidates: list[dict], limit: int = 6) -> list[dict]:
     """Preserve provider order with a strict site cap, not a Google rank claim."""
     selected: list[dict] = []
@@ -194,17 +209,23 @@ def _select_diverse_sources(candidates: list[dict], limit: int = 6) -> list[dict
 
 
 def _source_identity(url: str) -> str:
-    """Ignore known tracking parameters only for deduplication, never fetching."""
+    """Canonicalize common URL variants for deduplication, never fetching."""
     parts = urlsplit(url)
-    query = [(key, value) for key, value in parse_qsl(parts.query, keep_blank_values=True)
-             if not key.lower().startswith("utm_") and key.lower() not in {"fbclid", "gclid", "msclkid"}]
-    return urlunsplit((parts.scheme, parts.netloc, parts.path, urlencode(query), ""))
+    host = (parts.hostname or "").lower().removeprefix("www.")
+    query = sorted(
+        (key, value) for key, value in parse_qsl(parts.query, keep_blank_values=True)
+        if not key.lower().startswith("utm_") and key.lower() not in {"fbclid", "gclid", "msclkid"}
+    )
+    path = parts.path.rstrip("/") or "/"
+    return urlunsplit((parts.scheme.lower(), host, path, urlencode(query), ""))
 
 
 def _project_candidates(candidates: list[dict]) -> list[dict]:
     """Preserve the provider's candidate order and its origin, not a SERP rank."""
     found: dict[str, dict] = {}
     for position, candidate in enumerate(candidates, 1):
+        if not isinstance(candidate, dict) or is_japanese_candidate(candidate):
+            continue
         url = candidate_url(candidate.get("url"))
         if url is None:
             continue

@@ -84,7 +84,8 @@ async def search_google_free(state: dict, *, api_key: str, client: httpx.AsyncCl
     for query in queries:
         data = await _json_response(client, "/search.json", {
             "api_key": api_key, "engine": "google", "q": query,
-            "gl": "kr", "hl": "ko", "google_domain": "google.com",
+            "gl": "kr", "hl": "ko", "lr": "lang_ko|lang_en",
+            "google_domain": "google.com",
         })
         metadata = data.get("search_metadata")
         if not isinstance(metadata, dict) or metadata.get("status") != "Success":
@@ -104,6 +105,7 @@ async def search_google_free(state: dict, *, api_key: str, client: httpx.AsyncCl
         candidate_groups.append([
             {
                 "url": result.get("link"), "title": result.get("title"),
+                "snippet": result.get("snippet"),
                 "searchProvider": "serpapi_google", "searchQuery": query,
                 "googlePosition": result["position"],
             }

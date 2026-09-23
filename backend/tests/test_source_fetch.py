@@ -77,6 +77,41 @@ def test_read_node_records_failure_without_inventing_text():
     assert state['sourceTexts'] == {'s1':'Actual source content'}
 
 
+def test_read_node_deduplicates_distinct_search_urls_that_resolve_to_the_same_page():
+    async def reader(url):
+        return sources.SourceReadResult(
+            'Same article text',
+            'https://datalab.co.kr/agi/2030',
+            'AGI 2030 전망',
+        )
+
+    state = asyncio.run(sources.read_sources({
+        'sources': [
+            {'id': 's1', 'url': 'https://short.example/agi', 'title': '첫 검색 결과'},
+            {'id': 's2', 'url': 'https://datalab.co.kr/article?ref=google', 'title': '같은 기사 다른 주소'},
+        ],
+    }, reader=reader))
+
+    assert [source['id'] for source in state['sources']] == ['s1']
+    assert state['sourceTexts'] == {'s1': 'Same article text'}
+
+
+def test_read_node_skips_japanese_article_body_from_generic_domain():
+    async def reader(url):
+        return sources.SourceReadResult(
+            'これは日本語の記事です。人工知能の予測について解説します。2030年までの展望を紹介します。',
+            url,
+            'AGI 2030 forecast',
+        )
+
+    state = asyncio.run(sources.read_sources({
+        'sources': [{'id': 's1', 'url': 'https://example.com/agi', 'title': 'AGI 2030 forecast'}],
+    }, reader=reader))
+
+    assert state['sources'] == []
+    assert state['sourceTexts'] == {}
+
+
 def test_read_node_uses_page_title_when_search_only_provided_a_host():
     async def reader(url):
         return sources.SourceReadResult(
