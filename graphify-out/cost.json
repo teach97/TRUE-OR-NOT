@@ -1,0 +1,15 @@
+{
+  "runs": [
+    {
+      "date": "2026-09-23T03:53:24.050575+00:00",
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "files": 115,
+      "token_usage_measured": false
+    }
+  ],
+  "total_input_tokens": 0,
+  "total_output_tokens": 0,
+  "token_usage_measured": false,
+  "token_usage_note": "Agent-tool usage was not reported; zero counts are placeholders, not measured usage."
+}
