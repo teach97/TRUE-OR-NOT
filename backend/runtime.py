@@ -1,6 +1,7 @@
 """Server settings and the assembled four-stage verification workflow."""
 from dataclasses import dataclass
 from datetime import datetime, timezone
+import logging
 import os
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -23,6 +24,21 @@ from workflow import FactCheckState, Stage, build_workflow
 
 
 _MODEL = "gpt-6-luna"
+_logger = logging.getLogger(__name__)
+
+
+def _http_status_from_exception(error: BaseException) -> int | None:
+    """Return only an upstream HTTP status from an exception chain."""
+    seen: set[int] = set()
+    current: BaseException | None = error
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        response = getattr(current, "response", None)
+        status_code = getattr(response, "status_code", None)
+        if isinstance(status_code, int):
+            return status_code
+        current = current.__cause__ or current.__context__
+    return None
 
 
 class Settings(BaseModel):
@@ -68,7 +84,23 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
         async def attempt(provider, client):
             try:
                 return await operation(provider, client)
+            except ProviderCallError as exc:
+                _logger.warning(
+                    "provider attempt failed stage=%s provider=%s error_type=%s http_status=%s",
+                    failure_code,
+                    provider.model,
+                    type(exc).__name__,
+                    _http_status_from_exception(exc),
+                )
+                raise
             except ValueError as exc:
+                _logger.warning(
+                    "provider attempt failed stage=%s provider=%s error_type=%s http_status=%s",
+                    failure_code,
+                    provider.model,
+                    type(exc).__name__,
+                    _http_status_from_exception(exc),
+                )
                 if str(exc) in {"INVALID_REQUEST", "NOT_CONFIGURED"}:
                     raise
                 raise ProviderCallError("Provider stage failed") from None
