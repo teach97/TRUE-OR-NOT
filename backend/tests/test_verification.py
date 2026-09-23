@@ -410,7 +410,7 @@ def test_verify_claims_sends_only_verified_source_text():
     def handler(request):
         body = json.loads(request.content)
         input_data = json.loads(body["input"])
-        assert body["model"] == "gpt-5.6-luna"
+        assert body["model"] == "gpt-6-luna"
         assert body["reasoning"] == {"effort": "max"}
         assert body["store"] is False
         assert body["max_output_tokens"] >= 12000

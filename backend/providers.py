@@ -33,7 +33,7 @@ class ProviderCallError(RuntimeError):
 
 
 def openai_provider(api_key: str | None) -> LLMProvider:
-    return LLMProvider("openai", "gpt-5.6-luna", "max", api_key or "")
+    return LLMProvider("openai", "gpt-6-luna", "max", api_key or "")
 
 
 def _secret_value(value: Any) -> str:
@@ -47,8 +47,6 @@ def configured_providers(settings: Any) -> tuple[LLMProvider, ...]:
     openai_key = _secret_value(getattr(settings, "api_key", ""))
     gemini_key = _secret_value(getattr(settings, "gemini_api_key", ""))
     providers: list[LLMProvider] = []
-    if openai_key:
-        providers.append(LLMProvider("openai", "gpt-5.6-luna", "max", openai_key))
     if gemini_key:
         providers.extend(
             [
@@ -56,6 +54,8 @@ def configured_providers(settings: Any) -> tuple[LLMProvider, ...]:
                 LLMProvider("gemini", "gemini-3.7-flash", "high", gemini_key),
             ]
         )
+    if openai_key:
+        providers.append(LLMProvider("openai", "gpt-6-luna", "max", openai_key))
     return tuple(providers)
 
 

@@ -2,14 +2,13 @@
 
 ## 선택한 연결 방식
 
-- 공급자: OpenAI API 직접 연결
-- API: `POST https://api.openai.com/v1/responses`
-- 모델: `gpt-5.6-luna`
-- 추론 강도: `reasoning.effort = max`
-- 인증: 서버 환경변수 `OPENAI_API_KEY`
-- 주의: ChatGPT/Codex 구독 인증과 다른 API 인증이며, 모델·웹 검색 사용량이 별도 과금됩니다.
+- 공급자 우선순위: Gemini 3.8 Flash → Gemini 3.7 Flash → GPT-6 Luna Max
+- Gemini: `gemini-3.8-flash`, 이후 `gemini-3.7-flash`; Interactions API의 `thinking_level = high`와 Google Search를 사용합니다.
+- OpenAI: `gpt-6-luna`; Responses API의 `reasoning.effort = max`를 사용합니다.
+- 인증: 서버 환경변수 `GEMINI_API_KEY`, `OPENAI_API_KEY`
+- 주의: ChatGPT/Codex 구독 인증과 별도의 API 인증이며, 모델·웹 검색 사용량은 각 공급자의 API 정책에 따라 과금됩니다.
 
-모델 및 추론 강도는 서버에서 고정하며 브라우저 입력으로 변경할 수 없습니다. 지원되지 않는 경우 다른 모델이나 낮은 추론 강도로 몰래 전환하지 않습니다.
+모델 및 추론 강도는 서버에서 고정하며 브라우저 입력으로 변경할 수 없습니다. 각 단계에서 현재 공급자 요청이 실패하면 키가 설정된 다음 공급자를 우선순위대로 시도합니다. 성공한 모델 ID와 추론 강도는 결과에 표시합니다.
 
 ## 구성
 
@@ -18,7 +17,7 @@
   → GET /api/fact-check : 설정 유무 확인
   → POST /api/fact-check : 동의한 원문·확인 요청 전송
       → 주장 추출 (최대 3개, 원문 위치 검증)
-      → OpenAI web_search로 실제 관련 자료 탐색
+      → Gemini Google Search 또는 OpenAI web_search로 실제 관련 자료 탐색
       → 검색 메타데이터에 존재하는 URL의 원문 수집
       → 실제 수집 본문과 인용문 일치 확인
       → 조건·찬반 근거 비교 및 구조화 판정
@@ -51,11 +50,11 @@
 
 ## 환경 설정
 
-1. 프로젝트의 `.env.example`을 `.env.local`로 복사합니다.
-2. 로컬 편집기에서 `OPENAI_API_KEY` 값을 입력합니다. 키를 채팅으로 전송하지 않습니다.
-3. 서버를 재시작합니다.
+1. `backend/.env`에 `GEMINI_API_KEY`와 `OPENAI_API_KEY`를 필요한 대로 설정합니다. 비밀값은 저장소 루트 `.env.example`이나 `.env.local`에 넣지 않습니다.
+2. Gemini 키가 있으면 Gemini 3.8 Flash와 Gemini 3.7 Flash가 각각 앞 순위로 사용됩니다. OpenAI 키가 있으면 GPT-6 Luna가 마지막 fallback으로 사용됩니다.
+3. 백엔드를 재시작합니다.
 4. 화면에서 설정 상태를 확인합니다. 설정됨 표시는 계정의 모델 권한·잔액·호출 성공을 보장하지 않습니다.
-5. 공개해도 되는 짧은 원문으로 실제 요청을 실행하고, 출처 링크와 원문 근거를 확인합니다.
+5. 공개해도 되는 짧은 원문으로 실제 요청을 실행하고, 결과에 기록된 실제 모델과 출처 링크·원문 근거를 확인합니다.
 
 `.env*` 파일은 Git에서 제외하고 비밀값이 없는 `.env.example`만 예외로 둡니다. `NEXT_PUBLIC_OPENAI_API_KEY`처럼 클라이언트에 노출되는 변수는 사용하지 않습니다.
 
@@ -63,14 +62,15 @@
 
 - 이 단계의 API는 로컬 개발·개인 검증용입니다. 인증·사용자별 한도·악용 방지 없이 인터넷에 공개하면 안 됩니다.
 - API 호출 타임아웃과 취소는 비용을 완전히 되돌리지 않습니다. 요청이 공급자에 전달된 이후 이미 사용된 토큰·검색 비용은 발생할 수 있습니다.
-- `max`는 더 긴 지연과 높은 사용량을 유발할 수 있습니다. 사용자 요청에 따라 유지합니다.
+- GPT-6 Luna에는 `reasoning.effort = max`, Gemini 모델에는 `thinking_level = high`를 사용합니다.
 - `store:false`는 응답 객체 저장 설정이며, OpenAI의 모든 보존 정책이 없다는 의미가 아닙니다.
 - 서버 상태 스트림은 영속 작업 큐가 아닙니다. 프로세스 재시작 시 작업 복구를 보장하지 않습니다.
 - 외부 웹페이지를 가져오는 기능에는 사설망·메타데이터 주소 차단, DNS/리다이렉트 검사, 시간·크기 제한이 필요합니다.
 
 ## 근거 문서
 
-- 모델 및 max: https://developers.openai.com/api/docs/guides/latest-model?model=gpt-5.6
+- GPT-6 Luna 및 max: https://developers.openai.com/api/docs/models/gpt-6-luna
+- Gemini Interactions API 및 모델 ID: https://ai.google.dev/gemini-api/docs/interactions-overview
 - 웹 검색: https://developers.openai.com/api/docs/guides/tools-web-search
 - 구조화 출력: https://developers.openai.com/api/docs/guides/structured-outputs
 

@@ -20,7 +20,7 @@ from verification import verify_claims
 from workflow import FactCheckState, Stage, build_workflow
 
 
-_MODEL = "gpt-5.6-luna"
+_MODEL = "gpt-6-luna"
 
 
 class Settings(BaseModel):

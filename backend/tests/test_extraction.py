@@ -72,7 +72,7 @@ def test_extractor_sends_documented_options_and_preserves_utf16_offsets():
     def handler(request):
         assert str(request.url) == "https://api.openai.com/v1/responses"
         body = json.loads(request.content)
-        assert body["model"] == "gpt-5.6-luna"
+        assert body["model"] == "gpt-6-luna"
         assert body["reasoning"] == {"effort": "max"}
         assert body["store"] is False
         assert body["text"]["format"]["strict"] is True

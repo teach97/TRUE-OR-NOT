@@ -17,9 +17,9 @@ def test_configured_provider_chain_is_ordered_and_skips_missing_keys():
     )
 
     assert [(provider.kind, provider.model, provider.reasoning) for provider in providers] == [
-        ("openai", "gpt-5.6-luna", "max"),
         ("gemini", "gemini-3.8-flash", "high"),
         ("gemini", "gemini-3.7-flash", "high"),
+        ("openai", "gpt-6-luna", "max"),
     ]
 
     only_gemini = configured_providers(
@@ -35,28 +35,6 @@ def test_run_with_fallback_tries_next_provider_after_failure():
     from providers import LLMProvider, ProviderCallError, run_with_fallback
 
     providers = (
-        LLMProvider("openai", "gpt-5.6-luna", "max", "test-openai"),
-        LLMProvider("gemini", "gemini-3.8-flash", "high", "test-gemini"),
-    )
-    attempts = []
-
-    async def operation(provider):
-        attempts.append(provider.model)
-        if provider.kind == "openai":
-            raise ProviderCallError("provider failed")
-        return {"ok": True}
-
-    result = asyncio.run(run_with_fallback(providers, operation))
-
-    assert result == ({"ok": True}, providers[1])
-    assert attempts == ["gpt-5.6-luna", "gemini-3.8-flash"]
-
-
-def test_run_with_fallback_reaches_third_provider_when_first_two_fail():
-    from providers import LLMProvider, ProviderCallError, run_with_fallback
-
-    providers = (
-        LLMProvider("openai", "gpt-5.6-luna", "max", "test-openai"),
         LLMProvider("gemini", "gemini-3.8-flash", "high", "test-gemini"),
         LLMProvider("gemini", "gemini-3.7-flash", "high", "test-gemini"),
     )
@@ -64,7 +42,29 @@ def test_run_with_fallback_reaches_third_provider_when_first_two_fail():
 
     async def operation(provider):
         attempts.append(provider.model)
-        if provider.model != "gemini-3.7-flash":
+        if provider.model == "gemini-3.8-flash":
+            raise ProviderCallError("provider failed")
+        return {"ok": True}
+
+    result = asyncio.run(run_with_fallback(providers, operation))
+
+    assert result == ({"ok": True}, providers[1])
+    assert attempts == ["gemini-3.8-flash", "gemini-3.7-flash"]
+
+
+def test_run_with_fallback_reaches_third_provider_when_first_two_fail():
+    from providers import LLMProvider, ProviderCallError, run_with_fallback
+
+    providers = (
+        LLMProvider("gemini", "gemini-3.8-flash", "high", "test-gemini"),
+        LLMProvider("gemini", "gemini-3.7-flash", "high", "test-gemini"),
+        LLMProvider("openai", "gpt-6-luna", "max", "test-openai"),
+    )
+    attempts = []
+
+    async def operation(provider):
+        attempts.append(provider.model)
+        if provider.model != "gpt-6-luna":
             raise ProviderCallError("provider failed")
         return {"ok": True}
 
@@ -72,9 +72,9 @@ def test_run_with_fallback_reaches_third_provider_when_first_two_fail():
 
     assert result == ({"ok": True}, providers[2])
     assert attempts == [
-        "gpt-5.6-luna",
         "gemini-3.8-flash",
         "gemini-3.7-flash",
+        "gpt-6-luna",
     ]
 
 
@@ -84,7 +84,7 @@ def test_openai_structured_schema_requires_defaulted_properties_too():
 
     schema = JudgmentResponse.model_json_schema()
     payload = _structured_payload(
-        LLMProvider("openai", "gpt-5.6-luna", "max", "test-only"),
+        LLMProvider("openai", "gpt-6-luna", "max", "test-only"),
         instructions="test",
         input_data={},
         schema=schema,
@@ -104,7 +104,7 @@ def test_runtime_stage_retries_next_provider_after_adapter_failure(monkeypatch):
 
     async def fake_extract(state, *, client, provider):
         attempts.append(provider.model)
-        if provider.kind == "openai":
+        if provider.model == "gemini-3.8-flash":
             raise ValueError("EXTRACTION_FAILED")
         return {"claims": [], "llmModel": provider.model}
 
@@ -120,5 +120,5 @@ def test_runtime_stage_retries_next_provider_after_adapter_failure(monkeypatch):
         adapters.extract({"text": "claim", "focus": "", "consent": True})
     )
 
-    assert attempts == ["gpt-5.6-luna", "gemini-3.8-flash"]
-    assert result["llmModel"] == "gemini-3.8-flash"
+    assert attempts == ["gemini-3.8-flash", "gemini-3.7-flash"]
+    assert result["llmModel"] == "gemini-3.7-flash"

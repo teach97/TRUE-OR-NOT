@@ -1,7 +1,7 @@
 /** 브라우저와 서버가 공유하는 검증 계약입니다. 비밀 설정은 포함하지 않습니다. */
 import type { FactScoreBand } from './fact-score';
 
-export const FACT_CHECK_MODEL = 'gpt-5.6-luna';
+export const FACT_CHECK_MODEL = 'gpt-6-luna';
 export const FACT_CHECK_REASONING = 'max';
 export const VERDICTS = ['mostly_supported', 'partially_supported', 'missing_context', 'conflicting_sources', 'insufficient_evidence', 'not_checkable', 'contradicted'] as const;
 export type VerdictCode = typeof VERDICTS[number];

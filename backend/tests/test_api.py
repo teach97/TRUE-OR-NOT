@@ -39,13 +39,32 @@ def test_status_reports_ready_for_configured_runtime(monkeypatch):
     import main
     from main import app
 
-    monkeypatch.setattr(main, "load_settings", lambda: Settings(api_key=SecretStr("test-only")))
+    monkeypatch.setattr(
+        main,
+        "load_settings",
+        lambda: Settings(
+            api_key=SecretStr("test-only"),
+            gemini_api_key=SecretStr("gemini-test-only"),
+        ),
+    )
     with TestClient(app) as client:
         assert client.get("/api/fact-check").json() == {
             "configured": True, "workflowReady": True,
-            "engine": "langgraph", "model": "gpt-5.6-luna", "reasoning": "max",
+            "engine": "langgraph", "model": "gemini-3.8-flash", "reasoning": "high",
             "webSearch": True, "phase": "workflow-ready",
         }
+
+
+def test_status_reports_gpt6_luna_when_only_openai_is_configured(monkeypatch):
+    from fastapi.testclient import TestClient
+    from pydantic import SecretStr
+    from runtime import Settings
+    import main
+    from main import app
+
+    monkeypatch.setattr(main, "load_settings", lambda: Settings(api_key=SecretStr("test-only")))
+    with TestClient(app) as client:
+        assert client.get("/api/fact-check").json()["model"] == "gpt-6-luna"
 
 
 def test_status_reports_gemini_fallback_when_openai_is_missing(monkeypatch):

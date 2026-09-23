@@ -1,5 +1,17 @@
 # 팩트체크 에이전트 UI MVP 작업 인계서
 
+## 2026-09-23 모델 전환 및 fallback 우선순위 변경
+
+이 절이 현재 서비스 모델과 provider 우선순위의 기준입니다. 이전 날짜에 기록한 초기 fallback 구현은 구현 당시 상태의 이력입니다.
+
+- **우선순위:** `GEMINI_API_KEY`가 있으면 `gemini-3.8-flash` (`thinking_level: high`) → 같은 키의 `gemini-3.7-flash` (`thinking_level: high`) → `OPENAI_API_KEY`의 `gpt-6-luna` (`reasoning.effort: max`) 순으로 시도합니다. 설정되지 않은 키의 provider는 건너뜁니다.
+- **적용 범위:** 주장 추출·웹 검색·근거 검증 각 단계가 동일한 순서를 따릅니다. 결과 상단 채팅 모델 표시는 `/api/fact-check` 상태 응답에 설정된 첫 provider를 기준으로 갱신되며, 실제 최종 provider는 검증 결과의 `model` 필드에 표시됩니다.
+- **모델 ID 확인:** OpenAI 공식 문서에서 GPT-6 Luna의 API ID `gpt-6-luna`, `reasoning.effort: max`, Responses API·Structured Outputs·Web search 지원을 확인했습니다. Gemini 공식 문서에서 `gemini-3.8-flash`, `gemini-3.7-flash` 모델 ID와 Interactions API 지원을 확인했습니다.
+- **키 상태:** 현재 `backend/.env` 또는 프로세스 설정에서 OpenAI와 Gemini 키가 모두 설정되어 있음을 비밀값 없이 확인했습니다. 실제 provider 호출은 이번 모델 전환 검증에서 수행하지 않았으므로 계정별 모델 접근·실응답 성공은 별도 live gate입니다.
+- **회귀 검증:** backend `155 passed` (기존 Starlette/AnyIO deprecation warning 1건), frontend Node `25 passed`, `tsc --noEmit --incremental false`, `uv lock --check`, `npm run build`, `git diff --check`를 통과했습니다. 우선순위 체인, 1→2 및 1→2→3 재시도, 상태 API의 선택 모델, GPT-6 결과 계약을 검증했습니다.
+- **실행 반영:** `127.0.0.1:8010`은 변경 전 코드로 실행 중일 수 있습니다. 새 모델 순서를 UI에 적용하려면 backend를 재시작해야 합니다. 기존 frontend·backend 프로세스는 작업 중 종료하지 않았습니다.
+- **공식 문서:** https://developers.openai.com/api/docs/models/gpt-6-luna · https://ai.google.dev/gemini-api/docs/interactions-overview
+
 ## 2026-09-23 검색 개선 2단계 체크포인트
 
 - **반영:** 출처 유형별 재정렬을 제거하고 공급자 후보 반환 순서를 보존합니다. 같은 사이트 그룹은 최대 2개, 전체 최대 6개로 제한하며 후보 부족 시 제한을 풀어 채우지 않습니다. 이는 독립적인 발행인 수나 신뢰도를 보장하는 규칙이 아닙니다.
@@ -23,7 +35,7 @@
 
 ## 2026-09-22 다중 LLM fallback 구현 완료
 
-이 절은 현재 저장소의 가장 최신 구현·검증 상태입니다. 아래 과거 기록의 OpenAI 단일 provider 전제는 현재 fallback 구현에 맞게 해석해야 합니다.
+이 절은 2026-09-22 fallback 최초 구현 시점의 기록입니다. 모델 ID와 현재 우선순위는 2026-09-23 업데이트를 기준으로 합니다.
 
 - **fallback 순서:** `OPENAI_API_KEY`가 있으면 `gpt-5.6-luna` + `reasoning: max`를 1순위로 사용합니다. 호출 실패 시 `GEMINI_API_KEY`의 `gemini-3.8-flash` + `thinking_level: high`, 다시 실패 시 같은 키의 `gemini-3.7-flash` + `thinking_level: high`를 사용합니다. 앞 provider의 키가 없으면 설정된 다음 provider부터 시작합니다.
 - **적용 단계:** 주장 추출, 웹 검색, 근거 검증 각각에서 같은 순서로 fallback을 시도합니다. 원문 읽기 단계는 LLM 호출이 아니므로 fallback 대상이 아닙니다. 어느 provider가 성공했는지는 최종 결과의 `model`과 `reasoning`에 반영하며, API 키는 graph state·스트림·응답에 넣지 않습니다.

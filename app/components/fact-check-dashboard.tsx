@@ -115,6 +115,7 @@ export default function FactCheckDashboard() {
   const messageCounter = useRef(0);
   const [consent, setConsent] = useState(false);
   const [configured, setConfigured] = useState<boolean | null>(null);
+  const [configuredModel, setConfiguredModel] = useState<string | null>(null);
   const [configError, setConfigError] = useState(false);
   const [liveResult, setLiveResult] = useState<FactCheckResult | null>(null);
   const editor = useRef<HTMLTextAreaElement>(null);
@@ -125,6 +126,10 @@ export default function FactCheckDashboard() {
   const busy = state.status === 'loading';
   const configurationHelp = '서버 설정이 필요합니다. backend/.env에 OPENAI_API_KEY 또는 GEMINI_API_KEY를 설정한 뒤 서버를 다시 시작해 주세요. 키를 화면이나 채팅에 입력하지 마세요.';
   const serviceLabel = configured === true ? 'LLM fallback 설정됨 · 접근 미확인' : configured === false ? 'LLM 키 미설정' : configError ? '설정 확인 실패' : '서버 설정 확인 중';
+  const modelLabel = configuredModel === 'gemini-3.8-flash' ? 'Gemini 3.8 Flash'
+    : configuredModel === 'gemini-3.7-flash' ? 'Gemini 3.7 Flash'
+      : configuredModel === 'gpt-6-luna' ? 'GPT-6 Luna Max'
+        : configured === false ? '모델 미설정' : '모델 확인 중';
   const trustScore = snapshot?.claims.length ? Math.round(snapshot.claims.reduce((total, claim) => total + claim.factScore, 0) / snapshot.claims.length) : null;
   const sourceCount = snapshot ? snapshot.demo ? documents.length : liveResult?.sources.length ?? 0 : 0;
   const evidenceCount = snapshot ? snapshot.demo ? snapshot.claims.reduce((total, claim) => total + claim.evidenceIds.length, 0) : liveResult?.evidence.length ?? 0 : 0;
@@ -135,7 +140,7 @@ export default function FactCheckDashboard() {
   useEffect(() => {
     const controller = new AbortController();
     fetch('/api/fact-check', {signal: controller.signal, cache: 'no-store'})
-      .then(async response => {if (!response.ok) throw new Error(); const status = await response.json(); if (typeof status.configured !== 'boolean') throw new Error(); if (!controller.signal.aborted) setConfigured(status.configured);})
+      .then(async response => {if (!response.ok) throw new Error(); const status = await response.json(); if (typeof status.configured !== 'boolean') throw new Error(); if (!controller.signal.aborted) {setConfigured(status.configured); setConfiguredModel(typeof status.model === 'string' ? status.model : null);}})
       .catch(() => {if (!controller.signal.aborted) setConfigError(true);});
     return () => {controller.abort(); generation.current++; request.current?.abort();};
   }, []);
@@ -290,7 +295,7 @@ export default function FactCheckDashboard() {
               <div className="chat-input-meta"><span>{draft.length.toLocaleString()} / 12,000</span><span>Ctrl + Enter로 보내기</span></div>
               <div className="chat-toolbar">
                 <div className="chat-tools"><button type="button" className="chat-tool" onClick={() => setDialog('guide')}><Icon name="plus" size={17}/><span>검증 조건</span></button><span className="chat-tool is-static"><Icon name="link" size={16}/><span>웹 검색</span></span><label className="chat-focus-control" htmlFor="focus-request"><Icon name="lens" size={15}/><span>확인 요청</span><input id="focus-request" value={focus} maxLength={500} onChange={event => setFocus(event.target.value)} placeholder="선택 입력"/></label></div>
-                <div className="chat-send-group"><span className="chat-model">GPT Luna Max <small>fallback</small></span><button type="submit" className="chat-send" disabled={busy || !draft.trim()} aria-label={busy ? '검증 진행 중' : sample ? '예시 다시 보기' : '팩트 검증 시작'}><Icon name="arrow" size={19}/></button></div>
+                <div className="chat-send-group"><span className="chat-model">{modelLabel}{configuredModel && <small>우선 사용</small>}</span><button type="submit" className="chat-send" disabled={busy || !draft.trim()} aria-label={busy ? '검증 진행 중' : sample ? '예시 다시 보기' : '팩트 검증 시작'}><Icon name="arrow" size={19}/></button></div>
               </div>
             </div>
             <div className="chat-footer"><div>{!sample && <label className="consent-control"><input type="checkbox" checked={consent} onChange={event => setConsent(event.target.checked)} disabled={busy}/><span>외부 전송과 웹 검색 사용에 동의합니다.</span></label>}{sample && <span className="sample-state"><Icon name="shield" size={14}/>합성 예시는 외부로 전송하지 않습니다.</span>}</div><button type="button" className="sample-chip" onClick={loadSample}>예시로 시작하기 <Icon name="arrow" size={14}/></button></div>

@@ -10,7 +10,7 @@ def result_payload():
         "text": "Claim",
         "focus": "",
         "demo": False,
-        "model": "gpt-5.6-luna",
+        "model": "gpt-6-luna",
         "reasoning": "max",
         "checkedAt": "2026-09-20T00:00:00+00:00",
         "claims": [{

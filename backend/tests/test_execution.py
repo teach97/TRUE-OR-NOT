@@ -75,7 +75,7 @@ def test_post_runs_graph_and_returns_only_result():
     seen = []
     fixture_result = {
         "text": "  claim  ", "focus": "", "demo": False,
-        "model": "gpt-5.6-luna", "reasoning": "max",
+        "model": "gpt-6-luna", "reasoning": "max",
         "checkedAt": "2026-09-20T00:00:00+00:00",
         "claims": [], "sources": [], "evidence": [], "warnings": [],
     }

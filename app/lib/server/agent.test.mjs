@@ -11,7 +11,7 @@ test('extraction is strict and derives literal UTF16 ranges; requests fix model,
   };
   const claims = await extractClaims({text:'😀 서울입니다',focus:'',consent:true}, 'test-key', new AbortController().signal, fetcher);
   assert.equal(claims[0].start, 3); assert.equal(claims[0].end, 5);
-  assert.equal(body.model,'gpt-5.6-luna'); assert.deepEqual(body.reasoning,{effort:'max'});
+  assert.equal(body.model,'gpt-6-luna'); assert.deepEqual(body.reasoning,{effort:'max'});
   assert.equal(body.store,false); assert.equal(body.text.format.strict,true);
   for (const data of [{claims:[{quote:'invented',kind:'fact'}]}, {claims:[{quote:'서울',kind:'fake'}]}, {claims:[{quote:'서울',kind:'fact',start:0}]}, {claims:[],extra:1}]) {
     await assert.rejects(extractClaims({text:'서울',focus:'',consent:true},'k',new AbortController().signal,async()=>Response.json({status:'completed',output:[{type:'message',content:[{type:'output_text',text:JSON.stringify(data)}]}]})));
@@ -24,7 +24,7 @@ test('real stages search facts with required web tool and never trust generated 
   const fetcher=async(url,init)=>{
     assert.equal(url,'https://api.openai.com/v1/responses');
     const body=JSON.parse(init.body); requests.push(body);
-    assert.equal(body.model,'gpt-5.6-luna'); assert.deepEqual(body.reasoning,{effort:'max'}); assert.equal(body.store,false);
+    assert.equal(body.model,'gpt-6-luna'); assert.deepEqual(body.reasoning,{effort:'max'}); assert.equal(body.store,false);
     let output;
     if(requests.length===1) output=[{type:'message',content:[{type:'output_text',text:JSON.stringify({claims:[{quote:'Earth is round.',kind:'fact'},{quote:'Best planet.',kind:'opinion'}]})}]}];
     else if(requests.length===2) {

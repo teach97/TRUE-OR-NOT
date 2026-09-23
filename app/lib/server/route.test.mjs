@@ -54,7 +54,7 @@ test('production remains blocked for both local authorities',async()=>{
 test('status uses backend configuration and projects only safe fields',async()=>{
  const {GET}=await import('../../api/fact-check/route.ts');
  const saved=globalThis.fetch;
- globalThis.fetch=async(url)=>{assert.equal(String(url),'http://127.0.0.1:8010/api/fact-check');return Response.json({configured:true,workflowReady:true,model:'gpt-5.6-luna',reasoning:'max',webSearch:true,private:'SECRET'});};
+ globalThis.fetch=async(url)=>{assert.equal(String(url),'http://127.0.0.1:8010/api/fact-check');return Response.json({configured:true,workflowReady:true,model:'gpt-6-luna',reasoning:'max',webSearch:true,private:'SECRET'});};
  try { const r=await GET();const body=await r.json();assert.equal(body.configured,true);assert.equal(body.private,undefined);assert.equal(r.headers.get('cache-control'),'no-store'); }
  finally{globalThis.fetch=saved;}
 });
