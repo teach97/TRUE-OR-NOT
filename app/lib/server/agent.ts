@@ -160,7 +160,7 @@ export async function* runAgent(request: FactCheckRequest, key: string, signal: 
     }
     bounded.throwIfAborted();
     const grounded=groundJudgments(claims,judgments,sources,texts);
-    const result:FactCheckResult={text:request.text,focus:request.focus,demo:false,model:MODEL,reasoning:'max',checkedAt:new Date().toISOString(),...grounded,sources,warnings:['최대 3개 주장·6개 출처를 대상으로 한 제한된 검증입니다.','출처 간 독립성과 원자료 계보는 확인되지 않았습니다.',...(sources.some(s=>s.accessStatus==='unavailable')?['일부 출처 원문에 접근하지 못했습니다. 검색 요약은 직접 인용으로 사용하지 않았습니다.']:[])]};
+    const result:FactCheckResult={text:request.text,focus:request.focus,demo:false,model:MODEL,reasoning:'max',checkedAt:new Date().toISOString(),...grounded,sources,answer:{status:'insufficient_evidence',overview:null,sections:[],conclusion:null,model:null,reasoning:null},warnings:['최대 3개 주장·6개 출처를 대상으로 한 제한된 검증입니다.','출처 간 독립성과 원자료 계보는 확인되지 않았습니다.',...(sources.some(s=>s.accessStatus==='unavailable')?['일부 출처 원문에 접근하지 못했습니다. 검색 요약은 직접 인용으로 사용하지 않았습니다.']:[])]};
     yield {type:'result',result};
   } catch {
     if(signal.aborted)return;

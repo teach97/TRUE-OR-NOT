@@ -4,8 +4,8 @@ from contextlib import aclosing
 import json
 from contracts import FactCheckResponse
 
-STAGES = ('extracting', 'searching', 'reading', 'verifying')
-MESSAGES = ('주장을 추출하고 있습니다.', '근거 출처를 검색하고 있습니다.', '출처 원문을 읽고 있습니다.', '인용과 판정을 검증하고 있습니다.')
+STAGES = ('extracting', 'searching', 'reading', 'verifying', 'synthesizing')
+MESSAGES = ('주장을 추출하고 있습니다.', '근거 출처를 검색하고 있습니다.', '출처 원문을 읽고 있습니다.', '인용과 판정을 검증하고 있습니다.', '확인된 원문 근거로 답변을 구성하고 있습니다.')
 
 
 def encode(event):
@@ -24,7 +24,7 @@ async def stream_events(graph, payload, *, timeout=240):
                         if expected >= len(STAGES) or stage != STAGES[expected]:
                             raise ValueError('Unexpected stage')
                         expected += 1
-                        if stage == 'verifying':
+                        if stage == 'synthesizing':
                             response = FactCheckResponse.model_validate({'result':values.get('result')})
                             yield encode({'type':'result','result':response.result.model_dump(mode='json')})
                         else:

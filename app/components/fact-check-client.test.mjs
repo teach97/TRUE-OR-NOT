@@ -2,7 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFactCheckStream} from './fact-check-client.ts';
 
-const result = {text:'한글 원문',focus:'',demo:false,model:'gpt-6-luna',reasoning:'max',checkedAt:'2026-09-19',claims:[],sources:[],evidence:[],warnings:[]};
+const insufficientAnswer = {status:'insufficient_evidence',overview:null,sections:[],conclusion:null,model:null,reasoning:null};
+const result = {text:'한글 원문',focus:'',demo:false,model:'gpt-6-luna',reasoning:'max',checkedAt:'2026-09-19',claims:[],sources:[],evidence:[],warnings:[],answer:insufficientAnswer};
+const verifiedSource = {id:'s1',url:'https://example.com/article',title:'원문 제목',publisher:'example.com',publishedAt:null,retrievedAt:'2026-09-23',accessStatus:'verified',sourceType:'웹',originGroupId:null,youtubeTitle:null,youtubeComments:[],youtubeDataStatus:'not_applicable'};
+const groundedResult = (source=verifiedSource) => ({...result,sources:[source],answer:{status:'grounded',overview:{text:'확인된 개요',citations:[{sourceId:'s1',quote:'원문에 실제로 있는 인용'}]},sections:[],conclusion:{text:'확인된 결론',citations:[{sourceId:'s1',quote:'원문에 실제로 있는 인용'}]},model:'gemini-3.8-flash',reasoning:'high'}});
 function response(text, width=1) {
   const bytes = new TextEncoder().encode(text);
   return new Response(new ReadableStream({start(c) {for(let i=0;i<bytes.length;i+=width)c.enqueue(bytes.slice(i,i+width));c.close();}}), {headers:{'content-type':'application/x-ndjson'}});
@@ -17,6 +20,23 @@ test('accepts a Gemini fallback result with high reasoning', async () => {
  const actual = await readFactCheckStream(response(JSON.stringify({type:'result',result:fallback})));
  assert.equal(actual.model,'gemini-3.8-flash');
  assert.equal(actual.reasoning,'high');
+});
+test('requires a well-formed answer and source-grounded citations', async () => {
+ await assert.rejects(readFactCheckStream(response(JSON.stringify({type:'result',result:(({answer,...rest})=>rest)(result)}))),/결과/);
+ await assert.rejects(readFactCheckStream(response(JSON.stringify({type:'result',result:{...result,answer:{...insufficientAnswer,status:'grounded'}}}))),/결과/);
+ const unknown=groundedResult(); unknown.answer.overview.citations[0].sourceId='unknown';
+ await assert.rejects(readFactCheckStream(response(JSON.stringify({type:'result',result:unknown}))),/결과/);
+ const unavailable=groundedResult({...verifiedSource,accessStatus:'unavailable'});
+ await assert.rejects(readFactCheckStream(response(JSON.stringify({type:'result',result:unavailable}))),/결과/);
+ const youtubeSource={...verifiedSource,sourceType:'유튜브',youtubeDataStatus:'collected'};
+ const youtube=groundedResult(youtubeSource);
+ await assert.rejects(readFactCheckStream(response(JSON.stringify({type:'result',result:youtube}))),/결과/);
+ const accepted=await readFactCheckStream(response(JSON.stringify({type:'result',result:groundedResult()})));
+ assert.equal(accepted.answer.status,'grounded');
+});
+test('accepts a safe insufficient-evidence answer without answer model metadata', async () => {
+ const actual=await readFactCheckStream(response(JSON.stringify({type:'result',result:{...result,answer:insufficientAnswer}})));
+ assert.deepEqual(actual.answer,insufficientAnswer);
 });
 test('accepts bounded YouTube title and comments but rejects malformed context', async () => {
  const source={id:'s1',url:'https://www.youtube.com/watch?v=aB_12345678',title:'검색 제목',youtubeTitle:'실제 영상 제목',youtubeComments:['첫 댓글'],youtubeDataStatus:'collected',publisher:'youtube.com',publishedAt:null,retrievedAt:'2026-09-23',accessStatus:'unavailable',sourceType:'유튜브',originGroupId:'youtube'};

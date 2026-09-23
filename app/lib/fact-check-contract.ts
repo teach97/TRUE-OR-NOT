@@ -26,11 +26,26 @@ export type FactClaim = {
   verdictCode: VerdictCode; verdict: string; tone: string; summary: string;
   confirmed: string[]; unresolved: string[]; warnings: string[]; evidenceIds: string[];
 };
+export type AnswerCitation = {sourceId: string; quote: string};
+export type AnswerBlock = {text: string; citations: AnswerCitation[]};
+export type AnswerSection = {
+  kind: 'supporting' | 'counter' | 'uncertainty' | 'context';
+  title: string;
+  items: AnswerBlock[];
+};
+export type FactCheckAnswer = {
+  status: 'grounded' | 'insufficient_evidence';
+  overview: AnswerBlock | null;
+  sections: AnswerSection[];
+  conclusion: AnswerBlock | null;
+  model: string | null;
+  reasoning: Reasoning | null;
+};
 export type FactCheckResult = {
   text: string; focus: string; demo: false; model: string; reasoning: Reasoning; checkedAt: string;
-  claims: FactClaim[]; sources: FactSource[]; evidence: FactEvidence[]; warnings: string[];
+  claims: FactClaim[]; sources: FactSource[]; evidence: FactEvidence[]; warnings: string[]; answer: FactCheckAnswer;
 };
-export type AgentStage = 'extracting' | 'searching' | 'reading' | 'verifying';
+export type AgentStage = 'extracting' | 'searching' | 'reading' | 'verifying' | 'synthesizing';
 export type AgentEvent =
   | {type: 'stage'; stage: AgentStage; message: string}
   | {type: 'result'; result: FactCheckResult}

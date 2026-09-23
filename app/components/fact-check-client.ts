@@ -1,4 +1,4 @@
-import type { AgentEvent, FactCheckResult } from '../lib/fact-check-contract';
+import type { AgentEvent, AnswerBlock, FactCheckAnswer, FactCheckResult, FactSource } from '../lib/fact-check-contract';
 // @ts-ignore -- explicit extension is required by the Node 24 native test runner.
 import { FACT_SCORE_BANDS, scoreBand, scoreLabel } from '../lib/fact-score.ts';
 
@@ -10,14 +10,40 @@ export class FactCheckError extends Error {
 export function safeSourceUrl(value: string): string | null {
   try {const url = new URL(value); return ['http:', 'https:'].includes(url.protocol) ? url.href : null;} catch {return null;}
 }
+function validAnswer(value: unknown, sources: FactSource[]): value is FactCheckAnswer {
+  if (!value || typeof value !== 'object') return false;
+  const answer = value as FactCheckAnswer;
+  if (!['grounded','insufficient_evidence'].includes(answer.status) || !Array.isArray(answer.sections) || answer.sections.length > 4
+      || !(answer.model === null || (typeof answer.model === 'string' && answer.model.length <= 100))
+      || !(answer.reasoning === null || answer.reasoning === 'max' || answer.reasoning === 'high')) return false;
+  const validBlock = (value: unknown, citationsRequired: boolean): value is AnswerBlock => {
+    if (!value || typeof value !== 'object') return false;
+    const block = value as AnswerBlock;
+    return typeof block.text === 'string' && block.text.length >= 1 && block.text.length <= 1200
+      && Array.isArray(block.citations) && block.citations.length <= 3 && (!citationsRequired || block.citations.length > 0)
+      && block.citations.every(citation => citation && typeof citation.sourceId === 'string' && citation.sourceId.length >= 1 && citation.sourceId.length <= 100
+        && typeof citation.quote === 'string' && citation.quote.length >= 1 && citation.quote.length <= 2000
+        && sources.some(source => source.id === citation.sourceId && source.accessStatus === 'verified' && source.sourceType !== '유튜브'));
+  };
+  const citationsRequired = answer.status === 'grounded';
+  if (answer.overview !== null && !validBlock(answer.overview, citationsRequired)) return false;
+  if (answer.conclusion !== null && !validBlock(answer.conclusion, citationsRequired)) return false;
+  if (citationsRequired && (answer.overview === null || answer.conclusion === null)) return false;
+  if (answer.status === 'insufficient_evidence' && answer.sections.length > 0) return false;
+  return answer.sections.every(section => section && typeof section === 'object'
+    && ['supporting','counter','uncertainty','context'].includes(section.kind)
+    && typeof section.title === 'string' && section.title.length >= 1 && section.title.length <= 120
+    && Array.isArray(section.items) && section.items.length >= 1 && section.items.length <= 3
+    && section.items.every(item => validBlock(item, citationsRequired)));
+}
 function validResult(value: unknown): value is FactCheckResult {
   if (!value || typeof value !== 'object') return false;
   const r = value as FactCheckResult;
   return r.demo === false && typeof r.text === 'string' && typeof r.focus === 'string' && typeof r.checkedAt === 'string' && typeof r.model === 'string' && (r.reasoning === 'max' || r.reasoning === 'high')
     && Array.isArray(r.claims) && r.claims.length <= 3 && r.claims.every(c => typeof c.id === 'string' && typeof c.quote === 'string' && Number.isInteger(c.start) && Number.isInteger(c.end) && c.start >= 0 && c.end > c.start && r.text.slice(c.start, c.end) === c.quote && Number.isInteger(c.factScore) && c.factScore >= 0 && c.factScore <= 100 && FACT_SCORE_BANDS.includes(c.scoreBand) && c.scoreBand === scoreBand(c.factScore) && c.scoreLabel === scoreLabel(c.factScore) && typeof c.summary === 'string' && typeof c.tone === 'string' && typeof c.verdict === 'string' && [c.confirmed,c.unresolved,c.warnings,c.evidenceIds].every(a=>Array.isArray(a)&&a.every(s=>typeof s==='string')))
-    && Array.isArray(r.sources) && r.sources.every(s => ['id','url','title','publisher','retrievedAt','sourceType'].every(k=>typeof s[k as keyof typeof s]==='string') && (s.publishedAt === null || typeof s.publishedAt === 'string') && (s.originGroupId === null || typeof s.originGroupId === 'string') && (s.youtubeTitle === null || (typeof s.youtubeTitle === 'string' && s.youtubeTitle.length <= 300)) && Array.isArray(s.youtubeComments) && s.youtubeComments.length <= 10 && s.youtubeComments.every(comment => typeof comment === 'string' && comment.length <= 10000) && ['not_applicable','not_configured','collected','unavailable'].includes(s.youtubeDataStatus) && (s.sourceType === '유튜브' ? s.youtubeDataStatus !== 'not_applicable' : s.youtubeDataStatus === 'not_applicable'))
+    && Array.isArray(r.sources) && r.sources.every(s => ['id','url','title','publisher','retrievedAt','sourceType'].every(k=>typeof s[k as keyof typeof s]==='string') && ['verified','unavailable'].includes(s.accessStatus) && (s.publishedAt === null || typeof s.publishedAt === 'string') && (s.originGroupId === null || typeof s.originGroupId === 'string') && (s.youtubeTitle === null || (typeof s.youtubeTitle === 'string' && s.youtubeTitle.length <= 300)) && Array.isArray(s.youtubeComments) && s.youtubeComments.length <= 10 && s.youtubeComments.every(comment => typeof comment === 'string' && comment.length <= 10000) && ['not_applicable','not_configured','collected','unavailable'].includes(s.youtubeDataStatus) && (s.sourceType === '유튜브' ? s.youtubeDataStatus !== 'not_applicable' : s.youtubeDataStatus === 'not_applicable'))
     && Array.isArray(r.evidence) && r.evidence.every(e=>['id','claimId','sourceId','quote'].every(k=>typeof e[k as keyof typeof e]==='string') && (e.quoteTranslation === undefined || e.quoteTranslation === null || typeof e.quoteTranslation === 'string') && typeof e.quoteVerified === 'boolean')
-    && Array.isArray(r.warnings) && r.warnings.every(w=>typeof w==='string');
+    && Array.isArray(r.warnings) && r.warnings.every(w=>typeof w==='string') && validAnswer(r.answer,r.sources);
 }
 export async function readFactCheckStream(response: Response, options: Options = {}): Promise<FactCheckResult> {
   options.signal?.throwIfAborted();

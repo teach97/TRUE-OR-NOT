@@ -38,6 +38,7 @@ test('real stages search facts with required web tool and never trust generated 
   assert.deepEqual(events.filter(e=>e.type==='stage').map(e=>e.stage),['extracting','searching','reading','verifying']);
   assert.equal(requests.length,3); assert.deepEqual(fetched,['https://example.com/article']);
   const result=events.at(-1).result;
+  assert.deepEqual(result.answer,{status:'insufficient_evidence',overview:null,sections:[],conclusion:null,model:null,reasoning:null});
   assert.equal(result.claims[0].verdictCode,'insufficient_evidence'); assert.deepEqual(result.claims[0].confirmed,[]); assert.deepEqual(result.evidence,[]);
   assert.equal(result.claims[1].verdictCode,'not_checkable'); assert.equal(result.sources[0].originGroupId,null); assert.equal(result.sources[0].publishedAt,null);
 });

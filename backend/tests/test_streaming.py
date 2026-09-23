@@ -74,9 +74,11 @@ def test_stream_endpoint_emits_ordered_stages_and_valid_result():
         assert response.status_code == 200
         assert response.headers['content-type'].startswith('application/x-ndjson')
         events = [json.loads(line) for line in response.text.splitlines()]
-        assert [e['stage'] for e in events if e['type']=='stage'] == ['extracting','searching','reading','verifying']
+        assert [e['stage'] for e in events if e['type']=='stage'] == ['extracting','searching','reading','verifying','synthesizing']
+        assert [e['type'] for e in events] == ['stage'] * 5 + ['result']
         assert events[-1]['type'] == 'result'
         assert events[-1]['result']['demo'] is False
+        assert events[-1]['result']['answer']['status'] == 'insufficient_evidence'
         assert 'sourceTexts' not in response.text
     finally:
         main.app.dependency_overrides.clear()
