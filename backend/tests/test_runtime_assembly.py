@@ -127,3 +127,32 @@ def test_result_reports_provider_used_by_the_final_stage():
 
     assert result.model == "gemini-3.8-flash"
     assert result.reasoning == "high"
+
+
+def test_result_exposes_youtube_comments_only_as_context_not_verified_content():
+    result = build_fact_check_result(
+        {
+            "text": "Claim",
+            "focus": "",
+            "consent": True,
+            "sources": [{
+                "id": "s1",
+                "url": "https://www.youtube.com/watch?v=aB_12345678",
+                "title": "Search title",
+                "youtubeTitle": "API video title",
+                "youtubeComments": ["Raw public comment"],
+                "youtubeDataStatus": "collected",
+                "publisher": "www.youtube.com",
+                "accessStatus": "unavailable",
+                "sourceType": "유튜브",
+                "originGroupId": "youtube",
+            }],
+        },
+        {"claims": [], "evidence": []},
+    )
+
+    parsed = FactCheckResponse.model_validate({"result": result.model_dump(mode="json")}).result
+    assert parsed.sources[0].youtubeTitle == "API video title"
+    assert parsed.sources[0].youtubeComments == ["Raw public comment"]
+    assert parsed.sources[0].accessStatus == "unavailable"
+    assert any("유튜브 공개 댓글" in warning for warning in parsed.warnings)

@@ -94,3 +94,43 @@ def test_read_node_uses_page_title_when_search_only_provided_a_host():
     }, reader=reader))
 
     assert state['sources'][0]['title'] == 'Astra research update · Example newsroom'
+
+
+def test_youtube_comments_are_context_only_and_never_become_source_text():
+    async def youtube_reader(url):
+        assert url == 'https://www.youtube.com/watch?v=aB_12345678'
+        return {
+            'title': 'AGI 전망 인터뷰',
+            'comments': ['댓글 원문 1', '댓글 원문 2'],
+            'status': 'collected',
+        }
+
+    state = asyncio.run(sources.read_sources({
+        'sources': [{
+            'id': 's1',
+            'url': 'https://www.youtube.com/watch?v=aB_12345678',
+            'title': '검색 결과 제목',
+            'sourceType': '유튜브',
+        }],
+    }, youtube_reader=youtube_reader))
+
+    assert state['sources'][0]['youtubeTitle'] == 'AGI 전망 인터뷰'
+    assert state['sources'][0]['youtubeComments'] == ['댓글 원문 1', '댓글 원문 2']
+    assert state['sources'][0]['youtubeDataStatus'] == 'collected'
+    assert state['sources'][0]['accessStatus'] == 'unavailable'
+    assert state['sourceTexts'] == {}
+
+
+def test_youtube_without_api_reader_is_marked_not_configured():
+    state = asyncio.run(sources.read_sources({
+        'sources': [{
+            'id': 's1',
+            'url': 'https://www.youtube.com/watch?v=aB_12345678',
+            'title': 'Search title',
+            'sourceType': '유튜브',
+        }],
+    }))
+
+    assert state['sources'][0]['youtubeDataStatus'] == 'not_configured'
+    assert state['sources'][0]['youtubeComments'] == []
+    assert state['sourceTexts'] == {}

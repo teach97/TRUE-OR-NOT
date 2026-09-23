@@ -17,6 +17,7 @@ from schemas import FactCheckRequest
 from search import search_sources
 from sources import read_sources
 from verification import verify_claims
+from youtube import fetch_youtube_data
 from workflow import FactCheckState, Stage, build_workflow
 
 
@@ -26,6 +27,7 @@ _MODEL = "gpt-6-luna"
 class Settings(BaseModel):
     api_key: SecretStr
     gemini_api_key: SecretStr = SecretStr("")
+    youtube_api_key: SecretStr = SecretStr("")
 
 
 def load_settings(env_path: Path | None = None) -> Settings:
@@ -34,7 +36,12 @@ def load_settings(env_path: Path | None = None) -> Settings:
     values = dotenv_values(path, encoding="utf-8-sig", interpolate=False)
     key = os.environ.get("OPENAI_API_KEY", values.get("OPENAI_API_KEY") or "")
     gemini_key = os.environ.get("GEMINI_API_KEY", values.get("GEMINI_API_KEY") or "")
-    return Settings(api_key=SecretStr(key.strip()), gemini_api_key=SecretStr(gemini_key.strip()))
+    youtube_key = os.environ.get("YOUTUBE_API_KEY", values.get("YOUTUBE_API_KEY") or "")
+    return Settings(
+        api_key=SecretStr(key.strip()),
+        gemini_api_key=SecretStr(gemini_key.strip()),
+        youtube_api_key=SecretStr(youtube_key.strip()),
+    )
 
 
 @dataclass(frozen=True)
@@ -100,7 +107,16 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
         )
 
     async def read(state: FactCheckState):
-        return await read_sources(state)
+        youtube_key = settings.youtube_api_key.get_secret_value()
+        if not youtube_key or not any(
+            source.get("sourceType") == "유튜브" for source in state.get("sources", [])
+        ):
+            return await read_sources(state)
+        async with httpx.AsyncClient(timeout=8.0, trust_env=False) as client:
+            async def youtube_reader(url):
+                return await fetch_youtube_data(url, api_key=youtube_key, client=client)
+
+            return await read_sources(state, youtube_reader=youtube_reader)
 
     async def verify(state: FactCheckState):
         return await with_fallback(
@@ -138,6 +154,9 @@ def _normalize_source(raw: dict, checked_at: str) -> dict:
         "accessStatus": access_status,
         "sourceType": raw.get("sourceType") or "유형 미확인",
         "originGroupId": raw.get("originGroupId"),
+        "youtubeTitle": raw.get("youtubeTitle"),
+        "youtubeComments": raw.get("youtubeComments", []),
+        "youtubeDataStatus": raw.get("youtubeDataStatus", "not_applicable"),
     }
 
 
@@ -149,6 +168,10 @@ def _result_warnings(sources: list[dict]) -> list[str]:
     if any(source.get("accessStatus") == "unavailable" for source in sources):
         warnings.append(
             "일부 출처 원문에 접근하지 못했습니다. 검색 요약은 직접 인용으로 사용하지 않았습니다."
+        )
+    if any(source.get("sourceType") == "유튜브" for source in sources):
+        warnings.append(
+            "유튜브 공개 댓글은 영상별 의견 맥락으로만 표시하며 판정과 인용 근거에는 사용하지 않았습니다."
         )
     return warnings
 

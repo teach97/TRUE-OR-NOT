@@ -1,5 +1,25 @@
 # 팩트체크 에이전트 UI MVP 작업 인계서
 
+## 2026-09-23 5단계 검색 개선 진행 현황
+
+| 단계 | 범위 | 상태 |
+|---|---|---|
+| 1 | 주장·예측 질문에서 검색 키워드 추출 및 검색 단계 전달 | 완료 |
+| 2 | 검색 후보 순서 보존 및 중복 출처 정리 | 완료. 현재 결과는 기존 검색 공급자 후보이며 Google 자연 검색 순위와 동일하다고 보장하지 않음 |
+| 3 | 기사·페이지 본문 추출 및 화면 UI 문구 제거 | 완료 |
+| 4 | YouTube 자막 대신 영상 제목과 공개 댓글(최대 10개) 수집·표시 | 구현·오프라인 검증 완료. `YOUTUBE_API_KEY` 미설정으로 실제 API 호출은 미검증 |
+| 5 | 전망 질문의 찬반·불확실성 종합 및 본문 인라인 출처 표시 | 미착수 |
+
+### 4단계 구현 및 검증
+
+- 공식 YouTube Data API `videos.list`에서 제목을, `commentThreads.list`에서 관련도순 공개 최상위 댓글을 최대 10개 조회합니다. 자막·영상·답글은 가져오지 않습니다. API 응답 크기는 256KB로 제한하고, 댓글을 가져오지 못해도 나머지 출처 처리는 계속됩니다.
+- `backend/.env.example`에 `YOUTUBE_API_KEY` 항목을 추가했습니다. 로컬에서 사용하려면 `backend/.env`에 값을 설정하고 백엔드를 재시작해야 합니다. 현재 검증 환경에는 키가 설정되어 있지 않아 UI에는 `API 키 미설정` 상태가 표시됩니다. 키 값을 로그·문서·커밋에 기록하지 않습니다.
+- 영상별 제목과 댓글은 결과 화면에 참고 맥락으로만 표시합니다. 댓글은 주장 검증용 `sourceTexts`, LLM 입력, 판정 및 인용 근거에 사용하지 않습니다. JSON 내보내기에서도 YouTube API 제목·댓글을 제거하며 서버 영속 저장은 추가하지 않았습니다.
+- 개인정보 처리방침과 이용약관 페이지를 초안으로 추가했습니다. 운영자 정보·법적 검토가 완료된 문서가 아니므로 공개 서비스 전 검토가 필요합니다.
+- 오프라인 회귀: backend **168 passed, 1 deselected**, frontend Node **27 passed**, `npx tsc --noEmit --incremental false`, `uv lock --no-cache --project backend --check`, `git diff --check` 통과. 기존 Starlette/AnyIO deprecation warning 1건이 남습니다. Windows 임시 디렉터리 권한 문제 때문에 `test_settings_load_file_without_exposing_key`만 실행에서 제외했습니다.
+- 실제 YouTube API 호출과 브라우저 실화면 검증은 아직 하지 않았습니다. 다음 확인은 서버 전용 `YOUTUBE_API_KEY` 설정 후 실제 API에서 제목·댓글 응답 및 댓글 비활성 영상의 오류 표시를 확인하는 것입니다.
+- 공식 API 문서: [videos.list](https://developers.google.com/youtube/v3/docs/videos/list), [commentThreads.list](https://developers.google.com/youtube/v3/docs/commentThreads/list), [YouTube API 개발자 정책](https://developers.google.com/youtube/terms/developer-policies).
+
 ## 2026-09-23 검색 개선 3단계 체크포인트
 
 - **본문 추출:** 공개 페이지 HTML에서 `main`·`article`·`role=main`·`articleBody` 및 흔한 article/post 본문 컨테이너를 우선 선택합니다. 의미 있는 본문 표식이 없는 페이지는 보이는 텍스트를 보수적으로 정리해 사용합니다.

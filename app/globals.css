@@ -124,6 +124,8 @@ button, p, h3, dd { overflow-wrap: anywhere; }
 .chat-footer { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 12px; padding: 0 4px; color: var(--muted); font-size: 11px; }
 .consent-control { display: inline-flex; align-items: flex-start; gap: 8px; line-height: 1.55; }
 .consent-control input { width: 15px; height: 15px; margin: 1px 0 0; accent-color: var(--accent); }
+.consent-links { display: flex; flex-wrap: wrap; gap: 5px 12px; margin: 5px 0 0 23px; font-size: 10px; }
+.consent-links a { color: #9fb3b7; text-decoration: underline; text-underline-offset: 2px; }
 .sample-state { display: inline-flex; align-items: center; gap: 7px; color: #aab8bd; }
 .sample-state svg { color: var(--accent); }
 .sample-chip { display: inline-flex; align-items: center; gap: 7px; min-height: 32px; padding: 0 10px; color: #c3c9cc; font-size: 11px; white-space: nowrap; }
@@ -248,6 +250,25 @@ button, p, h3, dd { overflow-wrap: anywhere; }
 .source-caption, .evidence-caution { color: #92a0a5; font-size: 10px; line-height: 1.8; }
 .evidence-caution { margin-top: 13px; }
 .source-candidate-list { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line); }
+.youtube-context-list { display: grid; gap: 12px; margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line); }
+.youtube-context-card { min-width: 0; padding: 13px; border: 1px solid var(--line); border-radius: 11px; background: rgb(255 255 255 / .02); }
+.youtube-context-card > .source-title-link { display: inline-flex; margin-bottom: 10px; }
+.youtube-comment-context { padding: 10px 11px; border-radius: 9px; background: rgb(255 255 255 / .025); }
+.youtube-comment-context summary { display: flex; justify-content: space-between; gap: 12px; color: #c5d3d4; font-size: 11px; font-weight: 600; cursor: pointer; }
+.youtube-comment-context summary span:last-child { color: #9aa8ad; font-size: 10px; font-weight: 450; }
+.youtube-comment-context > .source-caption { margin-top: 8px; }
+.youtube-comment-context ol { display: grid; gap: 8px; max-height: 320px; overflow: auto; margin: 10px 0 0; padding-left: 22px; color: #c5ced1; font-size: 11px; line-height: 1.75; }
+.youtube-comment-context li { padding-left: 3px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.youtube-empty { margin-top: 8px; color: var(--muted); font-size: 11px; line-height: 1.7; }
+.policy-page { width: min(880px, calc(100% - 36px)); min-height: 100vh; margin: 0 auto; padding: clamp(32px, 7vw, 72px) 0; color: #d5dfe1; }
+.policy-page > a { color: #a8d9d4; font-size: 12px; }
+.policy-page h1 { margin: 18px 0 10px; font-size: clamp(26px, 4vw, 38px); letter-spacing: -.04em; }
+.policy-page > p { color: #99a8ad; font-size: 12px; line-height: 1.9; }
+.policy-page section { margin-top: 26px; padding-top: 20px; border-top: 1px solid var(--line); }
+.policy-page h2 { margin: 0 0 10px; font-size: 17px; }
+.policy-page section p, .policy-page li { color: #b8c4c7; font-size: 13px; line-height: 1.9; }
+.policy-page ul { display: grid; gap: 8px; padding-left: 22px; }
+.policy-page a { color: #a8d9d4; text-underline-offset: 3px; }
 .detail-blocks { display: grid; gap: 14px; margin-top: 21px; padding-top: 18px; border-top: 1px solid var(--line); }
 .detail-blocks > div { padding: 13px 14px; border-radius: 10px; background: rgb(255 255 255 / .025); }
 .detail-blocks ul { display: grid; gap: 7px; margin: 9px 0 0; padding-left: 16px; color: #abb7bc; font-size: 11px; line-height: 1.75; }

@@ -18,6 +18,16 @@ test('accepts a Gemini fallback result with high reasoning', async () => {
  assert.equal(actual.model,'gemini-3.8-flash');
  assert.equal(actual.reasoning,'high');
 });
+test('accepts bounded YouTube title and comments but rejects malformed context', async () => {
+ const source={id:'s1',url:'https://www.youtube.com/watch?v=aB_12345678',title:'검색 제목',youtubeTitle:'실제 영상 제목',youtubeComments:['첫 댓글'],youtubeDataStatus:'collected',publisher:'youtube.com',publishedAt:null,retrievedAt:'2026-09-23',accessStatus:'unavailable',sourceType:'유튜브',originGroupId:'youtube'};
+ const youtubeResult={...result,sources:[source]};
+ const actual=await readFactCheckStream(response(JSON.stringify({type:'result',result:youtubeResult})));
+ assert.deepEqual(actual.sources[0].youtubeComments,['첫 댓글']);
+ const tooManyComments={...youtubeResult,sources:[{...source,youtubeComments:Array(11).fill('댓글')}]};
+ await assert.rejects(readFactCheckStream(response(JSON.stringify({type:'result',result:tooManyComments}))),/결과/);
+ const invalidStatus={...youtubeResult,sources:[{...source,youtubeDataStatus:'unknown'}]};
+ await assert.rejects(readFactCheckStream(response(JSON.stringify({type:'result',result:invalidStatus}))),/결과/);
+});
 test('surfaces structured HTTP and streamed errors; rejects malformed and incomplete streams', async () => {
  await assert.rejects(readFactCheckStream(new Response(JSON.stringify({code:'CONFIG_MISSING',message:'키 설정 필요'}),{status:503})), /키 설정 필요/);
  await assert.rejects(readFactCheckStream(response(JSON.stringify({type:'error',code:'UPSTREAM',message:'모델 접근 실패'}))), /모델 접근 실패/);

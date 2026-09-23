@@ -1,5 +1,5 @@
 """Validated Python representation of the public True or Not result contract."""
-from typing import Literal
+from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from scoring import ScoreBand, default_fact_score, score_band, score_label
@@ -36,6 +36,14 @@ class FactSource(_ContractModel):
     accessStatus: AccessStatus
     sourceType: str = Field(min_length=1, max_length=100)
     originGroupId: str | None
+    youtubeTitle: str | None = Field(default=None, max_length=300)
+    youtubeComments: list[Annotated[str, Field(max_length=10_000)]] = Field(
+        default_factory=list,
+        max_length=10,
+    )
+    youtubeDataStatus: Literal[
+        "not_applicable", "not_configured", "collected", "unavailable",
+    ] = "not_applicable"
 
 
 class FactEvidence(_ContractModel):

@@ -264,10 +264,39 @@ def _generic_title(title, raw_url):
     return normalized in {host, f'www.{host}', 'source', 'untitled'}
 
 
-async def read_sources(state, *, reader=fetch_public_text):
+async def read_sources(state, *, reader=fetch_public_text, youtube_reader=None):
     sources, texts = [], {}
     for source in state['sources'][:6]:
-        item = {**source, 'accessStatus':'unavailable', 'retrievedAt':datetime.now(timezone.utc).isoformat()}
+        item = {
+            **source,
+            'accessStatus':'unavailable',
+            'retrievedAt':datetime.now(timezone.utc).isoformat(),
+            'youtubeTitle':None,
+            'youtubeComments':[],
+            'youtubeDataStatus':'not_applicable',
+        }
+        if source.get('sourceType') == '유튜브':
+            item['youtubeDataStatus'] = 'not_configured' if youtube_reader is None else 'unavailable'
+            if youtube_reader is not None:
+                try:
+                    data = await youtube_reader(source['url'])
+                    title = data.get('title') if isinstance(data, dict) else None
+                    comments = data.get('comments') if isinstance(data, dict) else None
+                    status = data.get('status') if isinstance(data, dict) else None
+                    if isinstance(title, str) and title.strip():
+                        item['youtubeTitle'] = title
+                    if isinstance(comments, list):
+                        item['youtubeComments'] = [
+                            comment for comment in comments[:10]
+                            if isinstance(comment, str) and comment.strip()
+                        ]
+                    if status in {'collected', 'unavailable', 'not_configured'}:
+                        item['youtubeDataStatus'] = status
+                except Exception:
+                    # One unavailable YouTube item must not fail other source reads.
+                    item['youtubeDataStatus'] = 'unavailable'
+            sources.append(item)
+            continue
         try:
             result = await reader(source['url'])
             if isinstance(result, SourceReadResult):

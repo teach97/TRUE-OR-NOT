@@ -434,6 +434,10 @@ def test_verify_claims_sends_only_verified_source_text():
                 "id": "s2",
                 "url": "https://example.org/search-result",
                 "accessStatus": "unavailable",
+                "sourceType": "유튜브",
+                "youtubeTitle": "YouTube API title",
+                "youtubeComments": ["YouTube API raw comment must stay out of the judgment prompt."],
+                "youtubeDataStatus": "collected",
                 "snippet": quote,
             },
         ],
@@ -451,6 +455,8 @@ def test_verify_claims_sends_only_verified_source_text():
         assert [source["id"] for source in input_data["sources"]] == ["s1"]
         assert input_data["sources"][0]["text"] == quote
         assert "snippet" not in request.content.decode()
+        assert "YouTube API raw comment" not in request.content.decode()
+        assert "YouTube API title" not in request.content.decode()
         return httpx.Response(
             200,
             json={

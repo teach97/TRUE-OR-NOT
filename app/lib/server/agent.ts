@@ -151,7 +151,7 @@ export async function* runAgent(request: FactCheckRequest, key: string, signal: 
         const id=`s${sources.length+1}`;let body='';
         try {body=await readSource(candidate.url,bounded);} catch {bounded.throwIfAborted();}
         const hostname=new URL(candidate.url).hostname;
-        sources.push({id,url:candidate.url,title:candidate.title,publisher:hostname,publishedAt:null,retrievedAt:new Date().toISOString(),accessStatus:body?'verified':'unavailable',sourceType:'유형 미확인',originGroupId:null});
+        sources.push({id,url:candidate.url,title:candidate.title,publisher:hostname,publishedAt:null,retrievedAt:new Date().toISOString(),accessStatus:body?'verified':'unavailable',sourceType:'유형 미확인',originGroupId:null,youtubeTitle:null,youtubeComments:[],youtubeDataStatus:'not_applicable'});
         if(body)texts.set(id,body.replace(/\s+/g,' ').trim());
       }
       yield {type:'stage',stage:'verifying',message:'수집 원문과 인용을 대조하고 있습니다.'};

@@ -7,10 +7,12 @@ export const VERDICTS = ['mostly_supported', 'partially_supported', 'missing_con
 export type VerdictCode = typeof VERDICTS[number];
 export type Reasoning = 'max' | 'high';
 export type FactCheckRequest = { text: string; focus: string; consent: true };
+export type YouTubeDataStatus = 'not_applicable' | 'not_configured' | 'collected' | 'unavailable';
 export type FactSource = {
   id: string; url: string; title: string; publisher: string; publishedAt: string | null;
   retrievedAt: string; accessStatus: 'verified' | 'unavailable';
   sourceType: string; originGroupId: string | null;
+  youtubeTitle: string | null; youtubeComments: string[]; youtubeDataStatus: YouTubeDataStatus;
 };
 export type FactEvidence = {
   id: string; claimId: string; sourceId: string; quote: string;
