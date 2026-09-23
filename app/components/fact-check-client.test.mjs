@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFactCheckStream} from './fact-check-client.ts';
+import {readFactCheckStream, safeSourceUrl} from './fact-check-client.ts';
 
 const insufficientAnswer = {status:'insufficient_evidence',overview:null,sections:[],conclusion:null,model:null,reasoning:null};
 const result = {text:'한글 원문',focus:'',demo:false,model:'gpt-6-luna',reasoning:'max',checkedAt:'2026-09-19',claims:[],sources:[],evidence:[],warnings:[],answer:insufficientAnswer};
@@ -37,6 +37,11 @@ test('requires a well-formed answer and source-grounded citations', async () => 
 test('accepts a safe insufficient-evidence answer without answer model metadata', async () => {
  const actual=await readFactCheckStream(response(JSON.stringify({type:'result',result:{...result,answer:insufficientAnswer}})));
  assert.deepEqual(actual.answer,insufficientAnswer);
+});
+test('source links accept only safe HTTP and HTTPS URLs', () => {
+ assert.equal(safeSourceUrl('https://example.com/a'),'https://example.com/a');
+ assert.equal(safeSourceUrl('http://example.com/a'),'http://example.com/a');
+ for (const url of ['javascript:alert(1)','data:text/html,hello','file:///C:/secret','not a URL']) assert.equal(safeSourceUrl(url),null);
 });
 test('accepts bounded YouTube title and comments but rejects malformed context', async () => {
  const source={id:'s1',url:'https://www.youtube.com/watch?v=aB_12345678',title:'검색 제목',youtubeTitle:'실제 영상 제목',youtubeComments:['첫 댓글'],youtubeDataStatus:'collected',publisher:'youtube.com',publishedAt:null,retrievedAt:'2026-09-23',accessStatus:'unavailable',sourceType:'유튜브',originGroupId:'youtube'};

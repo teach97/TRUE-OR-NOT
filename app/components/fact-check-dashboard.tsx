@@ -5,11 +5,11 @@ import { useEffect, useReducer, useRef, useState } from 'react';
 import type { CSSProperties, FormEvent, ReactNode } from 'react';
 import { initialState, transition } from './demo-state';
 import type { Claim } from './demo-state';
-import type { FactCheckResult, FactSource } from '../lib/fact-check-contract';
+import type { AnswerBlock, FactCheckAnswer, FactCheckResult, FactSource } from '../lib/fact-check-contract';
 import { scoreBand, scoreLabel } from '../lib/fact-score';
 import { stripYoutubeApiDataForExport } from '../lib/youtube-context';
 import { FactCheckError, readFactCheckStream, safeSourceUrl } from './fact-check-client';
-import { composeAssistantReply } from './fact-check-reply';
+import { composeAssistantReply, resolveAnswerCitationSource } from './fact-check-reply';
 import { DEMO_FOCUS, DEMO_TEXT, demoPreview, documents } from './demo-fixture';
 import ScrambleText from './scramble-text';
 import FloatingLinesBackground from './floating-lines-background';
@@ -100,7 +100,7 @@ function TrustIndex({score, claimCount, sourceCount, evidenceCount, warningCount
   </div>;
 }
 
-type ChatMessage = {id: string; role: 'assistant' | 'user'; text: string; meta?: string; tone?: 'normal' | 'error'};
+type ChatMessage = {id: string; role: 'assistant' | 'user'; text?: string; answer?: FactCheckAnswer; sources?: FactSource[]; meta?: string; tone?: 'normal' | 'error'};
 const WELCOME_MESSAGE: ChatMessage = {id: 'welcome', role: 'assistant', text: '확인하고 싶은 주장이나 원문을 보내줘. 문장을 나누고, 직접 확인할 수 있는 출처와 인용을 연결해볼게.'};
 
 function Modal({open, title, onClose, children}: {open: boolean; title: string; onClose: () => void; children: ReactNode}) {
@@ -119,6 +119,45 @@ type PanelProps = {as?: 'div' | 'section' | 'article'; className?: string; child
 function Panel({as = 'div', className = '', children, 'aria-labelledby': labelledBy}: PanelProps) {
   const Element = as;
   return <Element className={`panel-host ${className}`} aria-labelledby={labelledBy}>{children}</Element>;
+}
+
+function AnswerBlockView({block, sources}: {block: AnswerBlock; sources: FactSource[]}) {
+  return <div className="answer-block">
+    <p className="answer-block-text">{block.text}</p>
+    {block.citations.length > 0 && <ul className="answer-citations" aria-label="답변 근거 출처">
+      {block.citations.map((citation, index) => {
+        const resolved = resolveAnswerCitationSource(citation, sources);
+        const number = index + 1;
+        return <li key={`${citation.sourceId}-${index}`}>
+          {resolved
+            ? <a className="answer-citation-chip" href={resolved.href} target="_blank" rel="noopener noreferrer" title={citation.quote} aria-label={`출처 ${number}: ${resolved.source.publisher}, ${resolved.source.title}. 새 탭에서 원문 열기`}>
+                <span className="answer-citation-index">[{number}]</span><span>{resolved.source.publisher} · {resolved.source.title}</span><span aria-hidden="true">↗</span>
+              </a>
+            : <span className="answer-citation-chip is-unavailable" aria-label={`출처 ${number}: 확인된 원문 연결 없음`}>
+                <span className="answer-citation-index">[{number}]</span><span>확인된 원문 연결 없음</span>
+              </span>}
+        </li>;
+      })}
+    </ul>}
+  </div>;
+}
+
+function AnswerOverview({answer, sources}: {answer: FactCheckAnswer; sources: FactSource[]}) {
+  return <section className="ai-answer" aria-label="AI 개요">
+    <div className="ai-answer-heading"><span className="answer-spark" aria-hidden="true">✦</span><h3>AI 개요</h3></div>
+    {answer.status === 'insufficient_evidence'
+      ? <p className="answer-insufficient" role="note">확인된 원문 근거가 부족해 AI 개요를 만들지 않았어. 아래 출처 목록과 주장별 판정에서 확인 가능한 내용을 살펴봐.</p>
+      : <>
+          {answer.overview && <div className="answer-overview-block"><AnswerBlockView block={answer.overview} sources={sources}/></div>}
+          {answer.sections.map((section, sectionIndex) => <section className={`answer-section answer-section--${section.kind}`} key={`${section.kind}-${sectionIndex}`} aria-label={section.title}>
+            <h4>{section.title}</h4>
+            <ul className="answer-section-items">{section.items.map((item, itemIndex) => <li key={itemIndex}><AnswerBlockView block={item} sources={sources}/></li>)}</ul>
+          </section>)}
+          {answer.conclusion && <section className="answer-conclusion" aria-label="정리">
+            <h4>정리</h4><AnswerBlockView block={answer.conclusion} sources={sources}/>
+          </section>}
+        </>}
+  </section>;
 }
 
 export default function FactCheckDashboard() {
@@ -306,9 +345,12 @@ export default function FactCheckDashboard() {
         <section className="composer panel-host chat-hero" aria-labelledby="chat-heading">
           <div className="chat-intro"><span className="chat-kicker"><Icon name="shield" size={15}/>근거를 연결하는 대화</span><h1 id="chat-heading">무엇을 확인해볼까요?</h1><p>주장이나 원문을 보내면, 확인된 사실과 남은 불확실성을 출처와 함께 보여줄게.</p></div>
           <div className="chat-thread" aria-live="polite">
-            {messages.map(message => <motion.div key={message.id} className={`chat-message ${message.role === 'user' ? 'is-user' : 'is-assistant'} ${message.tone === 'error' ? 'is-error' : ''}`} initial={reduce ? false : {opacity: 0, y: 10}} animate={{opacity: 1, y: 0}} transition={{duration: reduce ? 0 : .22}}>
+            {messages.map(message => <motion.div key={message.id} className={`chat-message ${message.role === 'user' ? 'is-user' : 'is-assistant'} ${message.answer ? 'has-answer' : ''} ${message.tone === 'error' ? 'is-error' : ''}`} initial={reduce ? false : {opacity: 0, y: 10}} animate={{opacity: 1, y: 0}} transition={{duration: reduce ? 0 : .22}}>
               {message.role === 'assistant' && <span className="chat-avatar"><Icon name="lens" size={16}/></span>}
-              <div className="chat-bubble"><p>{message.text}</p>{message.meta && <small>{message.meta}</small>}</div>
+              <div className={`chat-bubble ${message.answer ? 'chat-bubble--answer' : ''}`}>
+                {message.answer ? <AnswerOverview answer={message.answer} sources={message.sources ?? []}/> : message.text ? <p>{message.text}</p> : null}
+                {message.meta && <small>{message.meta}</small>}
+              </div>
             </motion.div>)}
             {busy && <div className="chat-message is-assistant chat-message--loading" data-testid="verification-loading"><span className="chat-avatar"><Icon name="lens" size={16}/></span><div className="chat-bubble"><div className="chat-loader-row"><LatticeLoader label="검증 중" doneLabel="검증 완료" errorLabel="검증 실패" pattern="orbit" grid={3} shape="round" cellSize={7} gap={3} fontSize={12} step={75} idleOpacity={0.15} glow color="#ffffff" showTimer/><span>{notice || '근거를 모으고 사실 여부를 대조하고 있습니다.'}</span></div></div></div>}
           </div>
