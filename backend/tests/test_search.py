@@ -100,6 +100,58 @@ def test_search_keeps_completed_sources_when_response_has_nonterminal_search_ite
     }
 
 
+def test_search_keeps_completed_sources_when_response_hits_output_token_limit():
+    from search import search_sources
+
+    def handler(request):
+        return httpx.Response(200, json={
+            "status": "incomplete",
+            "incomplete_details": {"reason": "max_output_tokens"},
+            "output": [
+                {"type": "web_search_call", "status": "completed", "action": {"sources": [
+                    {"url": "https://example.org/primary", "title": "Primary source"},
+                ]}},
+                {"type": "web_search_call", "status": "searching"},
+            ],
+        })
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            return await search_sources(
+                {"claims": [{"id": "c1", "quote": "AGI 2030", "kind": "prediction"}],
+                 "focus": "", "consent": True},
+                api_key="test-only",
+                client=client,
+            )
+
+    assert [source["url"] for source in asyncio.run(run())["sources"]] == [
+        "https://example.org/primary"
+    ]
+
+
+def test_search_still_rejects_token_limited_response_without_completed_search():
+    from search import search_sources
+
+    def handler(request):
+        return httpx.Response(200, json={
+            "status": "incomplete",
+            "incomplete_details": {"reason": "max_output_tokens"},
+            "output": [{"type": "web_search_call", "status": "searching"}],
+        })
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            return await search_sources(
+                {"claims": [{"id": "c1", "quote": "AGI 2030", "kind": "prediction"}],
+                 "focus": "", "consent": True},
+                api_key="test-only",
+                client=client,
+            )
+
+    with pytest.raises(ValueError, match="SEARCH_FAILED"):
+        asyncio.run(run())
+
+
 def test_search_selects_diverse_source_types_instead_of_one_publisher():
     from search import search_sources
 

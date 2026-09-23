@@ -1,5 +1,6 @@
 """Synthesize a user-facing answer from verified source text only."""
 
+from dataclasses import replace
 from typing import Any, Literal
 
 import httpx
@@ -195,8 +196,9 @@ async def synthesize_answer(
     if not sources:
         return insufficient_answer()
 
+    synthesis_provider = replace(provider, reasoning="high") if provider.kind == "openai" else provider
     raw = await request_structured(
-        provider,
+        synthesis_provider,
         client,
         instructions=_SYNTHESIS_INSTRUCTIONS,
         input_data=_synthesis_input(state, sources),
@@ -211,7 +213,7 @@ async def synthesize_answer(
     _validate_answer_grounding(parsed, sources)
     answer = FactCheckAnswer.model_validate({
         **parsed.model_dump(mode="json"),
-        "model": provider.model,
-        "reasoning": provider.reasoning,
+        "model": synthesis_provider.model,
+        "reasoning": synthesis_provider.reasoning,
     })
     return answer.model_dump(mode="json")

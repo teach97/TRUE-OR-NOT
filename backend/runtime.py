@@ -187,10 +187,11 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
             }
 
         update = await with_fallback(state, operation, "SYNTHESIS_FAILED")
+        answer = update["answer"]
         return {
-            "answer": update["answer"],
-            "answerModel": update["llmModel"],
-            "answerReasoning": update["llmReasoning"],
+            "answer": answer,
+            "answerModel": answer["model"],
+            "answerReasoning": answer["reasoning"],
         }
 
     return RuntimeAdapters(

@@ -187,6 +187,36 @@ def test_synthesis_uses_only_verified_source_projection_and_preserves_forecast()
     assert answer["reasoning"] == "high"
 
 
+def test_openai_synthesis_uses_high_reasoning_effort_and_reports_it():
+    state = state_with_source()
+
+    def handler(request):
+        body = json.loads(request.content)
+        assert body["model"] == "gpt-6-luna"
+        assert body["reasoning"]["effort"] == "high"
+        assert body["max_output_tokens"] == 4_000
+        return httpx.Response(200, json={
+            "status": "completed",
+            "output": [{"type": "message", "content": [{
+                "type": "output_text",
+                "text": json.dumps(draft(), ensure_ascii=False),
+            }]}],
+        })
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            return await synthesize_answer(
+                state,
+                client=client,
+                provider=LLMProvider("openai", "gpt-6-luna", "max", "test-only"),
+            )
+
+    answer = asyncio.run(run())
+
+    assert answer["model"] == "gpt-6-luna"
+    assert answer["reasoning"] == "high"
+
+
 @pytest.mark.parametrize("citation", [
     {"sourceId": "s1", "quote": "A fabricated source quotation."},
     {"sourceId": "unknown", "quote": SOURCE_TEXT[:35]},

@@ -342,7 +342,24 @@ async def request_search(
                 if len(body) > _MAX_RESPONSE_BYTES:
                     raise ProviderCallError("Response too large")
         data = json.loads(body)
-        if not isinstance(data, dict) or data.get("status") != "completed":
+        if not isinstance(data, dict):
+            raise ProviderCallError("Incomplete search response")
+        incomplete_details = data.get("incomplete_details")
+        output = data.get("output")
+        has_completed_search = isinstance(output, list) and any(
+            isinstance(item, dict)
+            and item.get("type") == "web_search_call"
+            and item.get("status") == "completed"
+            for item in output
+        )
+        usable_partial_search = (
+            provider.kind == "openai"
+            and data.get("status") == "incomplete"
+            and isinstance(incomplete_details, dict)
+            and incomplete_details.get("reason") in {"max_output_tokens", "max_tokens"}
+            and has_completed_search
+        )
+        if data.get("status") != "completed" and not usable_partial_search:
             raise ProviderCallError("Incomplete search response")
         return data
     except ProviderCallError:
