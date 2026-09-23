@@ -52,7 +52,18 @@ from pydantic import SecretStr
 def graph():
     async def noop(state): return {}
     async def verify(state): return {'claims':[], 'evidence':[]}
-    return build_runtime_workflow(Settings(api_key=SecretStr('test-only')), adapters=RuntimeAdapters(extract=noop,search=noop,read=noop,verify=verify))
+    async def synthesize(state):
+        return {
+            'answer': {'status':'insufficient_evidence','overview':None,'sections':[],
+                       'conclusion':None,'model':None,'reasoning':None},
+            'answerModel':None,'answerReasoning':None,
+        }
+    return build_runtime_workflow(
+        Settings(api_key=SecretStr('test-only')),
+        adapters=RuntimeAdapters(
+            extract=noop,search=noop,read=noop,verify=verify,synthesize=synthesize,
+        ),
+    )
 
 
 def test_stream_endpoint_emits_ordered_stages_and_valid_result():

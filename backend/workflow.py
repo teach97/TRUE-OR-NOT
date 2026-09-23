@@ -19,6 +19,9 @@ class FactCheckState(TypedDict, total=False):
     sourceTexts: dict[str, str]
     evidence: list[dict[str, Any]]
     result: dict[str, Any]
+    answer: dict[str, Any]
+    answerModel: str | None
+    answerReasoning: str | None
     llmModel: str
     llmReasoning: str
 
@@ -26,14 +29,22 @@ class FactCheckState(TypedDict, total=False):
 Stage = Callable[[FactCheckState], Awaitable[dict[str, Any]]]
 
 
-def build_workflow(*, extract: Stage, search: Stage, read: Stage, verify: Stage):
-    """Compile a sequential graph with explicit adapters and no implicit provider."""
+def build_workflow(
+    *,
+    extract: Stage,
+    search: Stage,
+    read: Stage,
+    verify: Stage,
+    synthesize: Stage,
+):
+    """Compile the five explicit stages with no implicit provider."""
     builder = StateGraph(FactCheckState)
     stages = {
         "extracting": extract,
         "searching": search,
         "reading": read,
         "verifying": verify,
+        "synthesizing": synthesize,
     }
     previous = START
     for name, handler in stages.items():

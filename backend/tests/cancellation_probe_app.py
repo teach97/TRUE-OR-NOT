@@ -39,7 +39,8 @@ async def unreachable(state):
 
 
 graph = build_workflow(extract=blocking_extract, search=unreachable,
-                       read=unreachable, verify=unreachable)
+                       read=unreachable, verify=unreachable,
+                       synthesize=unreachable)
 
 
 class InstrumentedGraph:

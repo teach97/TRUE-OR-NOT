@@ -12,7 +12,7 @@ def test_graph_failure_returns_safe_error(mode):
             raise RuntimeError("PRIVATE_PROVIDER_DIAGNOSTIC")
         return {"result": None} if mode == "null" else {"sources": []}
 
-    graph = build_workflow(extract=stage, search=stage, read=stage, verify=stage)
+    graph = build_workflow(extract=stage, search=stage, read=stage, verify=stage, synthesize=stage)
     main.app.dependency_overrides[main.get_workflow] = lambda: graph
     try:
         with TestClient(main.app, raise_server_exceptions=False) as client:
@@ -38,7 +38,7 @@ def test_invalid_http_input_is_safe_and_never_runs_graph(body):
         calls.append(state)
         return {}
 
-    graph = build_workflow(extract=stage, search=stage, read=stage, verify=stage)
+    graph = build_workflow(extract=stage, search=stage, read=stage, verify=stage, synthesize=stage)
     main.app.dependency_overrides[main.get_workflow] = lambda: graph
     try:
         with TestClient(main.app) as client:
@@ -55,7 +55,7 @@ def test_post_rejects_malformed_result_contract():
     async def stage(state):
         return {"result": {"fixture": True}}
 
-    graph = build_workflow(extract=stage, search=stage, read=stage, verify=stage)
+    graph = build_workflow(extract=stage, search=stage, read=stage, verify=stage, synthesize=stage)
     main.app.dependency_overrides[main.get_workflow] = lambda: graph
     try:
         with TestClient(main.app, raise_server_exceptions=False) as client:
@@ -102,7 +102,13 @@ def test_post_runs_graph_and_returns_only_result():
         seen.append("verifying")
         return {"result": fixture_result}
 
-    graph = build_workflow(extract=extract, search=search, read=read, verify=verify)
+    async def synthesize(state):
+        seen.append("synthesizing")
+        return {"result": state["result"]}
+
+    graph = build_workflow(
+        extract=extract, search=search, read=read, verify=verify, synthesize=synthesize,
+    )
     main.app.dependency_overrides[main.get_workflow] = lambda: graph
     try:
         with TestClient(main.app) as client:
@@ -110,6 +116,6 @@ def test_post_runs_graph_and_returns_only_result():
         assert response.status_code == 200
         assert response.headers["cache-control"] == "no-store"
         assert response.json() == {"result": fixture_result}
-        assert seen == ["extracting", "searching", "reading", "verifying"]
+        assert seen == ["extracting", "searching", "reading", "verifying", "synthesizing"]
     finally:
         main.app.dependency_overrides.clear()

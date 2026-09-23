@@ -10,6 +10,7 @@ from dotenv import dotenv_values
 from langgraph.graph import END, START, StateGraph
 from pydantic import BaseModel, SecretStr
 
+from answer_synthesis import eligible_sources, insufficient_answer, synthesize_answer
 from contracts import FactCheckResult
 from extraction import extract_claims
 from providers import ProviderCallError, configured_providers, run_with_fallback
@@ -46,12 +47,13 @@ def load_settings(env_path: Path | None = None) -> Settings:
 
 @dataclass(frozen=True)
 class RuntimeAdapters:
-    """The four graph stages, injectable for offline orchestration tests."""
+    """The five graph stages, injectable for offline orchestration tests."""
 
     extract: Stage
     search: Stage
     read: Stage
     verify: Stage
+    synthesize: Stage
 
 
 def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
@@ -126,7 +128,31 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
             "VERIFICATION_FAILED",
         )
 
-    return RuntimeAdapters(extract=extract, search=search, read=read, verify=verify)
+    async def synthesize(state: FactCheckState):
+        if not eligible_sources(state):
+            return {
+                "answer": insufficient_answer(),
+                "answerModel": None,
+                "answerReasoning": None,
+            }
+
+        async def operation(provider, client):
+            return {
+                "answer": await synthesize_answer(
+                    state, client=client, provider=provider,
+                ),
+            }
+
+        update = await with_fallback(operation, "SYNTHESIS_FAILED")
+        return {
+            "answer": update["answer"],
+            "answerModel": update["llmModel"],
+            "answerReasoning": update["llmReasoning"],
+        }
+
+    return RuntimeAdapters(
+        extract=extract, search=search, read=read, verify=verify, synthesize=synthesize,
+    )
 
 
 def _normalize_source(raw: dict, checked_at: str) -> dict:
@@ -183,33 +209,42 @@ def build_fact_check_result(
     checked_at: str | None = None,
 ) -> FactCheckResult:
     """Validate and assemble the only result shape exposed by the API."""
-    merged_state = {**state, **(update if isinstance(update, dict) else {})}
-    request = FactCheckRequest.model_validate({
-        "text": merged_state.get("text"),
-        "focus": merged_state.get("focus"),
-        "consent": merged_state.get("consent"),
-    })
     if not isinstance(update, dict):
         raise ValueError("INVALID_STATE")
-    claims = update.get("claims")
-    evidence = update.get("evidence")
-    raw_sources = merged_state.get("sources", [])
+    merged_state = {**state, **update}
+    request = FactCheckRequest.model_validate({
+        "text": state.get("text"),
+        "focus": state.get("focus"),
+        "consent": state.get("consent"),
+    })
+    claims = state.get("claims")
+    evidence = state.get("evidence")
+    raw_sources = state.get("sources", [])
     if not isinstance(claims, list) or not isinstance(evidence, list) or not isinstance(raw_sources, list):
         raise ValueError("INVALID_STATE")
 
     timestamp = checked_at or datetime.now(timezone.utc).isoformat()
     sources = [_normalize_source(source, timestamp) for source in raw_sources]
+    answer = merged_state.get("answer") if "answer" in update else None
+    if not isinstance(answer, dict):
+        answer = insufficient_answer()
+    answer = {
+        **answer,
+        "model": update.get("answerModel"),
+        "reasoning": update.get("answerReasoning"),
+    }
     return FactCheckResult.model_validate({
         "text": request.text,
         "focus": request.focus,
         "demo": False,
-        "model": merged_state.get("llmModel") or _MODEL,
-        "reasoning": merged_state.get("llmReasoning") or "max",
+        "model": state.get("llmModel") or _MODEL,
+        "reasoning": state.get("llmReasoning") or "max",
         "checkedAt": timestamp,
         "claims": claims,
         "sources": sources,
         "evidence": evidence,
         "warnings": _result_warnings(sources),
+        "answer": answer,
     })
 
 
@@ -218,26 +253,49 @@ def build_runtime_workflow(
     *,
     adapters: RuntimeAdapters | None = None,
 ):
-    """Compile extracting → searching → reading → verifying with final assembly."""
+    """Compile five ordered stages and assemble the result after synthesis."""
     runtime_adapters = adapters or make_runtime_adapters(settings)
 
     async def verifying(state: FactCheckState):
-        update = await runtime_adapters.verify(state)
+        return await runtime_adapters.verify(state)
+
+    async def synthesizing(state: FactCheckState):
+        try:
+            if not eligible_sources(state):
+                update = {
+                    "answer": insufficient_answer(),
+                    "answerModel": None,
+                    "answerReasoning": None,
+                }
+            else:
+                update = await runtime_adapters.synthesize(state)
+        except ValueError as exc:
+            if str(exc) not in {"NOT_CONFIGURED", "SYNTHESIS_FAILED"}:
+                raise
+            update = {
+                "answer": insufficient_answer(),
+                "answerModel": None,
+                "answerReasoning": None,
+            }
+
+        if not isinstance(update, dict):
+            update = {}
+        answer = update.get("answer")
+        if not isinstance(answer, dict):
+            update = {
+                "answer": insufficient_answer(),
+                "answerModel": None,
+                "answerReasoning": None,
+            }
         result = build_fact_check_result(state, update)
-        normalized_sources = [
-            source.model_dump(mode="json") for source in result.sources
-        ]
-        return {
-            **update,
-            "sources": normalized_sources,
-            "result": result.model_dump(mode="json"),
-        }
+        return {**update, "result": result.model_dump(mode="json")}
 
     return build_workflow(
         extract=runtime_adapters.extract,
         search=runtime_adapters.search,
         read=runtime_adapters.read,
         verify=verifying,
+        synthesize=synthesizing,
     )
 
 

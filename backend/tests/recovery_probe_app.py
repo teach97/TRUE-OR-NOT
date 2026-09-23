@@ -36,7 +36,7 @@ async def verify(state):
             quoteVerified=True,relation='context')],warnings=['TEST ONLY synthetic fixture; no provider or source was called.']))
     return {'result': result.model_dump(mode='json')}
 
-graph = build_workflow(extract=extract,search=noop,read=noop,verify=verify)
+graph = build_workflow(extract=extract,search=noop,read=noop,verify=verify,synthesize=noop)
 main.app.dependency_overrides[main.get_workflow] = lambda: graph
 main.load_settings = lambda: Settings(api_key=SecretStr('TEST-ONLY-NOT-A-KEY'))
 def forbidden(*args, **kwargs):
