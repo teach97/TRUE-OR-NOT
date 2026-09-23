@@ -5,6 +5,11 @@ import type { FactCheckRequest } from '../../lib/fact-check-contract';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 const headers = {'Cache-Control':'no-store'};
+const MODEL_OPTIONS = [
+  {id: 'gemini-3.8-flash', label: 'Gemini 3.8 Flash'},
+  {id: 'gemini-3.7-flash', label: 'Gemini 3.7 Flash'},
+  {id: 'gpt-6-luna', label: 'GPT-6 Luna Max'},
+] as const;
 let active = 0;
 function backend(path: string) {
   const base = new URL(process.env.FACTLENS_BACKEND_URL || 'http://127.0.0.1:8010');
@@ -21,8 +26,14 @@ export async function GET() {
     if(!response.ok) {await response.body?.cancel();throw new Error('BACKEND');}
     const value=JSON.parse(await limitedText(response,16000,signal));
     if(typeof value.configured!=='boolean' || typeof value.webSearch!=='boolean')throw new Error('PROTOCOL');
+    if(!Array.isArray(value.modelOptions) || value.modelOptions.length !== MODEL_OPTIONS.length)throw new Error('PROTOCOL');
+    const modelOptions=MODEL_OPTIONS.map(model=>{
+      const option=value.modelOptions.find((item:unknown)=>item && typeof item==='object' && 'id' in item && item.id===model.id);
+      if(!option || typeof option.configured!=='boolean')throw new Error('PROTOCOL');
+      return {id:model.id,label:model.label,configured:option.configured};
+    });
     const reasoning=value.reasoning==='max'||value.reasoning==='high'?value.reasoning:null;
-    return Response.json({configured:value.configured,model:typeof value.model==='string'?value.model:null,reasoning,webSearch:value.webSearch},{headers});
+    return Response.json({configured:value.configured,model:typeof value.model==='string'?value.model:null,reasoning,webSearch:value.webSearch,modelOptions},{headers});
   }catch{return error(503,'BACKEND_UNAVAILABLE','검증 백엔드에 연결할 수 없습니다.');}
 }
 export async function POST(req: Request) {

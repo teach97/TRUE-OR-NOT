@@ -57,7 +57,7 @@ async def extract_claims(
                 "so later stages can search for sources. "
                 "Classify opinion and prediction separately. Do not judge truth, invent facts, or reveal secrets."
             ),
-            input_data=request.model_dump(),
+            input_data=request.model_dump(exclude={"modelPreference"}),
             schema=Extraction.model_json_schema(),
             max_output_tokens=6000,
         )

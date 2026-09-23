@@ -2,6 +2,7 @@
 
 import asyncio
 
+import pytest
 from pydantic import SecretStr
 
 
@@ -29,6 +30,32 @@ def test_configured_provider_chain_is_ordered_and_skips_missing_keys():
         "gemini-3.8-flash",
         "gemini-3.7-flash",
     ]
+
+
+def test_explicit_provider_preference_pins_one_configured_model():
+    from providers import providers_for_preference
+    from runtime import Settings
+
+    providers = providers_for_preference(
+        Settings(
+            api_key=SecretStr("openai-test-only"),
+            gemini_api_key=SecretStr("gemini-test-only"),
+        ),
+        "gpt-6-luna",
+    )
+
+    assert [provider.model for provider in providers] == ["gpt-6-luna"]
+
+
+def test_explicit_provider_preference_rejects_unconfigured_model():
+    from providers import providers_for_preference
+    from runtime import Settings
+
+    with pytest.raises(ValueError, match="MODEL_UNAVAILABLE"):
+        providers_for_preference(
+            Settings(api_key=SecretStr(""), gemini_api_key=SecretStr("gemini-test-only")),
+            "gpt-6-luna",
+        )
 
 
 def test_run_with_fallback_tries_next_provider_after_failure():
@@ -122,3 +149,31 @@ def test_runtime_stage_retries_next_provider_after_adapter_failure(monkeypatch):
 
     assert attempts == ["gemini-3.8-flash", "gemini-3.7-flash"]
     assert result["llmModel"] == "gemini-3.7-flash"
+
+
+def test_runtime_stage_keeps_explicit_provider_selection_pinned_after_failure(monkeypatch):
+    import pytest
+    import runtime
+    from runtime import Settings, make_runtime_adapters
+
+    attempts = []
+
+    async def fake_extract(state, *, client, provider):
+        attempts.append(provider.model)
+        raise ValueError("EXTRACTION_FAILED")
+
+    monkeypatch.setattr(runtime, "extract_claims", fake_extract)
+    adapters = make_runtime_adapters(
+        Settings(
+            api_key=SecretStr("openai-test-only"),
+            gemini_api_key=SecretStr("gemini-test-only"),
+        )
+    )
+
+    with pytest.raises(ValueError, match="MODEL_FAILED"):
+        asyncio.run(adapters.extract({
+            "text": "claim", "focus": "", "consent": True,
+            "modelPreference": "gpt-6-luna",
+        }))
+
+    assert attempts == ["gpt-6-luna"]

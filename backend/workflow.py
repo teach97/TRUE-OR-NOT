@@ -13,6 +13,7 @@ class FactCheckState(TypedDict, total=False):
     text: str
     focus: str
     consent: bool
+    modelPreference: str
     claims: list[dict[str, Any]]
     searchQueries: dict[str, str]
     sources: list[dict[str, Any]]

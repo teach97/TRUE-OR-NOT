@@ -24,6 +24,25 @@ def test_stream_errors_are_safe(mode):
     assert not any(e['type']=='result' for e in events)
 
 
+def test_stream_explains_that_a_pinned_model_failed_without_exposing_provider_details():
+    from streaming import stream_events
+
+    class PinnedModelFailure:
+        async def astream(self, *args, **kwargs):
+            raise ValueError('MODEL_FAILED: PRIVATE_PROVIDER_DIAGNOSTIC')
+            yield {}
+
+    async def run():
+        return [json.loads(line) async for line in stream_events(PinnedModelFailure(), {})]
+
+    events = asyncio.run(run())
+    assert events[-1] == {
+        'type': 'error',
+        'code': 'MODEL_FAILED',
+        'message': '선택한 모델이 응답하지 않았습니다. 다른 모델을 선택해 다시 시도해 주세요.',
+    }
+
+
 def test_task_cancellation_reaches_graph_cleanup():
     from streaming import stream_events
     closed = []

@@ -25,6 +25,11 @@ def test_health_and_status_do_not_claim_provider_readiness(monkeypatch):
             "configured": False, "workflowReady": False,
             "engine": "langgraph", "model": None, "reasoning": None,
             "webSearch": False, "phase": "api-foundation",
+            "modelOptions": [
+                {"id": "gemini-3.8-flash", "label": "Gemini 3.8 Flash", "configured": False},
+                {"id": "gemini-3.7-flash", "label": "Gemini 3.7 Flash", "configured": False},
+                {"id": "gpt-6-luna", "label": "GPT-6 Luna Max", "configured": False},
+            ],
         }
         assert client.post("/api/fact-check", json={
             "text": "claim", "focus": "", "consent": True,
@@ -52,6 +57,11 @@ def test_status_reports_ready_for_configured_runtime(monkeypatch):
             "configured": True, "workflowReady": True,
             "engine": "langgraph", "model": "gemini-3.8-flash", "reasoning": "high",
             "webSearch": True, "phase": "workflow-ready",
+            "modelOptions": [
+                {"id": "gemini-3.8-flash", "label": "Gemini 3.8 Flash", "configured": True},
+                {"id": "gemini-3.7-flash", "label": "Gemini 3.7 Flash", "configured": True},
+                {"id": "gpt-6-luna", "label": "GPT-6 Luna Max", "configured": True},
+            ],
         }
 
 
@@ -87,6 +97,11 @@ def test_status_reports_gemini_fallback_when_openai_is_missing(monkeypatch):
             "configured": True, "workflowReady": True,
             "engine": "langgraph", "model": "gemini-3.8-flash", "reasoning": "high",
             "webSearch": True, "phase": "workflow-ready",
+            "modelOptions": [
+                {"id": "gemini-3.8-flash", "label": "Gemini 3.8 Flash", "configured": True},
+                {"id": "gemini-3.7-flash", "label": "Gemini 3.7 Flash", "configured": True},
+                {"id": "gpt-6-luna", "label": "GPT-6 Luna Max", "configured": False},
+            ],
         }
 
 
@@ -95,7 +110,14 @@ def test_request_preserves_original_text():
     assert importlib.util.find_spec("schemas") is not None, "Request schema is missing"
     from schemas import FactCheckRequest
     request = FactCheckRequest(text="  검증할 주장  ", focus="", consent=True)
-    assert request.model_dump() == {"text": "  검증할 주장  ", "focus": "", "consent": True}
+    assert request.model_dump() == {
+        "text": "  검증할 주장  ", "focus": "", "consent": True,
+        "modelPreference": "auto",
+    }
+    selected = FactCheckRequest(
+        text="claim", focus="", consent=True, modelPreference="gpt-6-luna"
+    )
+    assert selected.modelPreference == "gpt-6-luna"
 
 
 @pytest.mark.parametrize("change", [
@@ -109,6 +131,16 @@ def test_request_rejects_invalid_input(change):
     from schemas import FactCheckRequest
     with pytest.raises(ValidationError):
         FactCheckRequest.model_validate({"text": "claim", "focus": "", "consent": True, **change})
+
+
+def test_request_rejects_unknown_model_preference():
+    assert importlib.util.find_spec("schemas") is not None, "Request schema is missing"
+    from schemas import FactCheckRequest
+    with pytest.raises(ValidationError):
+        FactCheckRequest.model_validate({
+            "text": "claim", "focus": "", "consent": True,
+            "modelPreference": "unknown-model",
+        })
 
 
 @pytest.mark.parametrize("missing", ["text", "focus", "consent"])

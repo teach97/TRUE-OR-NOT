@@ -2,6 +2,7 @@
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+from schemas import ModelId
 from scoring import ScoreBand, default_fact_score, score_band, score_label
 
 
@@ -219,6 +220,12 @@ class FactCheckResponse(_ContractModel):
     result: FactCheckResult
 
 
+class ModelOption(_ContractModel):
+    id: ModelId
+    label: str = Field(min_length=1, max_length=50)
+    configured: bool
+
+
 class AgentStatus(_ContractModel):
     configured: bool
     workflowReady: bool
@@ -226,4 +233,5 @@ class AgentStatus(_ContractModel):
     model: str | None
     reasoning: Reasoning | None
     webSearch: bool
+    modelOptions: list[ModelOption]
     phase: Literal["api-foundation", "workflow-ready"]

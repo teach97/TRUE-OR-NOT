@@ -171,8 +171,13 @@ export async function* runAgent(request: FactCheckRequest, key: string, signal: 
 export function validateRequest(value: unknown): FactCheckRequest {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('INVALID_REQUEST');
   const v = value as Record<string, unknown>;
-  if (Object.keys(v).sort().join(',') !== 'consent,focus,text' || v.consent !== true ||
+  const keys = Object.keys(v).sort().join(',');
+  const allowedKeys = keys === 'consent,focus,text' || keys === 'consent,focus,modelPreference,text';
+  const modelPreference = v.modelPreference ?? 'auto';
+  const validPreference = modelPreference === 'auto' ||
+    ['gemini-3.8-flash', 'gemini-3.7-flash', 'gpt-6-luna'].includes(modelPreference as string);
+  if (!allowedKeys || !validPreference || v.consent !== true ||
       typeof v.text !== 'string' || !v.text.trim() || v.text.length > 12000 ||
       typeof v.focus !== 'string' || v.focus.length > 500) throw new Error('INVALID_REQUEST');
-  return { text: v.text, focus: v.focus, consent: true };
+  return { text: v.text, focus: v.focus, consent: true, modelPreference: modelPreference as FactCheckRequest['modelPreference'] };
 }

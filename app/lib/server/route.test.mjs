@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 const make=(body,headers={})=>new Request('http://localhost:3000/api/fact-check',{method:'POST',headers:{host:'localhost:3000',origin:'http://localhost:3000','content-type':'application/json',...headers},body:JSON.stringify(body)});
-const input={text:'claim',focus:'',consent:true};
+const input={text:'claim',focus:'',consent:true,modelPreference:'auto'};
 
 test('same-origin loopback Host survives Next server URL reconstruction',async()=>{
  const {POST}=await import('../../api/fact-check/route.ts');
@@ -54,8 +54,9 @@ test('production remains blocked for both local authorities',async()=>{
 test('status uses backend configuration and projects only safe fields',async()=>{
  const {GET}=await import('../../api/fact-check/route.ts');
  const saved=globalThis.fetch;
- globalThis.fetch=async(url)=>{assert.equal(String(url),'http://127.0.0.1:8010/api/fact-check');return Response.json({configured:true,workflowReady:true,model:'gpt-6-luna',reasoning:'max',webSearch:true,private:'SECRET'});};
- try { const r=await GET();const body=await r.json();assert.equal(body.configured,true);assert.equal(body.private,undefined);assert.equal(r.headers.get('cache-control'),'no-store'); }
+ const modelOptions=[{id:'gemini-3.8-flash',label:'Gemini 3.8 Flash',configured:true},{id:'gemini-3.7-flash',label:'Gemini 3.7 Flash',configured:true},{id:'gpt-6-luna',label:'GPT-6 Luna Max',configured:false}];
+ globalThis.fetch=async(url)=>{assert.equal(String(url),'http://127.0.0.1:8010/api/fact-check');return Response.json({configured:true,workflowReady:true,model:'gemini-3.8-flash',reasoning:'high',webSearch:true,modelOptions,private:'SECRET'});};
+ try { const r=await GET();const body=await r.json();assert.equal(body.configured,true);assert.deepEqual(body.modelOptions,modelOptions);assert.equal(body.private,undefined);assert.equal(r.headers.get('cache-control'),'no-store'); }
  finally{globalThis.fetch=saved;}
 });
 
@@ -76,6 +77,14 @@ test('POST forwards NDJSON without credentials; cancellation releases concurrenc
   globalThis.fetch=async()=>{throw new Error('SECRET');};
   const failed=await POST(make(input));assert.equal(failed.status,503);assert.ok(!(await failed.text()).includes('SECRET'));
  }finally{globalThis.fetch=saved;}
+});
+
+test('POST forwards the explicit model preference to the backend',async()=>{
+ const {POST}=await import('../../api/fact-check/route.ts');const saved=globalThis.fetch;
+ const selected={...input,modelPreference:'gpt-6-luna'};let forwarded;
+ globalThis.fetch=async(_url,init)=>{forwarded=JSON.parse(init.body);return new Response('{"type":"stage","stage":"extracting","message":"test"}\n',{headers:{'Content-Type':'application/x-ndjson'}});};
+ try { const response=await POST(make(selected));assert.equal(response.status,200);assert.equal((await response.text()).includes('stage'),true);assert.deepEqual(forwarded,selected); }
+ finally{globalThis.fetch=saved;}
 });
 
 test('request abort releases an idle proxy stream',async()=>{

@@ -14,7 +14,7 @@ from pydantic import BaseModel, SecretStr
 from answer_synthesis import eligible_sources, insufficient_answer, synthesize_answer
 from contracts import FactCheckResult
 from extraction import extract_claims
-from providers import ProviderCallError, configured_providers, run_with_fallback
+from providers import ProviderCallError, providers_for_preference, run_with_fallback
 from schemas import FactCheckRequest
 from search import search_sources
 from sources import read_sources
@@ -74,13 +74,19 @@ class RuntimeAdapters:
 
 def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
     """Create provider-backed stages without exposing credentials to graph state."""
-    providers = configured_providers(settings)
-
     async def with_client(operation):
         async with httpx.AsyncClient(timeout=90) as client:
             return await operation(client)
 
-    async def with_fallback(operation, failure_code: str):
+    async def with_fallback(state: FactCheckState, operation, failure_code: str):
+        preference = state.get("modelPreference", "auto")
+        try:
+            providers = providers_for_preference(settings, preference)
+        except ValueError as exc:
+            if str(exc) == "MODEL_UNAVAILABLE":
+                raise
+            raise ValueError("MODEL_UNAVAILABLE") from None
+
         async def attempt(provider, client):
             try:
                 return await operation(provider, client)
@@ -101,7 +107,7 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
                     type(exc).__name__,
                     _http_status_from_exception(exc),
                 )
-                if str(exc) in {"INVALID_REQUEST", "NOT_CONFIGURED"}:
+                if str(exc) in {"INVALID_REQUEST", "NOT_CONFIGURED", "MODEL_UNAVAILABLE"}:
                     raise
                 raise ProviderCallError("Provider stage failed") from None
 
@@ -113,6 +119,8 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
                 )
             )
         except ProviderCallError:
+            if preference != "auto":
+                raise ValueError("MODEL_FAILED") from None
             raise ValueError(failure_code) from None
         except ValueError as exc:
             if str(exc) == "NOT_CONFIGURED":
@@ -126,6 +134,7 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
 
     async def extract(state: FactCheckState):
         return await with_fallback(
+            state,
             lambda provider, client: extract_claims(
                 state, client=client, provider=provider
             ),
@@ -134,6 +143,7 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
 
     async def search(state: FactCheckState):
         return await with_fallback(
+            state,
             lambda provider, client: search_sources(
                 state, client=client, provider=provider
             ),
@@ -154,6 +164,7 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
 
     async def verify(state: FactCheckState):
         return await with_fallback(
+            state,
             lambda provider, client: verify_claims(
                 state, client=client, provider=provider
             ),
@@ -175,7 +186,7 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
                 ),
             }
 
-        update = await with_fallback(operation, "SYNTHESIS_FAILED")
+        update = await with_fallback(state, operation, "SYNTHESIS_FAILED")
         return {
             "answer": update["answer"],
             "answerModel": update["llmModel"],

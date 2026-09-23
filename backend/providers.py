@@ -12,6 +12,7 @@ import json
 from typing import Any, Literal
 
 import httpx
+from schemas import MODEL_CATALOG, ModelPreference
 
 
 ProviderKind = Literal["openai", "gemini"]
@@ -57,6 +58,27 @@ def configured_providers(settings: Any) -> tuple[LLMProvider, ...]:
     if openai_key:
         providers.append(LLMProvider("openai", "gpt-6-luna", "max", openai_key))
     return tuple(providers)
+
+
+def providers_for_preference(
+    settings: Any, preference: ModelPreference = "auto"
+) -> tuple[LLMProvider, ...]:
+    """Return the automatic chain or exactly one explicitly selected model."""
+    providers = configured_providers(settings)
+    if preference == "auto":
+        return providers
+    selected = tuple(provider for provider in providers if provider.model == preference)
+    if not selected:
+        raise ValueError("MODEL_UNAVAILABLE")
+    return selected
+
+
+def configured_model_options(settings: Any) -> list[dict[str, Any]]:
+    configured = {provider.model for provider in configured_providers(settings)}
+    return [
+        {"id": model_id, "label": label, "configured": model_id in configured}
+        for model_id, label in MODEL_CATALOG
+    ]
 
 
 async def run_with_fallback(

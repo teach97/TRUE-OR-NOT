@@ -33,5 +33,13 @@ async def stream_events(graph, payload, *, timeout=240):
                 raise ValueError('Incomplete graph')
     except TimeoutError:
         yield encode({'type':'error','code':'TIMEOUT','message':'검증 시간이 초과되었습니다.'})
+    except ValueError as exc:
+        code = str(exc).split(':', 1)[0]
+        if code == 'MODEL_FAILED':
+            yield encode({'type':'error','code':'MODEL_FAILED','message':'선택한 모델이 응답하지 않았습니다. 다른 모델을 선택해 다시 시도해 주세요.'})
+        elif code == 'MODEL_UNAVAILABLE':
+            yield encode({'type':'error','code':'MODEL_UNAVAILABLE','message':'선택한 모델의 API 키가 설정되어 있지 않습니다.'})
+        else:
+            yield encode({'type':'error','code':'AGENT_FAILED','message':'검증을 완료하지 못했습니다.'})
     except Exception:
         yield encode({'type':'error','code':'AGENT_FAILED','message':'검증을 완료하지 못했습니다.'})

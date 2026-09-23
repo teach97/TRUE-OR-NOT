@@ -5,7 +5,8 @@ import { useEffect, useReducer, useRef, useState } from 'react';
 import type { CSSProperties, FormEvent, ReactNode } from 'react';
 import { initialState, transition } from './demo-state';
 import type { Claim } from './demo-state';
-import type { AnswerBlock, FactCheckAnswer, FactCheckResult, FactSource } from '../lib/fact-check-contract';
+import { MODEL_OPTIONS } from '../lib/fact-check-contract';
+import type { AnswerBlock, FactCheckAnswer, FactCheckResult, FactSource, ModelOption, ModelPreference } from '../lib/fact-check-contract';
 import { scoreBand, scoreLabel } from '../lib/fact-score';
 import { stripYoutubeApiDataForExport } from '../lib/youtube-context';
 import { FactCheckError, readFactCheckStream, safeSourceUrl } from './fact-check-client';
@@ -176,6 +177,8 @@ export default function FactCheckDashboard() {
   const [consent, setConsent] = useState(false);
   const [configured, setConfigured] = useState<boolean | null>(null);
   const [configuredModel, setConfiguredModel] = useState<string | null>(null);
+  const [modelOptions, setModelOptions] = useState<ModelOption[]>([]);
+  const [modelPreference, setModelPreference] = useState<ModelPreference>('auto');
   const [configError, setConfigError] = useState(false);
   const [liveResult, setLiveResult] = useState<FactCheckResult | null>(null);
   const editor = useRef<HTMLTextAreaElement>(null);
@@ -186,10 +189,9 @@ export default function FactCheckDashboard() {
   const busy = state.status === 'loading';
   const configurationHelp = '서버 설정이 필요합니다. backend/.env에 OPENAI_API_KEY 또는 GEMINI_API_KEY를 설정한 뒤 서버를 다시 시작해 주세요. 키를 화면이나 채팅에 입력하지 마세요.';
   const serviceLabel = configured === true ? 'LLM fallback 설정됨 · 접근 미확인' : configured === false ? 'LLM 키 미설정' : configError ? '설정 확인 실패' : '서버 설정 확인 중';
-  const modelLabel = configuredModel === 'gemini-3.8-flash' ? 'Gemini 3.8 Flash'
-    : configuredModel === 'gemini-3.7-flash' ? 'Gemini 3.7 Flash'
-      : configuredModel === 'gpt-6-luna' ? 'GPT-6 Luna Max'
-        : configured === false ? '모델 미설정' : '모델 확인 중';
+  const modelLabel = MODEL_OPTIONS.find(model => model.id === configuredModel)?.label
+    ?? (configured === false ? '모델 미설정' : '모델 확인 중');
+  const fallbackOrder = modelOptions.filter(model => model.configured).map(model => model.label).join(' → ');
   const trustScore = snapshot?.claims.length ? Math.round(snapshot.claims.reduce((total, claim) => total + claim.factScore, 0) / snapshot.claims.length) : null;
   const sourceCount = snapshot ? snapshot.demo ? documents.length : liveResult?.sources.length ?? 0 : 0;
   const evidenceCount = snapshot ? snapshot.demo ? snapshot.claims.reduce((total, claim) => total + claim.evidenceIds.length, 0) : liveResult?.evidence.length ?? 0 : 0;
@@ -202,7 +204,21 @@ export default function FactCheckDashboard() {
   useEffect(() => {
     const controller = new AbortController();
     fetch('/api/fact-check', {signal: controller.signal, cache: 'no-store'})
-      .then(async response => {if (!response.ok) throw new Error(); const status = await response.json(); if (typeof status.configured !== 'boolean') throw new Error(); if (!controller.signal.aborted) {setConfigured(status.configured); setConfiguredModel(typeof status.model === 'string' ? status.model : null);}})
+      .then(async response => {
+        if (!response.ok) throw new Error();
+        const status = await response.json();
+        if (typeof status.configured !== 'boolean' || !Array.isArray(status.modelOptions)) throw new Error();
+        const options: ModelOption[] = MODEL_OPTIONS.map(model => {
+          const option = status.modelOptions.find((candidate: unknown) => candidate && typeof candidate === 'object' && 'id' in candidate && candidate.id === model.id);
+          if (!option || typeof option.configured !== 'boolean') throw new Error();
+          return {...model, configured: option.configured};
+        });
+        if (!controller.signal.aborted) {
+          setConfigured(status.configured);
+          setConfiguredModel(typeof status.model === 'string' ? status.model : null);
+          setModelOptions(options);
+        }
+      })
       .catch(() => {if (!controller.signal.aborted) setConfigError(true);});
     return () => {controller.abort(); generation.current++; request.current?.abort();};
   }, []);
@@ -260,7 +276,7 @@ export default function FactCheckDashboard() {
     const controller = new AbortController();
     request.current = controller;
     const current = generation.current;
-    const submitted = {text: draft, focus, consent: true as const};
+    const submitted = {text: draft, focus, consent: true as const, modelPreference};
     addMessage({role: 'user', text: draft, meta: focus ? `확인 요청: ${focus}` : undefined});
     setLiveResult(null);
     dispatch({type: 'reset'});
@@ -361,7 +377,18 @@ export default function FactCheckDashboard() {
               <div className="chat-input-meta"><span>{draft.length.toLocaleString()} / 12,000</span><span>Ctrl + Enter로 보내기</span></div>
               <div className="chat-toolbar">
                 <div className="chat-tools"><button type="button" className="chat-tool" onClick={() => setDialog('guide')}><Icon name="plus" size={17}/><span>검증 조건</span></button><span className="chat-tool is-static"><Icon name="link" size={16}/><span>웹 검색</span></span><label className="chat-focus-control" htmlFor="focus-request"><Icon name="lens" size={15}/><span>확인 요청</span><input id="focus-request" value={focus} maxLength={500} onChange={event => setFocus(event.target.value)} placeholder="선택 입력"/></label></div>
-                <div className="chat-send-group"><span className="chat-model">{modelLabel}{configuredModel && <small>우선 사용</small>}</span><button type="submit" className="chat-send" disabled={busy || !draft.trim()} aria-label={busy ? '검증 진행 중' : sample ? '예시 다시 보기' : '팩트 검증 시작'}><Icon name="arrow" size={19}/></button></div>
+                <div className="chat-send-group">
+                  <label className="chat-model-control">
+                    <span className="sr-only">답변 모델</span>
+                    <select id="model-preference" className="chat-model-select" aria-describedby="model-preference-help" value={modelPreference} onChange={event => setModelPreference(event.target.value as ModelPreference)} disabled={busy || configured !== true} title={modelPreference === 'auto' ? `자동 폴백 순서: ${fallbackOrder || modelLabel}` : '선택한 모델만 호출하며 다른 모델로 폴백하지 않습니다.'}>
+                      <option value="auto">자동 폴백 · {fallbackOrder || modelLabel}</option>
+                      {modelOptions.map(model => <option key={model.id} value={model.id} disabled={!model.configured}>{model.label}{model.configured ? '' : ' · API 키 미설정'}</option>)}
+                    </select>
+                  </label>
+                  <span className="chat-model-policy">{modelPreference === 'auto' ? '순서대로 재시도' : '선택 모델만 사용'}</span>
+                  <span id="model-preference-help" className="sr-only">자동은 설정된 Gemini 3.8 Flash, Gemini 3.7 Flash, GPT-6 Luna Max 순서로 시도합니다. 특정 모델을 선택하면 다른 모델로 폴백하지 않습니다.</span>
+                  <button type="submit" className="chat-send" disabled={busy || !draft.trim()} aria-label={busy ? '검증 진행 중' : sample ? '예시 다시 보기' : '팩트 검증 시작'}><Icon name="arrow" size={19}/></button>
+                </div>
               </div>
             </div>
             <div className="chat-footer"><div>{!sample && <><label className="consent-control"><input type="checkbox" checked={consent} onChange={event => setConsent(event.target.checked)} disabled={busy}/><span>원문·확인 요청의 외부 전송과 검색, YouTube Data API의 영상 제목·공개 댓글(최대 10개) 조회에 동의합니다. 댓글은 판정 근거로 사용하지 않습니다.</span></label><div className="consent-links"><a href="/privacy">개인정보 처리방침</a><a href="/terms">이용약관</a><a href="https://www.youtube.com/t/terms" target="_blank" rel="noopener noreferrer">YouTube 약관</a><a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">Google 개인정보</a></div></>}{sample && <span className="sample-state"><Icon name="shield" size={14}/>합성 예시는 외부로 전송하지 않습니다.</span>}</div><button type="button" className="sample-chip" onClick={loadSample}>예시로 시작하기 <Icon name="arrow" size={14}/></button></div>

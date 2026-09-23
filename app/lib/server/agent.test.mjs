@@ -45,8 +45,9 @@ test('real stages search facts with required web tool and never trust generated 
 
 test('validates request consent, lengths and unknown fields', async () => {
   const { validateRequest } = await import('./agent.ts');
-  assert.deepEqual(validateRequest({text:'hello',focus:'',consent:true}), {text:'hello',focus:'',consent:true});
-  for (const value of [null, {}, {text:'x',focus:'',consent:false}, {text:'x'.repeat(12001),focus:'',consent:true}, {text:'x',focus:'y'.repeat(501),consent:true}, {text:'x',focus:'',consent:true,apiKey:'bad'}]) {
+  assert.deepEqual(validateRequest({text:'hello',focus:'',consent:true}), {text:'hello',focus:'',consent:true,modelPreference:'auto'});
+  assert.equal(validateRequest({text:'hello',focus:'',consent:true,modelPreference:'gpt-6-luna'}).modelPreference,'gpt-6-luna');
+  for (const value of [null, {}, {text:'x',focus:'',consent:false}, {text:'x'.repeat(12001),focus:'',consent:true}, {text:'x',focus:'y'.repeat(501),consent:true}, {text:'x',focus:'',consent:true,apiKey:'bad'}, {text:'x',focus:'',consent:true,modelPreference:'unlisted'}]) {
     assert.throws(() => validateRequest(value));
   }
 });

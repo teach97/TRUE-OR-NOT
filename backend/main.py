@@ -8,7 +8,7 @@ from streaming import stream_events
 from pydantic import BaseModel
 
 from contracts import AgentStatus, FactCheckResponse
-from providers import configured_providers
+from providers import configured_model_options, configured_providers
 from runtime import build_runtime_workflow, load_settings
 from schemas import FactCheckRequest
 
@@ -31,7 +31,8 @@ async def health():
 async def agent_status(response: Response):
     """Report whether the real four-stage workflow can be constructed."""
     response.headers["Cache-Control"] = "no-store"
-    providers = configured_providers(load_settings())
+    settings = load_settings()
+    providers = configured_providers(settings)
     configured = bool(providers)
     primary = providers[0] if providers else None
     return AgentStatus(
@@ -41,6 +42,7 @@ async def agent_status(response: Response):
         model=primary.model if primary else None,
         reasoning=primary.reasoning if primary else None,
         webSearch=configured,
+        modelOptions=configured_model_options(settings),
         phase="workflow-ready" if configured else "api-foundation",
     )
 
@@ -62,7 +64,7 @@ async def fact_check(payload: FactCheckRequest, graph=Depends(get_workflow)):
             headers={"Cache-Control": "no-store"},
         )
     try:
-        state = await graph.ainvoke(payload.model_dump())
+        state = await graph.ainvoke(payload.model_dump(exclude_defaults=True))
         response = FactCheckResponse.model_validate({"result": state.get("result")})
         return JSONResponse(
             response.model_dump(mode="json"),
@@ -81,7 +83,7 @@ async def fact_check(payload: FactCheckRequest, graph=Depends(get_workflow)):
 async def fact_check_stream(payload: FactCheckRequest, graph=Depends(get_workflow)):
     if graph is None:
         return JSONResponse({'code':'NOT_CONFIGURED','message':'서버의 LLM provider 설정이 필요합니다.'}, status_code=503, headers={'Cache-Control':'no-store'})
-    return StreamingResponse(stream_events(graph, payload.model_dump()), media_type='application/x-ndjson', headers={'Cache-Control':'no-store','X-Accel-Buffering':'no','X-Content-Type-Options':'nosniff'})
+    return StreamingResponse(stream_events(graph, payload.model_dump(exclude_defaults=True)), media_type='application/x-ndjson', headers={'Cache-Control':'no-store','X-Accel-Buffering':'no','X-Content-Type-Options':'nosniff'})
 
 
 @app.exception_handler(RequestValidationError)
