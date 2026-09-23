@@ -86,6 +86,18 @@ def test_source_discovery_order_is_explicitly_not_a_google_rank():
         FactCheckResult.model_validate(payload)
 
 
+def test_source_contract_accepts_google_organic_rank_from_serpapi():
+    payload = result_payload()
+    payload["sources"][0].update({
+        "searchProvider": "serpapi_google",
+        "searchQuery": "AGI 2030년",
+        "candidateOrder": 1,
+    })
+    source = FactCheckResult.model_validate(payload).sources[0]
+    assert source.searchProvider == "serpapi_google"
+    assert source.candidateOrder == 1
+
+
 def test_result_serializes_safe_insufficient_answer_by_default():
     serialized = FactCheckResult.model_validate(result_payload()).model_dump(mode="json")
 

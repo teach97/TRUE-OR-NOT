@@ -8,3 +8,10 @@ test('labels provider candidate order without claiming Google organic rank', () 
   assert.equal(sourceDiscoveryLabel({searchProvider: 'openai_web_search', candidateOrder: 1, searchQuery: 'AGI 2030년'}), 'GPT 웹검색 후보 1 · 검색어 AGI 2030년');
   assert.equal(sourceDiscoveryLabel({}), '검색 후보');
 });
+
+test('labels SerpApi organic position as a Google rank only for the exact query', () => {
+  assert.equal(
+    sourceDiscoveryLabel({searchProvider: 'serpapi_google', candidateOrder: 2, searchQuery: 'AGI 2030년'}),
+    'Google 자연검색 2위 · 검색어 AGI 2030년',
+  );
+});

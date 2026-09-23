@@ -1,5 +1,15 @@
 # 팩트체크 에이전트 UI MVP 작업 인계서
 
+## 2026-09-23 무료 Google 자연검색 연동 및 GPT 실검증
+
+- **검색 경로:** `backend/google_serp.py`가 `SERPAPI_API_KEY`가 설정된 경우에만 SerpApi 계정 API로 `Free`/`Free Plan`, 월 요금 0, 추가 크레딧 0, 주장별 검색어 수 이상 남은 무료 쿼터를 확인합니다. 조건을 충족할 때만 한국 설정(`hl=ko`, `gl=kr`)의 Google 자연검색 첫 페이지를 검색합니다. 최대 3개 고유 검색어를 사용하고 순위별 후보를 교차 배치해 전체 최대 6개를 읽습니다. 계정 확인 API는 무료이며 검색 쿼터를 차감하지 않습니다.
+- **안전한 대체:** 계정·쿼터 확인이 안 되거나 SerpApi 검색이 실패하면 Google 순위를 꾸미지 않고 기존 GPT/Gemini 웹검색 후보로 대체하며 결과 경고를 남깁니다. 검색 snippet은 인용 근거로 쓰지 않고, 기존 원문 읽기·인용 검증 단계를 통과한 문구만 답변에 사용합니다. 유료 플랜 업그레이드나 자동 갱신 코드는 없습니다.
+- **계약·UI:** `serpapi_google` 출처에는 해당 검색어의 `position`을 `Google 자연검색 N위`로 표시합니다. 기존 GPT/Gemini 후보 순서는 Google 순위라고 표시하지 않습니다. `aitimes.com`을 한국 기사 출처로 분류합니다.
+- **실검색:** 서버에 설정된 키를 출력하지 않고 `AGI 2030년`으로 1회 연결 검사를 통과했습니다. 한국 설정의 1~6위 후보는 startuprecipe.co.kr, m.joseilbo.com, brunch.co.kr, aitimes.com, news1.kr, aimasterr.tistory.com이었습니다. 개인화·검색 위치·시각 차이로 사용자의 브라우저 순위와 완전히 같다고 보장하지 않습니다.
+- **GPT 끝까지 검증:** `modelPreference=gpt-6-luna`로 같은 질문을 실제 5단계 그래프에 통과시켜 SerpApi 출처 6개, `grounded` 답변과 개요 인용 `s1`, `s4`를 확인했습니다. 개요는 2030년 도래 전망은 있으나 확정할 수 없다는 조건부 답변이었습니다. 처음 두 번의 시도는 PC 프록시 환경변수를 따르는 LLM HTTP 연결 때문에 추출 단계에서 실패했습니다. provider 연결을 `trust_env=False`로 바꾼 뒤 성공했으며, 값을 가진 환경변수나 키 자체는 출력하지 않았습니다.
+- **검증:** backend 224 passed (기존 Starlette/AnyIO deprecation warning 1건), Node 39 passed, TypeScript 검사와 Turbopack 프로덕션 빌드 통과. 실검색 스크립트는 `backend/smoke_google_serp.py`이며 실행 시 무료 검색 1회를 사용할 수 있습니다. 프론트엔드 브라우저 실화면 비교는 이번 단계에서 실행하지 않았습니다.
+- **운영:** `backend/.env.example`의 `SERPAPI_API_KEY`를 서버 전용 `backend/.env`에 설정하고 백엔드를 재시작합니다. GPT 등 LLM API 사용료는 SerpApi 무료 쿼터와 별개입니다. 실제 Google AI 개요와 동일한 답변을 보장하지 않으며, 확인된 원문 범위의 직접 답변만 생성합니다.
+
 ## 2026-09-23 검색 후보·답변 표현 보완
 
 - 한국어 질문은 기존 OpenAI 웹검색에 한국 지역 힌트를 전달하고 검색 문맥 크기를 `medium`으로 늘렸습니다. 정확한 핵심 검색어를 먼저 사용하고, 결과가 부족할 때만 확장하도록 검색 지침을 조정했습니다.

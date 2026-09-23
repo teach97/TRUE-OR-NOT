@@ -316,3 +316,9 @@ def test_prediction_claims_are_searched_with_primary_query_in_provider_order():
     ]
     assert [source["candidateOrder"] for source in result["sources"]] == [1, 2]
     assert {source["searchQuery"] for source in result["sources"]} == {"AGI 2030년"}
+
+
+def test_aitimes_is_classified_as_korean_news_in_google_results():
+    from search import source_type_for_url
+
+    assert source_type_for_url("https://www.aitimes.com/news/articleView.html?idxno=123") == "한국 기사"

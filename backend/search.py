@@ -41,6 +41,7 @@ _SEARCH_PLAN = [
 ]
 
 _KOREAN_NEWS_HOSTS = {
+    "aitimes.com",
     "yna.co.kr",
     "khan.co.kr",
     "chosun.com",
@@ -225,7 +226,7 @@ def _project_candidates(candidates: list[dict]) -> list[dict]:
             "accessStatus": "pending",
             "searchProvider": candidate["searchProvider"],
             "searchQuery": candidate["searchQuery"],
-            "candidateOrder": position,
+            "candidateOrder": candidate.get("googlePosition", position),
         }
     return _select_diverse_sources(list(found.values()))
 

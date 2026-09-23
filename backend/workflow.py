@@ -16,6 +16,7 @@ class FactCheckState(TypedDict, total=False):
     modelPreference: str
     claims: list[dict[str, Any]]
     searchQueries: dict[str, str]
+    searchNotice: str
     sources: list[dict[str, Any]]
     sourceTexts: dict[str, str]
     evidence: list[dict[str, Any]]

@@ -14,6 +14,7 @@ from pydantic import BaseModel, SecretStr
 from answer_synthesis import eligible_sources, insufficient_answer, synthesize_answer
 from contracts import FactCheckResult
 from extraction import extract_claims
+from google_serp import FreeSearchUnavailable, search_google_free
 from providers import ProviderCallError, providers_for_preference, run_with_fallback
 from schemas import FactCheckRequest
 from search import search_sources
@@ -45,6 +46,7 @@ class Settings(BaseModel):
     api_key: SecretStr
     gemini_api_key: SecretStr = SecretStr("")
     youtube_api_key: SecretStr = SecretStr("")
+    serpapi_api_key: SecretStr = SecretStr("")
 
 
 def load_settings(env_path: Path | None = None) -> Settings:
@@ -54,10 +56,12 @@ def load_settings(env_path: Path | None = None) -> Settings:
     key = os.environ.get("OPENAI_API_KEY", values.get("OPENAI_API_KEY") or "")
     gemini_key = os.environ.get("GEMINI_API_KEY", values.get("GEMINI_API_KEY") or "")
     youtube_key = os.environ.get("YOUTUBE_API_KEY", values.get("YOUTUBE_API_KEY") or "")
+    serpapi_key = os.environ.get("SERPAPI_API_KEY", values.get("SERPAPI_API_KEY") or "")
     return Settings(
         api_key=SecretStr(key.strip()),
         gemini_api_key=SecretStr(gemini_key.strip()),
         youtube_api_key=SecretStr(youtube_key.strip()),
+        serpapi_api_key=SecretStr(serpapi_key.strip()),
     )
 
 
@@ -75,7 +79,7 @@ class RuntimeAdapters:
 def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
     """Create provider-backed stages without exposing credentials to graph state."""
     async def with_client(operation):
-        async with httpx.AsyncClient(timeout=90) as client:
+        async with httpx.AsyncClient(timeout=90, trust_env=False) as client:
             return await operation(client)
 
     async def with_fallback(state: FactCheckState, operation, failure_code: str):
@@ -142,13 +146,25 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
         )
 
     async def search(state: FactCheckState):
-        return await with_fallback(
+        serpapi_key = settings.serpapi_api_key.get_secret_value()
+        search_notice = None
+        if serpapi_key:
+            try:
+                async with httpx.AsyncClient(timeout=20.0, trust_env=False) as client:
+                    return await search_google_free(
+                        state, api_key=serpapi_key, client=client,
+                    )
+            except FreeSearchUnavailable as exc:
+                _logger.warning("free Google search unavailable reason=%s", str(exc))
+                search_notice = "SERPAPI_FREE_UNAVAILABLE"
+        update = await with_fallback(
             state,
             lambda provider, client: search_sources(
                 state, client=client, provider=provider
             ),
             "SEARCH_FAILED",
         )
+        return {**update, "searchNotice": search_notice} if search_notice else update
 
     async def read(state: FactCheckState):
         youtube_key = settings.youtube_api_key.get_secret_value()
@@ -233,7 +249,7 @@ def _normalize_source(raw: dict, checked_at: str) -> dict:
     }
 
 
-def _result_warnings(sources: list[dict]) -> list[str]:
+def _result_warnings(sources: list[dict], search_notice: str | None = None) -> list[str]:
     warnings = [
         "최대 3개 주장·6개 출처를 대상으로 한 제한된 검증입니다.",
         "출처 간 독립성과 원자료 계보는 확인되지 않았습니다.",
@@ -245,6 +261,10 @@ def _result_warnings(sources: list[dict]) -> list[str]:
     if any(source.get("sourceType") == "유튜브" for source in sources):
         warnings.append(
             "유튜브 공개 댓글은 영상별 의견 맥락으로만 표시하며 판정과 인용 근거에는 사용하지 않았습니다."
+        )
+    if search_notice == "SERPAPI_FREE_UNAVAILABLE":
+        warnings.append(
+            "무료 Google 검색을 사용할 수 없어 기존 웹검색 후보로 대체했습니다. 표시된 후보 순위는 Google 자연검색 순위가 아닙니다."
         )
     return warnings
 
@@ -290,7 +310,7 @@ def build_fact_check_result(
         "claims": claims,
         "sources": sources,
         "evidence": evidence,
-        "warnings": _result_warnings(sources),
+        "warnings": _result_warnings(sources, merged_state.get("searchNotice")),
         "answer": answer,
     })
 

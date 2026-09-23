@@ -6,6 +6,43 @@ from runtime import RuntimeAdapters, Settings, build_fact_check_result, build_ru
 from pydantic import SecretStr
 
 
+def test_real_graph_carries_free_search_fallback_notice_to_later_stages():
+    from workflow import build_workflow
+
+    async def extract(state):
+        return {"claims": []}
+
+    async def search(state):
+        return {"sources": [], "searchNotice": "SERPAPI_FREE_UNAVAILABLE"}
+
+    async def read(state):
+        assert state.get("searchNotice") == "SERPAPI_FREE_UNAVAILABLE"
+        return {"sourceTexts": {}}
+
+    async def verify(state):
+        return {"evidence": []}
+
+    async def synthesize(state):
+        return {}
+
+    state = asyncio.run(build_workflow(
+        extract=extract, search=search, read=read, verify=verify, synthesize=synthesize,
+    ).ainvoke({"text": "질문", "focus": "", "consent": True}))
+    assert state["searchNotice"] == "SERPAPI_FREE_UNAVAILABLE"
+
+
+def test_final_result_warns_when_free_google_search_was_unavailable():
+    result = build_fact_check_result(
+        {
+            "text": "Claim", "focus": "", "consent": True,
+            "claims": [], "sources": [], "evidence": [],
+            "searchNotice": "SERPAPI_FREE_UNAVAILABLE",
+        },
+        {},
+    )
+    assert any("무료 Google 검색" in warning and "기존 웹검색" in warning for warning in result.warnings)
+
+
 def test_forecast_keywords_reach_search_through_graph_without_leaking_into_result():
     import json
     import httpx

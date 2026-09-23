@@ -51,3 +51,11 @@ npm run start
 ```
 
 Next.js generates production output in `.next/`, which is excluded from version control.
+
+## Optional Google organic search
+
+The FactLens backend can use SerpApi to discover Google organic results before reading source pages. Copy `backend/.env.example` to the backend-local `.env` and set `SERPAPI_API_KEY` there; never put the key in a browser or Next.js public variable. Restart the backend after changing the file. The existing LLM provider key is still required for claim extraction, verification, and answer synthesis.
+
+This path is free-plan-only: before any search, the backend checks SerpApi's no-charge Account API for a `Free`/`Free Plan` account, zero monthly price, no extra credits, and enough remaining searches for the distinct claim queries. If the check fails, it makes no SerpApi search request and falls back to the existing LLM web search, with a warning in the result. It does not create an account, upgrade a plan, or enable automatic billing. LLM provider API usage remains separate.
+
+The search uses the extracted keywords with Korean language/country settings (`hl=ko`, `gl=kr`). The displayed organic position is for that exact query and setting; personalized Google pages may differ. Search snippets are only discovery data, never verified quotations. To spend at most one free-plan search on a live connectivity check, run `python backend/smoke_google_serp.py` with the backend's Python environment; the script prints only ranks, publishers, and titles.
