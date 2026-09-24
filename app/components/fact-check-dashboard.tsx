@@ -49,14 +49,6 @@ function Badge({claim}: {claim: Claim}) {
   return <span className={`badge score-${claim.scoreBand}`}><span aria-hidden="true">{mark}</span>{claim.scoreLabel}</span>;
 }
 
-function FactScore({claim}: {claim: Pick<Claim, 'id' | 'factScore' | 'scoreBand' | 'scoreLabel'>}) {
-  return <div className="fact-score" data-score-band={claim.scoreBand} data-testid="fact-score" aria-label={`${claim.scoreLabel}, ${claim.factScore}점`}>
-    <div className="fact-score-heading"><span>팩트 점수</span><span>0-100</span></div>
-    <div className="fact-score-value"><CountUp key={`${claim.id}-${claim.factScore}`} from={0} to={claim.factScore} duration={1.1} separator=","/><span>점</span></div>
-    <strong>{claim.scoreLabel}</strong>
-  </div>;
-}
-
 function hasEnglishText(value: string) {
   return /[A-Za-z]/.test(value);
 }
@@ -740,13 +732,13 @@ export default function FactCheckDashboard() {
             <div className="dashboard-meta"><span className="document-title"><Icon name={snapshot.demo ? 'book' : 'file'} size={16}/>{snapshot.demo ? '합성 예시 · 외부 전송 없음' : '직접 입력한 원문 · 실제 검증'}</span><div><span>{snapshot.claims.length}개 주장</span><span>{sourceCount}개 출처</span><span>{snapshot.demo ? '시연용 데이터' : liveResult?.checkedAt || '검증 시점 기록됨'}</span></div></div>
             <div className="dashboard-top-grid">
               <Panel className="trust-panel"><TrustIndex score={trustScore} claimCount={snapshot.claims.length} sourceCount={sourceCount} evidenceCount={evidenceCount} warningCount={warningCount}/></Panel>
-              <Panel className="claim-panel"><div className="panel-top"><h3><Icon name="grid" size={17}/><BlurText text="주장별 점수"/></h3><span>선택하면 근거가 바뀝니다</span></div><div className="claim-selector" aria-label="주장 후보 선택">{snapshot.claims.map((claim, index) => <motion.button key={claim.id} ref={spotlight} layout={!reduce} className={`claim-card ${selected?.id === claim.id ? 'is-selected' : ''}`} aria-pressed={selected?.id === claim.id} onClick={() => select(claim.id)}><div className="claim-card-top"><span>주장 {String(index + 1).padStart(2, '0')}</span><Badge claim={claim}/></div><div className="claim-card-score"><strong>{claim.factScore}</strong><span>점</span></div><p>{claim.quote}</p><span className="claim-card-bottom">{selected?.id === claim.id ? '선택한 주장' : '근거 살펴보기'}<Icon name={selected?.id === claim.id ? 'check' : 'arrow'} size={15}/></span></motion.button>)}</div></Panel>
+              <Panel className="claim-panel"><div className="panel-top"><h3><Icon name="grid" size={17}/><BlurText text="주장별 점수"/></h3><span>선택하면 근거가 바뀝니다</span></div><div className="claim-selector" aria-label="주장 후보 선택">{snapshot.claims.map((claim, index) => <motion.button key={claim.id} ref={spotlight} layout={!reduce} className={`claim-card ${selected?.id === claim.id ? 'is-selected' : ''}`} aria-pressed={selected?.id === claim.id} onClick={() => select(claim.id)}><div className="claim-card-top"><span>주장 {String(index + 1).padStart(2, '0')}</span><Badge claim={claim}/></div><p>{claim.quote}</p><span className="claim-card-bottom">{selected?.id === claim.id ? '선택한 주장' : '근거 살펴보기'}<Icon name={selected?.id === claim.id ? 'check' : 'arrow'} size={15}/></span></motion.button>)}</div></Panel>
             </div>
             <div className="mobile-tabs" role="group" aria-label="검토 화면 선택"><span className="mobile-tabs-indicator" data-active={mobileTab} aria-hidden="true"/><button aria-pressed={mobileTab === 'original'} onClick={() => setMobileTab('original')}>원문</button><button aria-pressed={mobileTab === 'results'} onClick={() => setMobileTab('results')}>결과</button><button aria-pressed={mobileTab === 'sources'} onClick={() => setMobileTab('sources')}>출처</button></div>
             <div className={`dashboard-detail-layout mobile-${mobileTab}`}>
               <Panel as="article" className="original-panel"><div className="panel-top"><h3><Icon name="file" size={17}/><BlurText text="원문"/></h3><span>{snapshot.demo ? '합성 문서' : '제출한 원문'}</span></div><div className="original-content"><span className="article-kicker">{snapshot.demo ? '문화 행사 · 가상의 사례' : '검증 요청 시점의 원문'}</span><h3>{snapshot.demo ? '달빛시 가을빛 축제, 알아두면 좋은 내용' : '검증한 원문'}</h3><p className="article-byline">{snapshot.demo ? 'True or Not 예시 편집실 · 실제 기사 아님' : '원문을 보존한 상태로 주장을 추출했습니다.'}</p><div className="original-text">{original}</div><div className="highlight-legend"><span/>강조된 문장을 선택하면 오른쪽 근거가 바뀝니다.</div>{snapshot.focus && <div className="focus-note"><Icon name="lens" size={17}/><div><strong>확인하고 싶은 내용</strong><p>{snapshot.focus}</p><small>{snapshot.demo ? '예시의 비교 범위를 보여드립니다.' : '검증의 참고 범위로 전달했습니다.'}</small></div></div>}</div><div className="original-footer"><Icon name="shield" size={15}/>{snapshot.demo ? '실제 인물·지역·사건과 무관한 합성 예시입니다.' : '원문에서 추출한 최대 3개의 주장을 검증합니다.'}</div></Panel>
               <Panel className="evidence-panel"><div className="panel-top"><h3><Icon name="lens" size={18}/><BlurText text="선택한 주장과 근거"/></h3><span>{snapshot.demo ? '예시 비교' : '수집된 원문 비교'}</span></div><AnimatePresence mode="wait" initial={false}><motion.div className="detail-content" key={selected?.id || 'empty'} initial={reduce ? false : {opacity: 0, y: 5}} animate={{opacity: 1, y: 0}} exit={{opacity: 0}} transition={{duration: reduce ? 0 : 0.18}}>{selected ? <>
-                <div className="result-overview"><span className="article-kicker">선택한 주장</span><h3>{selected.quote}</h3><FactScore claim={selected}/><Badge claim={selected}/><p>{selected.summary}</p></div>
+                <div className="result-overview"><span className="article-kicker">선택한 주장</span><h3>{selected.quote}</h3><Badge claim={selected}/><p>{selected.summary}</p></div>
                 <div className="source-content"><div className="source-heading"><h4>근거 출처</h4><span>{snapshot.demo ? `${sourceDocs.length}개 연결` : `${selectedEvidence.length}개 인용 · ${liveResult?.sources.length ?? 0}개 검색`}</span></div>
                   {snapshot.demo
                     ? sourceDocs.length

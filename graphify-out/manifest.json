@@ -42,9 +42,9 @@
     "semantic_hash": "0716f3cd8fc90612a5f2401c914a6b80"
   },
   "app/components/fact-check-dashboard.tsx": {
-    "mtime": 1790235722.5038252,
-    "seen": 1790235728.7348065,
-    "ast_hash": "0d272ff87ef0ab3f5155615faa95ec9c",
+    "mtime": 1790236281.0917268,
+    "seen": 1790236286.631211,
+    "ast_hash": "4d6a5332aa9afd10c16071cb3bedb867",
     "semantic_hash": ""
   },
   "app/components/fact-check-reply.test.mjs": {
