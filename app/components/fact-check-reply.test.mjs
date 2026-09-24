@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {answerCitationAnchorId, composeAssistantReply, createAnswerCitationDisplayState, presentAnswerCitations, resolveAnswerCitationSource} from './fact-check-reply.ts';
+import {composeAssistantReply, createAnswerCitationDisplayState, presentAnswerCitations, resolveAnswerCitationSource} from './fact-check-reply.ts';
 
 const source = {id:'s1',url:'https://example.com/article',title:'AGI 전망',publisher:'예시 연구소',accessStatus:'verified',sourceType:'웹'};
 const answer = {
@@ -56,7 +56,7 @@ test('citation resolution never links missing, unverified, YouTube or unsafe sou
   assert.equal(resolveAnswerCitationSource(citation,[{...source,url:'javascript:alert(1)'}]),null);
 });
 
-test('answer view links each unique source once and uses compact references afterwards', () => {
+test('repeated answer citations always link to the original article and retain its title', () => {
   const secondSource={...source,id:'s2',url:'https://example.org/report',title:'전망 보고서'};
   const state=createAnswerCitationDisplayState([source,secondSource]);
   const overview=presentAnswerCitations([
@@ -69,10 +69,12 @@ test('answer view links each unique source once and uses compact references afte
     {sourceId:'s2',quote:'둘째 출처를 다시 사용'},
   ],[source,secondSource],state);
 
-  assert.deepEqual(overview.map(item=>[item.number,item.linkTarget]),[[1,'external'],[2,'external']]);
-  assert.deepEqual(claim.map(item=>[item.number,item.linkTarget]),[[1,'reference'],[2,'reference']]);
-  assert.equal([...overview,...claim].filter(item=>item.linkTarget==='external').length,2);
-  assert.notEqual(answerCitationAnchorId('message-1',1),answerCitationAnchorId('message-2',1));
+  assert.deepEqual([...overview,...claim].map(item=>[item.number,item.linkTarget,item.href,item.source?.title]),[
+    [1,'external','https://example.com/article','AGI 전망'],
+    [2,'external','https://example.org/report','전망 보고서'],
+    [1,'external','https://example.com/article','AGI 전망'],
+    [2,'external','https://example.org/report','전망 보고서'],
+  ]);
   const rankState=createAnswerCitationDisplayState([source,secondSource]);
   assert.equal(presentAnswerCitations([{sourceId:'s2',quote:'둘째 출처'}],[source,secondSource],rankState)[0].number,2);
 });

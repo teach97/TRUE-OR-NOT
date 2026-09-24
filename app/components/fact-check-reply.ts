@@ -16,24 +16,17 @@ export type AnswerCitationDisplay = {
   number: number;
   source: FactSource | null;
   href: string | null;
-  linkTarget: 'external' | 'reference' | 'unavailable';
+  linkTarget: 'external' | 'unavailable';
 };
 
 export type AnswerCitationDisplayState = {
   sourceNumbers: Map<string, number>;
-  linkedSourceIds: Set<string>;
 };
 
 export function createAnswerCitationDisplayState(sources: FactSource[] = []): AnswerCitationDisplayState {
   return {
     sourceNumbers: new Map(sources.map((source, index) => [source.id, index + 1])),
-    linkedSourceIds: new Set(),
   };
-}
-
-export function answerCitationAnchorId(messageId: string, sourceNumber: number): string {
-  const safeMessageId = messageId.replace(/[^A-Za-z0-9_-]/g, '-');
-  return `answer-citation-${safeMessageId}-${sourceNumber}`;
 }
 
 export function resolveAnswerCitationSource(citation: AnswerCitation, sources: FactSource[]): ResolvedAnswerCitation | null {
@@ -67,9 +60,7 @@ export function presentAnswerCitations(
       continue;
     }
 
-    const linkTarget = state.linkedSourceIds.has(citation.sourceId) ? 'reference' : 'external';
-    state.linkedSourceIds.add(citation.sourceId);
-    displays.push({citation, number, source: resolved.source, href: resolved.href, linkTarget});
+    displays.push({citation, number, source: resolved.source, href: resolved.href, linkTarget: 'external'});
   }
 
   return displays;

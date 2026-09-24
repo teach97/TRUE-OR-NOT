@@ -11,7 +11,7 @@ import { sourceDiscoveryLabel } from '../lib/source-discovery';
 import { scoreBand, scoreLabel } from '../lib/fact-score';
 import { stripYoutubeApiDataForExport } from '../lib/youtube-context';
 import { FactCheckError, readFactCheckStream, safeSourceUrl } from './fact-check-client';
-import { answerCitationAnchorId, composeAssistantReply, createAnswerCitationDisplayState, presentAnswerCitations } from './fact-check-reply';
+import { composeAssistantReply, createAnswerCitationDisplayState, presentAnswerCitations } from './fact-check-reply';
 import { DEMO_FOCUS, DEMO_TEXT, demoPreview, documents } from './demo-fixture';
 import ScrambleText from './scramble-text';
 import FloatingLinesBackground from './floating-lines-background';
@@ -124,42 +124,38 @@ function Panel({as = 'div', className = '', children, 'aria-labelledby': labelle
   return <Element className={`panel-host ${className}`} aria-labelledby={labelledBy}>{children}</Element>;
 }
 
-function AnswerBlockView({block, sources, citationState, messageId}: {block: AnswerBlock; sources: FactSource[]; citationState: ReturnType<typeof createAnswerCitationDisplayState>; messageId: string}) {
+function AnswerBlockView({block, sources, citationState}: {block: AnswerBlock; sources: FactSource[]; citationState: ReturnType<typeof createAnswerCitationDisplayState>}) {
   const citations = presentAnswerCitations(block.citations, sources, citationState);
   return <div className="answer-block">
     <p className="answer-block-text">{block.text}</p>
     {citations.length > 0 && <ul className="answer-citations" aria-label="답변 근거 출처">
-      {citations.map(({citation, number, source, href, linkTarget}) => <li key={citation.sourceId}>
+      {citations.map(({number, source, href, linkTarget}, index) => <li key={`${number}-${index}`}>
           {linkTarget === 'external' && source && href
-            ? <a id={answerCitationAnchorId(messageId, number)} className="answer-citation-chip" href={href} target="_blank" rel="noopener noreferrer" title={citation.quote} aria-label={`출처 ${number}: ${source.publisher}, ${source.title}. 새 탭에서 원문 열기`}>
-                <span className="answer-citation-index">[{number}]</span><span>{source.publisher} · {source.title}</span><span aria-hidden="true">↗</span>
+            ? <a className="answer-citation-chip" href={href} target="_blank" rel="noopener noreferrer" title={source.title} aria-label={`출처 ${number}: ${source.title} (${source.publisher}). 새 탭에서 원문 열기`}>
+                <span className="answer-citation-index">[{number}]</span><span className="answer-citation-title">{source.title}</span><span aria-hidden="true">↗</span>
               </a>
-            : linkTarget === 'reference' && source
-              ? <a className="answer-citation-reference" href={`#${answerCitationAnchorId(messageId, number)}`} title={`${source.publisher} · ${source.title}`} aria-label={`출처 ${number} 다시 참조`}>
-                  <span className="answer-citation-index">[{number}]</span>
-                </a>
               : <span className="answer-citation-chip is-unavailable" aria-label={`출처 ${number}: 확인된 원문 연결 없음`}>
-                <span className="answer-citation-index">[{number}]</span><span>확인된 원문 연결 없음</span>
+                <span className="answer-citation-index">[{number}]</span><span className="answer-citation-title">확인된 원문 링크 없음</span>
               </span>}
         </li>)}
     </ul>}
   </div>;
 }
 
-function AnswerOverview({answer, sources, messageId}: {answer: FactCheckAnswer; sources: FactSource[]; messageId: string}) {
+function AnswerOverview({answer, sources}: {answer: FactCheckAnswer; sources: FactSource[]; messageId: string}) {
   const citationState = createAnswerCitationDisplayState(sources);
   return <section className="ai-answer" aria-label="AI 개요">
     <div className="ai-answer-heading"><span className="answer-spark" aria-hidden="true">✦</span><h3>AI 개요</h3></div>
     {answer.status === 'insufficient_evidence'
       ? <p className="answer-insufficient" role="note">확인된 원문 근거가 부족해 AI 개요를 만들지 않았어. 아래 출처 목록과 주장별 판정에서 확인 가능한 내용을 살펴봐.</p>
       : <>
-          {answer.overview && <div className="answer-overview-block"><AnswerBlockView block={answer.overview} sources={sources} citationState={citationState} messageId={messageId}/></div>}
+          {answer.overview && <div className="answer-overview-block"><AnswerBlockView block={answer.overview} sources={sources} citationState={citationState}/></div>}
           {answer.sections.map((section, sectionIndex) => <section className={`answer-section answer-section--${section.kind}`} key={`${section.kind}-${sectionIndex}`} aria-label={section.title}>
             <h4>{section.title}</h4>
-            <ul className="answer-section-items">{section.items.map((item, itemIndex) => <li key={itemIndex}><AnswerBlockView block={item} sources={sources} citationState={citationState} messageId={messageId}/></li>)}</ul>
+            <ul className="answer-section-items">{section.items.map((item, itemIndex) => <li key={itemIndex}><AnswerBlockView block={item} sources={sources} citationState={citationState}/></li>)}</ul>
           </section>)}
           {answer.conclusion && <section className="answer-conclusion" aria-label="정리">
-            <h4>정리</h4><AnswerBlockView block={answer.conclusion} sources={sources} citationState={citationState} messageId={messageId}/>
+            <h4>정리</h4><AnswerBlockView block={answer.conclusion} sources={sources} citationState={citationState}/>
           </section>}
         </>}
   </section>;
