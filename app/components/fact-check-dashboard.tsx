@@ -661,8 +661,8 @@ export default function FactCheckDashboard() {
                 if (!file) return;
                 const attached = await downscaleImage(file);
                 if (attached) setImage(attached);
-              }} placeholder="확인하고 싶은 주장이나 원문을 입력해 주세요. 이미지는 Ctrl+V로 붙여넣을 수 있습니다." rows={3} maxLength={12000} onKeyDown={event => {if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {event.preventDefault(); event.currentTarget.form?.requestSubmit();}}}/>
-              <div className="chat-input-meta"><span>{draft.length.toLocaleString()} / 12,000</span><span>Ctrl + Enter로 보내기</span></div>
+              }} placeholder="확인하고 싶은 주장이나 원문을 입력해 주세요. 이미지는 Ctrl+V로 붙여넣을 수 있습니다." rows={3} maxLength={12000} onKeyDown={event => {if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing) return; event.preventDefault(); event.currentTarget.form?.requestSubmit();}}/>
+              <div className="chat-input-meta"><span>{draft.length.toLocaleString()} / 12,000</span><span>Shift+Enter로 줄바꾸기</span></div>
               {(image || detectedLink) && <div className="chat-attachments">
                 {image && <span className="attach-chip"><img src={image.preview} alt="첨부 이미지 미리보기"/><button type="button" onClick={() => setImage(null)} aria-label="이미지 제거">×</button></span>}
                 {detectedLink && <span className="attach-chip is-link"><Icon name="link" size={14}/><span>링크 인식됨</span></span>}
