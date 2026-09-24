@@ -2,13 +2,11 @@ import type { AnswerCitation, FactCheckAnswer, FactCheckResult, FactSource } fro
 // @ts-ignore -- explicit extension is required by the Node native test runner.
 import { safeSourceUrl } from './fact-check-client.ts';
 
-type ReplyResult = Pick<FactCheckResult, 'answer' | 'sources' | 'evidence'>;
+type ReplyResult = Pick<FactCheckResult, 'answer' | 'sources' | 'evidence' | 'model' | 'claims'>;
 
-export type AssistantReply = {
-  answer: FactCheckAnswer;
-  sources: FactSource[];
-  meta: string;
-};
+export type AssistantReply =
+  | {answer: FactCheckAnswer; sources: FactSource[]; meta: string; factScore?: never}
+  | {factScore: number | null; answer?: never; sources?: never; meta?: never};
 
 export type ResolvedAnswerCitation = {source: FactSource; href: string};
 export type AnswerCitationDisplay = {
@@ -71,6 +69,10 @@ export function presentAnswerCitations(
 }
 
 export function composeAssistantReply(result: ReplyResult): AssistantReply {
+  if (result.model === 'typesafe-ai/jev') {
+    return {factScore: result.claims[0]?.factScore ?? null};
+  }
+
   return {
     answer: result.answer,
     sources: result.sources,

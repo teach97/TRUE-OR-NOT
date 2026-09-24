@@ -35,6 +35,7 @@ export async function POST(req: Request) {
     input=validateRequest(JSON.parse(await limitedText(new Response(req.body),200000,signal)));
   }catch{return error(400,'INVALID_REQUEST','본문, 확인 요청 길이 및 외부 전송 동의를 확인해 주세요.');}
   if(!input.jevMode)return error(400,'INVALID_REQUEST','Jev 모드 요청이 아닙니다.');
+  if(input.image)return error(400,'INVALID_REQUEST','Jev 모드에서는 이미지를 지원하지 않습니다.');
   if(req.signal.aborted)return error(400,'CANCELLED','요청이 취소되었습니다.');
   try {
     const signal=AbortSignal.any([req.signal,AbortSignal.timeout(90000)]);

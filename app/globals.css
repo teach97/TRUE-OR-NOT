@@ -105,6 +105,12 @@ button, p, h3, dd { overflow-wrap: anywhere; }
 .chat-bubble small { display: block; margin-top: 6px; color: var(--subtle); font-size: 10px; }
 .chat-message.has-answer { max-width: 100%; }
 .chat-message.has-answer .chat-bubble { flex: 1; padding: 15px 17px; }
+.chat-message.has-fact-score { max-width: min(100%, 360px); }
+.chat-bubble--fact-score { padding: 14px 16px; }
+.jev-score-reply { display: flex; align-items: baseline; justify-content: space-between; gap: 20px; }
+.jev-score-label { color: var(--muted); font-size: 12px; font-weight: 600; }
+.jev-score-value { display: flex; align-items: baseline; gap: 4px; color: var(--foreground); font-size: 30px; line-height: 1.2; font-weight: 700; font-variant-numeric: tabular-nums; }
+.jev-score-value span { color: var(--muted); font-size: 12px; font-weight: 500; }
 .ai-answer { min-width: 0; }
 .ai-answer-heading { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
 .ai-answer-heading h3 { color: #e3eeed; font-size: 13px; font-weight: 650; letter-spacing: -.01em; }

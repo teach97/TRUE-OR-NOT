@@ -169,7 +169,7 @@ type ChatProgress = {
   sourcesRead?: ProgressSource[]; sourcesReadElapsedSeconds?: number;
   claims?: ProgressClaim[]; claimsElapsedSeconds?: number; completed?: boolean; error?: string;
 };
-type ChatMessage = {id: string; role: 'assistant' | 'user'; text?: string; answer?: FactCheckAnswer; sources?: FactSource[]; progress?: ChatProgress; meta?: string; tone?: 'normal' | 'error'; imagePreview?: string; thinking?: boolean};
+type ChatMessage = {id: string; role: 'assistant' | 'user'; text?: string; answer?: FactCheckAnswer; factScore?: number | null; sources?: FactSource[]; progress?: ChatProgress; meta?: string; tone?: 'normal' | 'error'; imagePreview?: string; thinking?: boolean};
 type ModelSelection = ModelPreference | 'jev';
 
 function ThinkingDots() {
@@ -229,6 +229,13 @@ function AnswerOverview({answer, sources}: {answer: FactCheckAnswer; sources: Fa
             <h4>정리</h4><AnswerBlockView block={answer.conclusion} sources={sources} citationState={citationState}/>
           </section>}
         </>}
+  </section>;
+}
+
+function JevFactScore({score}: {score: number | null}) {
+  return <section className="jev-score-reply" aria-label={score === null ? '팩트 점수 없음' : `팩트 점수 ${score}점`}>
+    <span className="jev-score-label">팩트 점수</span>
+    <strong className="jev-score-value">{score ?? '—'}<span>점</span></strong>
   </section>;
 }
 
@@ -730,10 +737,10 @@ export default function FactCheckDashboard() {
             />
           </div>
           <div className="chat-thread" aria-live="polite">
-            {messages.map(message => <motion.div key={message.id} className={`chat-message ${message.role === 'user' ? 'is-user' : 'is-assistant'} ${message.answer ? 'has-answer' : ''} ${message.progress ? 'has-progress' : ''} ${message.tone === 'error' ? 'is-error' : ''}`} initial={reduce ? false : {opacity: 0, y: 10}} animate={{opacity: 1, y: 0}} transition={{duration: reduce ? 0 : .22}}>
+            {messages.map(message => <motion.div key={message.id} className={`chat-message ${message.role === 'user' ? 'is-user' : 'is-assistant'} ${message.answer ? 'has-answer' : ''} ${message.factScore !== undefined ? 'has-fact-score' : ''} ${message.progress ? 'has-progress' : ''} ${message.tone === 'error' ? 'is-error' : ''}`} initial={reduce ? false : {opacity: 0, y: 10}} animate={{opacity: 1, y: 0}} transition={{duration: reduce ? 0 : .22}}>
               {message.role === 'assistant' && <span className="chat-avatar"><Icon name="lens" size={16}/></span>}
-              <div className={`chat-bubble ${message.answer ? 'chat-bubble--answer' : ''}`}>
-                {message.answer ? <AnswerOverview answer={message.answer} sources={message.sources ?? []} messageId={message.id}/> : message.progress ? <ProgressReply progress={message.progress}/> : message.thinking ? <ThinkingDots/> : <>{message.imagePreview && <img className="chat-image-preview" src={message.imagePreview} alt="사용자가 보낸 이미지"/>}{message.text ? <p>{message.text}</p> : null}</>}
+              <div className={`chat-bubble ${message.answer ? 'chat-bubble--answer' : ''} ${message.factScore !== undefined ? 'chat-bubble--fact-score' : ''}`}>
+                {message.answer ? <AnswerOverview answer={message.answer} sources={message.sources ?? []} messageId={message.id}/> : message.factScore !== undefined ? <JevFactScore score={message.factScore}/> : message.progress ? <ProgressReply progress={message.progress}/> : message.thinking ? <ThinkingDots/> : <>{message.imagePreview && <img className="chat-image-preview" src={message.imagePreview} alt="사용자가 보낸 이미지"/>}{message.text ? <p>{message.text}</p> : null}</>}
                 {message.meta && <small>{message.meta}</small>}
               </div>
             </motion.div>)}

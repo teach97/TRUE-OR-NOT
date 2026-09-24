@@ -47,6 +47,18 @@ test('insufficient evidence does not fall back to a claim summary', () => {
   assert.equal(reply.text,undefined);
 });
 
+test('Jev chat reply exposes only the fact score, not the fallback answer or source counts', () => {
+  const reply = composeAssistantReply({
+    model:'typesafe-ai/jev',
+    answer:{status:'insufficient_evidence',overview:null,sections:[],conclusion:null,model:null,reasoning:null},
+    claims:[{factScore:72}],
+    sources:[],
+    evidence:[],
+  });
+
+  assert.deepEqual(reply, {factScore:72});
+});
+
 test('citation resolution never links missing, unverified, YouTube or unsafe sources', () => {
   const citation={sourceId:'s1',quote:'원문 인용'};
   assert.deepEqual(resolveAnswerCitationSource(citation,[source]),{source,href:'https://example.com/article'});
