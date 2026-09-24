@@ -285,11 +285,21 @@ button, p, h3, dd { overflow-wrap: anywhere; }
 .source-candidate-list { margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line); }
 .youtube-context-list { display: grid; gap: 12px; margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line); }
 .youtube-context-card { min-width: 0; padding: 13px; border: 1px solid var(--line); border-radius: 11px; background: rgb(255 255 255 / .02); }
-.youtube-context-card > .source-title-link { display: inline-flex; margin-bottom: 10px; }
+.youtube-context-header { display: grid; grid-template-columns: minmax(136px, 200px) minmax(0, 1fr); align-items: start; gap: 13px; }
+.youtube-thumbnail-frame { display: grid; aspect-ratio: 16 / 9; overflow: hidden; place-items: center; border: 1px solid rgb(255 255 255 / .09); border-radius: 8px; background: #090a0c; color: #899397; text-decoration: none; }
+.youtube-thumbnail-frame:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.youtube-thumbnail { display: block; width: 100%; height: 100%; object-fit: cover; }
+.youtube-thumbnail-fallback { padding: 8px; font-size: 10px; text-align: center; }
+.youtube-context-copy { min-width: 0; }
+.youtube-context-copy > .source-title-link { display: inline-flex; margin-bottom: 0; }
+.youtube-context-card .youtube-comment-context { margin-top: 12px; }
 .youtube-comment-context { padding: 10px 11px; border-radius: 9px; background: rgb(255 255 255 / .025); }
 .youtube-comment-context summary { display: flex; justify-content: space-between; gap: 12px; color: #c5d3d4; font-size: 11px; font-weight: 600; cursor: pointer; }
 .youtube-comment-context summary span:last-child { color: #9aa8ad; font-size: 10px; font-weight: 450; }
 .youtube-comment-context > .source-caption { margin-top: 8px; }
+@media (max-width: 560px) {
+  .youtube-context-header { grid-template-columns: minmax(100px, 34%) minmax(0, 1fr); gap: 10px; }
+}
 .youtube-comment-context ol { display: grid; gap: 8px; max-height: 320px; overflow: auto; margin: 10px 0 0; padding-left: 22px; color: #c5ced1; font-size: 11px; line-height: 1.75; }
 .youtube-comment-context li { padding-left: 3px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .youtube-empty { margin-top: 8px; color: var(--muted); font-size: 11px; line-height: 1.7; }
