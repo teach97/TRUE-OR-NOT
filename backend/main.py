@@ -12,8 +12,9 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from contracts import AgentStatus, FactCheckResponse
 from intent import classify_intent
+from jev import JevError
 from providers import ProviderCallError, configured_model_options, configured_providers, run_with_fallback
-from runtime import build_runtime_workflow, load_settings
+from runtime import build_runtime_workflow, load_settings, run_jev_fast_check
 from schemas import FactCheckRequest
 
 
@@ -67,6 +68,7 @@ async def agent_status(response: Response):
     primary = providers[0] if providers else None
     return AgentStatus(
         configured=configured,
+        jevConfigured=bool(settings.ai_gateway_api_key.get_secret_value().strip()),
         workflowReady=configured,
         engine="langgraph",
         model=primary.model if primary else None,
@@ -114,6 +116,43 @@ async def fact_check_stream(payload: FactCheckRequest, graph=Depends(get_workflo
     if graph is None:
         return JSONResponse({'code':'NOT_CONFIGURED','message':'서버의 LLM provider 설정이 필요합니다.'}, status_code=503, headers={'Cache-Control':'no-store'})
     return StreamingResponse(stream_events(graph, payload.model_dump(exclude_defaults=True)), media_type='application/x-ndjson', headers={'Cache-Control':'no-store','X-Accel-Buffering':'no','X-Content-Type-Options':'nosniff'})
+
+
+@app.post("/api/fact-check/jev")
+async def fact_check_jev(payload: FactCheckRequest):
+    """Jev fast path: one verdict, no pipeline stages."""
+    if not payload.jevMode:
+        return JSONResponse(
+            {"code": "INVALID_REQUEST", "message": "Jev 모드 요청이 아닙니다."},
+            status_code=422,
+            headers={"Cache-Control": "no-store"},
+        )
+    if payload.image is not None:
+        return JSONResponse(
+            {"code": "INVALID_REQUEST", "message": "Jev 모드에서는 이미지를 지원하지 않습니다."},
+            status_code=422,
+            headers={"Cache-Control": "no-store"},
+        )
+    settings = load_settings()
+    try:
+        async with httpx.AsyncClient(timeout=90, trust_env=False) as client:
+            result = await run_jev_fast_check(
+                text=payload.text,
+                focus=payload.focus,
+                link_url=payload.linkUrl,
+                client=client,
+                api_key=settings.ai_gateway_api_key.get_secret_value(),
+            )
+    except JevError:
+        return JSONResponse(
+            {"code": "AGENT_FAILED", "message": "Jev 판정에 실패했습니다."},
+            status_code=502,
+            headers={"Cache-Control": "no-store"},
+        )
+    return JSONResponse(
+        result.model_dump(mode="json"),
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 class IntentClaim(BaseModel):

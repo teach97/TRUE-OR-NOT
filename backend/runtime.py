@@ -20,12 +20,18 @@ from contracts import (
 )
 from extraction import extract_claims, extract_image_claims, extract_page_claims
 from google_serp import FreeSearchUnavailable, search_google_free
-from jev import JevError
+from jev import JevError, evaluate_claims_jev
 from providers import ProviderCallError, providers_for_preference, run_with_fallback
 from schemas import FactCheckRequest
 from search import origin_group_for_url, search_sources, source_type_for_url
 from sources import fetch_public_text, read_sources
-from verification import verify_claims, verify_claims_jev
+from verification import (
+    _JEV_MODE_WARNING,
+    _JEV_SUMMARIES,
+    _base_claim_result,
+    verify_claims,
+    verify_claims_jev,
+)
 from youtube import fetch_youtube_data
 from workflow import FactCheckState, Stage, build_workflow
 
@@ -398,6 +404,92 @@ def build_fact_check_result(
         "evidence": evidence,
         "warnings": _result_warnings(sources, merged_state.get("searchNotice")),
         "answer": answer,
+    })
+
+
+def _truncate_units(text: str, max_units: int) -> str:
+    """Truncate to a UTF-16 unit budget without splitting astral characters."""
+    units = 0
+    out: list[str] = []
+    for char in text:
+        units += 2 if ord(char) > 0xFFFF else 1
+        if units > max_units:
+            break
+        out.append(char)
+    return "".join(out)
+
+
+async def run_jev_fast_check(
+    *,
+    text: str,
+    focus: str = "",
+    link_url: str | None = None,
+    client: httpx.AsyncClient,
+    api_key: str | None,
+) -> FactCheckResult:
+    """Single Jev verdict for Jev mode: no extract/search/read/synthesize stages."""
+    page_text = ""
+    sources: list[dict] = []
+    if link_url:
+        try:
+            fetched, final_url = await fetch_public_text(link_url)
+        except Exception:
+            fetched, final_url = "", link_url
+        if isinstance(fetched, str) and fetched.strip():
+            page_text = fetched
+            host = urlsplit(final_url or link_url).hostname or link_url
+            sources = [{
+                "id": "s0",
+                "url": link_url,
+                "resolvedUrl": final_url,
+                "title": host,
+                "publisher": host,
+                "publishedAt": None,
+                "retrievedAt": "",
+                "accessStatus": "verified",
+                "sourceType": source_type_for_url(link_url),
+                "originGroupId": origin_group_for_url(link_url),
+                "searchProvider": None,
+                "searchQuery": None,
+                "candidateOrder": None,
+            }]
+    full_text = _truncate_units(page_text.strip() or text, 12_000)
+    if not full_text.strip():
+        raise JevError("Nothing to judge")
+    judgments = await evaluate_claims_jev(
+        [{"id": "c1", "quote": full_text, "kind": "fact"}],
+        {"c1": full_text},
+        client=client,
+        api_key=api_key,
+    )
+    if not judgments:
+        raise JevError("Jev returned no judgment")
+    judgment = judgments[0]
+    timestamp = datetime.now(timezone.utc).isoformat()
+    normalized_sources = [_normalize_source(source, timestamp) for source in sources]
+    base = {
+        "id": "c1",
+        "quote": full_text,
+        "start": 0,
+        "end": len(full_text.encode("utf-16-le")) // 2,
+        "kind": "fact",
+    }
+    claim = _base_claim_result(
+        base, judgment["verdictCode"], _JEV_SUMMARIES[judgment["verdictCode"]], judgment["factScore"]
+    )
+    claim["warnings"] = [_JEV_MODE_WARNING]
+    return FactCheckResult.model_validate({
+        "text": full_text,
+        "focus": focus,
+        "demo": False,
+        "model": "typesafe-ai/jev",
+        "reasoning": "max",
+        "checkedAt": timestamp,
+        "claims": [claim],
+        "sources": normalized_sources,
+        "evidence": [],
+        "warnings": _result_warnings(normalized_sources, None),
+        "answer": insufficient_answer(),
     })
 
 

@@ -75,4 +75,4 @@ export type AgentEvent =
   | {type: 'preview'; claims: ProgressClaim[]}
   | {type: 'result'; result: FactCheckResult}
   | {type: 'error'; code: string; message: string};
-export type AgentStatus = {configured: boolean; model: string | null; reasoning: Reasoning | null; webSearch: boolean; modelOptions: ModelOption[]};
+export type AgentStatus = {configured: boolean; jevConfigured: boolean; model: string | null; reasoning: Reasoning | null; webSearch: boolean; modelOptions: ModelOption[]};

@@ -183,6 +183,96 @@ def test_verify_claims_jev_without_sources_never_calls_gateway():
     assert result["claims"][0]["verdictCode"] == "insufficient_evidence"
 
 
+def test_fast_check_text_mode_returns_single_scored_claim():
+    import runtime
+
+    async def handler(request):
+        assert request.url.host == "ai-gateway.vercel.sh"
+        return jev_response(verdict="mostly_supported", score=3.0, confidence=0.9)
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            return await runtime.run_jev_fast_check(
+                text="Water boils at 100C.", focus="",
+                client=client, api_key="k",
+            )
+
+    result = asyncio.run(run())
+    assert result.model == "typesafe-ai/jev"
+    assert result.text == "Water boils at 100C."
+    assert [(c.id, c.verdictCode, c.factScore) for c in result.claims] == [
+        ("c1", "mostly_supported", 75)]
+    assert result.claims[0].evidenceIds == []
+    assert result.evidence == []
+    assert result.sources == []
+
+
+def test_fast_check_link_mode_uses_page_text_and_seed_source(monkeypatch):
+    import runtime
+
+    async def fake_fetch(url):
+        assert url == "https://example.org/article"
+        return ("Fetched page body text here.", "https://example.org/article")
+
+    async def handler(request):
+        return jev_response(verdict="partially_supported", score=2.0, confidence=0.8)
+
+    monkeypatch.setattr(runtime, "fetch_public_text", fake_fetch)
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            return await runtime.run_jev_fast_check(
+                text="https://example.org/article", focus="",
+                link_url="https://example.org/article",
+                client=client, api_key="k",
+            )
+
+    result = asyncio.run(run())
+    assert result.text == "Fetched page body text here."
+    assert [s.id for s in result.sources] == ["s0"]
+    assert result.sources[0].accessStatus == "verified"
+    assert result.claims[0].factScore == 50
+
+
+def test_fast_check_truncates_long_text_to_contract_limit():
+    import runtime
+
+    seen = {}
+
+    async def handler(request):
+        body = json.loads(request.content)
+        seen["quote_len"] = len(body["state"]["claim"] if isinstance(body.get("state"), dict) else "")
+        return jev_response()
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            return await runtime.run_jev_fast_check(
+                text="가" * 15000, focus="",
+                client=client, api_key="k",
+            )
+
+    result = asyncio.run(run())
+    assert len(result.text) <= 12000
+    assert result.claims[0].end <= 12000
+
+
+def test_fast_check_propagates_jev_failure_without_llm_fallback(monkeypatch):
+    import runtime
+
+    async def handler(request):
+        return httpx.Response(500, json={"error": "busy"})
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            return await runtime.run_jev_fast_check(
+                text="Some claim text here.", focus="",
+                client=client, api_key="k",
+            )
+
+    with pytest.raises(JevError):
+        asyncio.run(run())
+
+
 def _jev_runtime_state():
     quote = "Water boils at 100C."
     return {

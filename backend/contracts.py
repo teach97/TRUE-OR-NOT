@@ -273,6 +273,7 @@ class ModelOption(_ContractModel):
 
 class AgentStatus(_ContractModel):
     configured: bool
+    jevConfigured: bool
     workflowReady: bool
     engine: Literal["langgraph"] = "langgraph"
     model: str | None

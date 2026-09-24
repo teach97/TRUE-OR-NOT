@@ -71,7 +71,7 @@ function validEvidenceSection(value: unknown): boolean {
     && hasTitle === hasText
     && (truncated !== true || hasText);
 }
-function validResult(value: unknown): value is FactCheckResult {
+export function validResult(value: unknown): value is FactCheckResult {
   if (!value || typeof value !== 'object') return false;
   const r = value as FactCheckResult;
   return r.demo === false && typeof r.text === 'string' && typeof r.focus === 'string' && typeof r.checkedAt === 'string' && typeof r.model === 'string' && (r.reasoning === 'max' || r.reasoning === 'high')

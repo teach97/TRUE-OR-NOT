@@ -10,7 +10,7 @@ import type { AgentStage, AnswerBlock, AttachedImage, FactCheckAnswer, FactCheck
 import { sourceDiscoveryLabel } from '../lib/source-discovery';
 import { scoreBand, scoreLabel } from '../lib/fact-score';
 import { formatYoutubePublishedAt, formatYoutubeViewCount, stripYoutubeApiDataForExport, youtubeThumbnailUrl } from '../lib/youtube-context';
-import { FactCheckError, readFactCheckStream, safeSourceUrl } from './fact-check-client';
+import { FactCheckError, readFactCheckStream, safeSourceUrl, validResult } from './fact-check-client';
 import { composeAssistantReply, createAnswerCitationDisplayState, presentAnswerCitations } from './fact-check-reply';
 import { classifyChatInput, describeHistory, isFollowUpText, metaReply } from './chat-intent';
 import { DEMO_FOCUS, DEMO_TEXT, demoPreview, documents } from './demo-fixture';
@@ -23,6 +23,8 @@ import LatticeLoader from './lattice-loader';
 import BlurText from './blur-text';
 import { useSpotlight } from './spotlight';
 import VectorWordmark from './vector-wordmark';
+import GlideSelect from './glide-select';
+import type { GlideSelectOption } from './glide-select';
 
 type IconName = 'lens' | 'grid' | 'book' | 'arrow' | 'file' | 'link' | 'close' | 'download' | 'plus' | 'shield' | 'check' | 'reset';
 
@@ -168,6 +170,7 @@ type ChatProgress = {
   claims?: ProgressClaim[]; claimsElapsedSeconds?: number; completed?: boolean; error?: string;
 };
 type ChatMessage = {id: string; role: 'assistant' | 'user'; text?: string; answer?: FactCheckAnswer; sources?: FactSource[]; progress?: ChatProgress; meta?: string; tone?: 'normal' | 'error'; imagePreview?: string; thinking?: boolean};
+type ModelSelection = ModelPreference | 'jev';
 
 function ThinkingDots() {
   return <span className="thinking-dots" role="status" aria-label="답변 준비 중"><span/><span/><span/></span>;
@@ -330,10 +333,12 @@ export default function FactCheckDashboard() {
   const [image, setImage] = useState<{mime: AttachedImage['mime']; data: string; preview: string} | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const [configured, setConfigured] = useState<boolean | null>(null);
+  const [jevConfigured, setJevConfigured] = useState<boolean | null>(null);
   const [configuredModel, setConfiguredModel] = useState<string | null>(null);
   const [modelOptions, setModelOptions] = useState<ModelOption[]>([]);
-  const [modelPreference, setModelPreference] = useState<ModelPreference>('auto');
-  const [jevMode, setJevMode] = useState(false);
+  const [modelSelection, setModelSelection] = useState<ModelSelection>('auto');
+  const jevMode = modelSelection === 'jev';
+  const modelPreference: ModelPreference = jevMode ? 'auto' : modelSelection;
   const [configError, setConfigError] = useState(false);
   const [liveResult, setLiveResult] = useState<FactCheckResult | null>(null);
   const spotlight = useSpotlight<HTMLElement>();
@@ -343,11 +348,33 @@ export default function FactCheckDashboard() {
   const sourceDocs = snapshot?.demo && selected ? documents.filter(document => selected.evidenceIds.includes(document.id)) : [];
   const activeDocument = documents.find(document => document.id === dialog);
   const busy = state.status === 'loading';
-  const configurationHelp = '서버 설정이 필요합니다. backend/.env에 OPENAI_API_KEY 또는 GEMINI_API_KEY를 설정한 뒤 서버를 다시 시작해 주세요. 키를 화면이나 채팅에 입력하지 마세요.';
+  const configurationHelp = '서버 설정이 필요합니다. backend/.env에 OPENAI_API_KEY, GEMINI_API_KEY 또는 AI_GATEWAY_API_KEY를 설정한 뒤 서버를 다시 시작해 주세요. 키를 화면이나 채팅에 입력하지 마세요.';
   const serviceLabel = configured === true ? 'LLM fallback 설정됨 · 접근 미확인' : configured === false ? 'LLM 키 미설정' : configError ? '설정 확인 실패' : '서버 설정 확인 중';
   const modelLabel = MODEL_OPTIONS.find(model => model.id === configuredModel)?.label
     ?? (configured === false ? '모델 미설정' : '모델 확인 중');
   const fallbackOrder = modelOptions.filter(model => model.configured).map(model => model.label).join(' → ');
+  const modelPickerOptions: GlideSelectOption[] = [
+    {value: 'auto', label: 'Auto', tag: 'Fallback', disabled: configured !== true},
+    ...modelOptions.map(model => ({
+      value: model.id,
+      label: model.label,
+      tag: model.id.startsWith('gemini-') ? 'Gemini' : 'OpenAI',
+      disabled: !model.configured,
+    })),
+    {
+      value: 'jev',
+      label: 'Jev',
+      tag: image ? '이미지 미지원' : jevConfigured === true ? 'TypeSafe' : jevConfigured === false ? '키 미설정' : '설정 확인 중',
+      disabled: jevConfigured !== true || !!image,
+    },
+  ];
+  const attachImage = (attached: NonNullable<typeof image>) => {
+    if (jevMode) {
+      setModelSelection('auto');
+      setNotice('이미지는 JEV에서 지원하지 않아 Auto로 전환했어.');
+    }
+    setImage(attached);
+  };
   const trustScore = snapshot?.claims.length ? Math.round(snapshot.claims.reduce((total, claim) => total + claim.factScore, 0) / snapshot.claims.length) : null;
   const compact = !snapshot?.demo && (liveResult?.model === 'typesafe-ai/jev');
   const sourceCount = snapshot ? snapshot.demo ? documents.length : liveResult?.sources.length ?? 0 : 0;
@@ -364,7 +391,7 @@ export default function FactCheckDashboard() {
       .then(async response => {
         if (!response.ok) throw new Error();
         const status = await response.json();
-        if (typeof status.configured !== 'boolean' || !Array.isArray(status.modelOptions)) throw new Error();
+        if (typeof status.configured !== 'boolean' || typeof status.jevConfigured !== 'boolean' || !Array.isArray(status.modelOptions)) throw new Error();
         const options: ModelOption[] = MODEL_OPTIONS.map(model => {
           const option = status.modelOptions.find((candidate: unknown) => candidate && typeof candidate === 'object' && 'id' in candidate && candidate.id === model.id);
           if (!option || typeof option.configured !== 'boolean') throw new Error();
@@ -372,6 +399,7 @@ export default function FactCheckDashboard() {
         });
         if (!controller.signal.aborted) {
           setConfigured(status.configured);
+          setJevConfigured(status.jevConfigured);
           setConfiguredModel(typeof status.model === 'string' ? status.model : null);
           setModelOptions(options);
         }
@@ -525,7 +553,7 @@ export default function FactCheckDashboard() {
         return;
       }
     }
-    if (configured === false) {removeThinking(); setNotice(configurationHelp); release(); return;}
+    if ((jevMode && jevConfigured !== true) || (!jevMode && configured === false)) {removeThinking(); setNotice(configurationHelp); release(); return;}
     const effectiveText = followUp && liveResult ? liveResult.text : draft;
     const effectiveFocus = followUp
       ? [focus.trim(), gateFocus.trim(), draft.trim()].filter(part => part).join(' / ')
@@ -538,8 +566,22 @@ export default function FactCheckDashboard() {
     dispatch({type: 'start'});
     setNotice(followUp ? '이전 원문을 유지하고 확인 요청으로 이어서 검증합니다.' : '검증 요청을 서버로 전송하고 있습니다.');
     try {
+      let result: FactCheckResult;
+      if (jevMode) {
+        const jevResponse = await fetch('/api/fact-check/jev', {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify(submitted), signal: controller.signal});
+        if (!jevResponse.ok) {
+          const error = await jevResponse.json().catch(()=>null);
+          throw new FactCheckError(typeof error?.code === 'string' ? error.code : 'HTTP_ERROR', typeof error?.message === 'string' ? error.message : `서버 요청에 실패했습니다 (${jevResponse.status}).`);
+        }
+        const value: unknown = await jevResponse.json();
+        if (!validResult(value)) throw new FactCheckError('PROTOCOL', '검증 결과 형식이 올바르지 않습니다.');
+        if (generation.current !== current || controller.signal.aborted) return;
+        removeThinking();
+        progressMessageId = null;
+        result = value;
+      } else {
       const response = await fetch('/api/fact-check', {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify(submitted), signal: controller.signal});
-      const result = await readFactCheckStream(response, {
+      result = await readFactCheckStream(response, {
         signal: controller.signal,
         onStage: stage => {
           if (generation.current !== current) return;
@@ -562,6 +604,7 @@ export default function FactCheckDashboard() {
           setNotice('1차 검증을 마쳤어. 최종 답변과 인용을 정리하고 있어.');
         },
       });
+      }
       if (generation.current !== current || controller.signal.aborted) return;
       if (!submitted.linkUrl && !submitted.image && (result.text !== submitted.text || result.focus !== submitted.focus)) throw new Error('제출한 원문과 검증 결과가 일치하지 않습니다. 다시 시도해 주세요.');
       setImage(null);
@@ -705,7 +748,7 @@ export default function FactCheckDashboard() {
                 const file = item.getAsFile();
                 if (!file) return;
                 const attached = await downscaleImage(file);
-                if (attached) setImage(attached);
+                if (attached) attachImage(attached);
               }} placeholder="확인하고 싶은 주장이나 원문을 입력해 주세요. 이미지는 Ctrl+V로 붙여넣을 수 있습니다." rows={3} maxLength={12000} onKeyDown={event => {if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing) return; event.preventDefault(); event.currentTarget.form?.requestSubmit();}}/>
               <div className="chat-input-meta"><span>{draft.length.toLocaleString()} / 12,000</span><span>Shift+Enter로 줄바꾸기</span></div>
               {(image || detectedLink) && <div className="chat-attachments">
@@ -713,25 +756,18 @@ export default function FactCheckDashboard() {
                 {detectedLink && <span className="attach-chip is-link"><Icon name="link" size={14}/><span>링크 인식됨</span></span>}
               </div>}
               <div className="chat-toolbar">
-                <div className="chat-tools"><button type="button" className="chat-tool" onClick={() => setDialog('guide')}><Icon name="plus" size={17}/><span>검증 조건</span></button><button type="button" className="chat-tool" onClick={() => fileInput.current?.click()} disabled={busy} aria-label="이미지 첨부"><Icon name="file" size={16}/><span>이미지</span></button><input ref={fileInput} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" aria-label="이미지 첨부" tabIndex={-1} onChange={async event => {const file = event.target.files?.[0]; event.target.value = ''; if (!file || busy) return; const attached = await downscaleImage(file); if (attached) setImage(attached);}}/><span className="chat-tool is-static"><Icon name="link" size={16}/><span>웹 검색</span></span><label className="chat-focus-control" htmlFor="focus-request"><Icon name="lens" size={15}/><span>확인 요청</span><input id="focus-request" value={focus} maxLength={500} onChange={event => setFocus(event.target.value)} placeholder="선택 입력"/></label></div>
+                <div className="chat-tools"><button type="button" className="chat-tool" onClick={() => setDialog('guide')}><Icon name="plus" size={17}/><span>검증 조건</span></button><button type="button" className="chat-tool" onClick={() => fileInput.current?.click()} disabled={busy} aria-label="이미지 첨부"><Icon name="file" size={16}/><span>이미지</span></button><input ref={fileInput} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" aria-label="이미지 첨부" tabIndex={-1} onChange={async event => {const file = event.target.files?.[0]; event.target.value = ''; if (!file || busy) return; const attached = await downscaleImage(file); if (attached) attachImage(attached);}}/><span className="chat-tool is-static"><Icon name="link" size={16}/><span>웹 검색</span></span><label className="chat-focus-control" htmlFor="focus-request"><Icon name="lens" size={15}/><span>확인 요청</span><input id="focus-request" value={focus} maxLength={500} onChange={event => setFocus(event.target.value)} placeholder="선택 입력"/></label></div>
                 <div className="chat-send-group">
-                  <button type="button" className="chat-tool jev-toggle" aria-pressed={jevMode} onClick={() => setJevMode(value => !value)} disabled={busy} title="Jev 고속 판정 모드: 점수만 표시합니다"><span className="jev-toggle-dot" aria-hidden="true"/><span>JEV</span></button>
-                  <label className="chat-model-control">
-                    <span className="sr-only">답변 모델</span>
-                    <select id="model-preference" className="chat-model-select" aria-describedby="model-preference-help" value={modelPreference} onChange={event => setModelPreference(event.target.value as ModelPreference)} disabled={busy || configured !== true} title={modelPreference === 'auto' ? `자동 폴백 순서: ${fallbackOrder || modelLabel}` : '선택한 모델만 호출하며 다른 모델로 폴백하지 않습니다.'}>
-                      <option value="auto">자동 폴백 · {fallbackOrder || modelLabel}</option>
-                      {modelOptions.map(model => <option key={model.id} value={model.id} disabled={!model.configured}>{model.label}{model.configured ? '' : ' · API 키 미설정'}</option>)}
-                    </select>
-                  </label>
-                  <span className="chat-model-policy">{modelPreference === 'auto' ? '순서대로 재시도' : '선택 모델만 사용'}</span>
-                  <span id="model-preference-help" className="sr-only">자동은 설정된 Gemini 3.8 Flash, Gemini 3.7 Flash, GPT-6 Luna Max 순서로 시도합니다. 특정 모델을 선택하면 다른 모델로 폴백하지 않습니다.</span>
+                  <div className="chat-model-control"><span className="sr-only">답변 모델</span><GlideSelect options={modelPickerOptions} value={modelSelection} onChange={value => setModelSelection(value as ModelSelection)} disabled={busy} ariaLabel="답변 모델 선택" ariaDescribedBy="model-preference-help" size="md" radius={9} menuWidth={260} placement="top" align="right"/></div>
+                  <span className="chat-model-policy">{jevMode ? 'JEV · 빠른 판정' : modelSelection === 'auto' ? '모델 순차 폴백' : '선택 모델 고정'}</span>
+                  <span id="model-preference-help" className="sr-only">Auto는 설정된 모델을 순서대로 시도합니다. 개별 모델은 단독 사용합니다. JEV는 TypeSafe 빠른 판정을 사용하며 이미지는 지원하지 않습니다.</span>
                   <button type="submit" className="chat-send" disabled={busy || (!draft.trim() && !image)} aria-label={busy ? '검증 진행 중' : sample ? '예시 다시 보기' : '팩트 검증 시작'}><Icon name="arrow" size={19}/></button>
                 </div>
               </div>
             </div>
             <div className="chat-footer"><div>{sample && <span className="sample-state"><Icon name="shield" size={14}/>합성 예시는 외부로 전송하지 않습니다.</span>}</div><button type="button" className="sample-chip" onClick={loadSample}>예시로 시작하기 <Icon name="arrow" size={14}/></button></div>
           </form>
-          <div className={`chat-status ${busy ? 'is-busy' : ''}`} role="status" aria-live="polite">{busy ? notice || '검증을 진행하고 있습니다.' : notice || (configured === false ? configurationHelp : '원문을 입력하거나 예시로 시작해 근거를 확인해 보세요.')}</div>
+          <div className={`chat-status ${busy ? 'is-busy' : ''}`} role="status" aria-live="polite">{busy ? notice || '검증을 진행하고 있습니다.' : notice || (configured === false && jevConfigured !== true ? configurationHelp : '원문을 입력하거나 예시로 시작해 근거를 확인해 보세요.')}</div>
         </section>
 
         <section id="review" className="review-section" aria-labelledby="review-heading">
