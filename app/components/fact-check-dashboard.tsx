@@ -171,6 +171,11 @@ type ChatProgress = {
   claims?: ProgressClaim[]; claimsElapsedSeconds?: number; completed?: boolean; error?: string;
 };
 type ChatMessage = {id: string; role: 'assistant' | 'user'; text?: string; answer?: FactCheckAnswer; sources?: FactSource[]; progress?: ChatProgress; meta?: string; tone?: 'normal' | 'error'; imagePreview?: string};
+const FOLLOW_UP_PATTERNS = [/그럼/, /그거/, /그것/, /그건/, /이어서/, /계속/, /추가/, /더 찾아/, /검색해서/, /알아봐/, /찾아줘/, /찾아$/];
+function isFollowUp(text: string): boolean {
+  const trimmed = text.trim();
+  return trimmed.length > 0 && trimmed.length <= 60 && FOLLOW_UP_PATTERNS.some(pattern => pattern.test(trimmed));
+}
 const WELCOME_MESSAGE: ChatMessage = {id: 'welcome', role: 'assistant', text: '확인하고 싶은 주장이나 원문을 보내주세요. 문장을 나누고, 직접 확인할 수 있는 출처와 인용을 연결하겠습니다.'};
 
 function Modal({open, title, onClose, children}: {open: boolean; title: string; onClose: () => void; children: ReactNode}) {
@@ -382,6 +387,9 @@ export default function FactCheckDashboard() {
   }
 
   const detectedLink = firstUrl(draft);
+  const followUp = !sample && !image && !detectedLink && liveResult !== null && isFollowUp(draft);
+  const effectiveText = followUp && liveResult ? liveResult.text : draft;
+  const effectiveFocus = followUp ? (focus ? `${focus} / ${draft.trim()}` : draft.trim()) : focus;
 
   function loadSample() {
     stop();
@@ -441,12 +449,12 @@ export default function FactCheckDashboard() {
         ? {...message, progress: {...message.progress, ...patch}}
         : message));
     };
-    const submitted: FactCheckRequest = {text: draft, focus, consent: true as const, modelPreference, ...(detectedLink ? {linkUrl: detectedLink} : {}), ...(image ? {image: {mime: image.mime, data: image.data}} : {})};
-    addMessage({role: 'user', text: draft, meta: focus ? `확인 요청: ${focus}` : undefined, ...(image ? {imagePreview: image.preview} : {})});
+    const submitted: FactCheckRequest = {text: effectiveText, focus: effectiveFocus, consent: true as const, modelPreference, ...(detectedLink && !followUp ? {linkUrl: detectedLink} : {}), ...(image ? {image: {mime: image.mime, data: image.data}} : {})};
+    addMessage({role: 'user', text: followUp ? draft.trim() : draft, meta: followUp ? '이전 검증에 이어서 확인' : focus ? `확인 요청: ${focus}` : undefined, ...(image ? {imagePreview: image.preview} : {})});
     setLiveResult(null);
     dispatch({type: 'reset'});
     dispatch({type: 'start'});
-    setNotice('검증 요청을 서버로 전송하고 있습니다.');
+    setNotice(followUp ? '이전 원문을 유지하고 확인 요청으로 이어서 검증합니다.' : '검증 요청을 서버로 전송하고 있습니다.');
     try {
       const response = await fetch('/api/fact-check', {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify(submitted), signal: controller.signal});
       const result = await readFactCheckStream(response, {
