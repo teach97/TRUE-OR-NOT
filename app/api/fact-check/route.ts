@@ -25,7 +25,8 @@ export async function GET() {
     const response=await fetch(backend('/api/fact-check'),{signal,cache:'no-store',redirect:'error'});
     if(!response.ok) {await response.body?.cancel();throw new Error('BACKEND');}
     const value=JSON.parse(await limitedText(response,16000,signal));
-    if(typeof value.configured!=='boolean' || typeof value.jevConfigured!=='boolean' || typeof value.webSearch!=='boolean')throw new Error('PROTOCOL');
+    const jevConfigured=value.jevConfigured===undefined?false:value.jevConfigured;
+    if(typeof value.configured!=='boolean' || typeof jevConfigured!=='boolean' || typeof value.webSearch!=='boolean')throw new Error('PROTOCOL');
     if(!Array.isArray(value.modelOptions) || value.modelOptions.length !== MODEL_OPTIONS.length)throw new Error('PROTOCOL');
     const modelOptions=MODEL_OPTIONS.map(model=>{
       const option=value.modelOptions.find((item:unknown)=>item && typeof item==='object' && 'id' in item && item.id===model.id);
@@ -33,7 +34,7 @@ export async function GET() {
       return {id:model.id,label:model.label,configured:option.configured};
     });
     const reasoning=value.reasoning==='max'||value.reasoning==='high'?value.reasoning:null;
-    return Response.json({configured:value.configured,jevConfigured:value.jevConfigured,model:typeof value.model==='string'?value.model:null,reasoning,webSearch:value.webSearch,modelOptions},{headers});
+    return Response.json({configured:value.configured,jevConfigured,model:typeof value.model==='string'?value.model:null,reasoning,webSearch:value.webSearch,modelOptions},{headers});
   }catch{return error(503,'BACKEND_UNAVAILABLE','검증 백엔드에 연결할 수 없습니다.');}
 }
 export async function POST(req: Request) {

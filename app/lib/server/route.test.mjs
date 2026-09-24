@@ -60,6 +60,24 @@ test('status uses backend configuration and projects only safe fields',async()=>
  finally{globalThis.fetch=saved;}
 });
 
+test('legacy backend status keeps all model options when Jev status is absent',async()=>{
+ const {GET}=await import('../../api/fact-check/route.ts');
+ const saved=globalThis.fetch;
+ const modelOptions=[
+  {id:'gemini-3.8-flash',label:'Gemini 3.8 Flash',configured:true},
+  {id:'gemini-3.7-flash',label:'Gemini 3.7 Flash',configured:true},
+  {id:'gpt-6-luna',label:'GPT-6 Luna Max',configured:true},
+ ];
+ globalThis.fetch=async()=>Response.json({configured:true,workflowReady:true,model:'gemini-3.8-flash',reasoning:'high',webSearch:true,modelOptions});
+ try {
+  const response=await GET();
+  const body=await response.json();
+  assert.equal(response.status,200);
+  assert.equal(body.jevConfigured,false);
+  assert.deepEqual(body.modelOptions,modelOptions);
+ }finally{globalThis.fetch=saved;}
+});
+
 test('POST forwards NDJSON without credentials; cancellation releases concurrency',async()=>{
  const {POST}=await import('../../api/fact-check/route.ts');
  const saved=globalThis.fetch;let observed;let cancelled=false;
