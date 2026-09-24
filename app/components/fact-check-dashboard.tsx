@@ -12,6 +12,7 @@ import { scoreBand, scoreLabel } from '../lib/fact-score';
 import { formatYoutubePublishedAt, formatYoutubeViewCount, stripYoutubeApiDataForExport, youtubeThumbnailUrl } from '../lib/youtube-context';
 import { FactCheckError, readFactCheckStream, safeSourceUrl } from './fact-check-client';
 import { composeAssistantReply, createAnswerCitationDisplayState, presentAnswerCitations } from './fact-check-reply';
+import { classifyChatInput, describeHistory, metaReply } from './chat-intent';
 import { DEMO_FOCUS, DEMO_TEXT, demoPreview, documents } from './demo-fixture';
 import ScrambleText from './scramble-text';
 import FloatingLinesBackground from './floating-lines-background';
@@ -171,11 +172,6 @@ type ChatProgress = {
   claims?: ProgressClaim[]; claimsElapsedSeconds?: number; completed?: boolean; error?: string;
 };
 type ChatMessage = {id: string; role: 'assistant' | 'user'; text?: string; answer?: FactCheckAnswer; sources?: FactSource[]; progress?: ChatProgress; meta?: string; tone?: 'normal' | 'error'; imagePreview?: string};
-const FOLLOW_UP_PATTERNS = [/그럼/, /그거/, /그것/, /그건/, /이어서/, /계속/, /추가/, /더 찾아/, /검색해서/, /알아봐/, /찾아줘/, /찾아$/];
-function isFollowUp(text: string): boolean {
-  const trimmed = text.trim();
-  return trimmed.length > 0 && trimmed.length <= 60 && FOLLOW_UP_PATTERNS.some(pattern => pattern.test(trimmed));
-}
 const WELCOME_MESSAGE: ChatMessage = {id: 'welcome', role: 'assistant', text: '확인하고 싶은 주장이나 원문을 보내주세요. 문장을 나누고, 직접 확인할 수 있는 출처와 인용을 연결하겠습니다.'};
 
 function Modal({open, title, onClose, children}: {open: boolean; title: string; onClose: () => void; children: ReactNode}) {
@@ -260,7 +256,7 @@ function ProgressReply({progress}: {progress: ChatProgress}) {
               : <span className="progress-citation-unavailable">인용 출처 확인 필요</span>}</li>;
           })}</ul>}
         </li>)}</ol>
-        : <p className="progress-empty">검증 가능한 주장을 찾지 못했어. 결과와 주의사항을 정리하고 있어.</p>)}
+        : <p className="progress-empty">검증 가능한 주장을 찾지 못했어. 확인할 원문·링크·이미지를 보내주면 검증할게.</p>)}
         {claims !== undefined && progress.claimsElapsedSeconds !== undefined && <small className="progress-milestone-time">1차 요약 · {progress.claimsElapsedSeconds}초</small>}
         {progress.error
           ? <p className="progress-error" role="alert">{progress.error}<br/>위 내용은 최종 답변이 아닌 1차 확인 결과야.</p>
@@ -387,7 +383,9 @@ export default function FactCheckDashboard() {
   }
 
   const detectedLink = firstUrl(draft);
-  const followUp = !sample && !image && !detectedLink && liveResult !== null && isFollowUp(draft);
+  const intent = classifyChatInput(draft, {hasPrevious: !sample && liveResult !== null, hasAttachment: !!(image || detectedLink)});
+  const prevHasClaims = (liveResult?.claims.length ?? 0) > 0;
+  const followUp = intent.kind === 'followup' && prevHasClaims;
   const effectiveText = followUp && liveResult ? liveResult.text : draft;
   const effectiveFocus = followUp ? (focus ? `${focus} / ${draft.trim()}` : draft.trim()) : focus;
 
@@ -427,6 +425,18 @@ export default function FactCheckDashboard() {
     if (!draft.trim() && !image) {setNotice('검증할 원문이나 이미지를 입력해 주세요.'); return;}
     if (draft.length > 12000 || focus.length > 500) {setNotice('원문은 12,000자, 확인 요청은 500자 이내로 입력해 주세요.'); return;}
     if (sample) {dispatch({type: 'load', snapshot: {...demoPreview, focus}}); setNotice('합성 예시입니다. 실제 검증 요청은 전송하지 않았습니다.'); return;}
+    if (intent.kind === 'meta') {
+      addMessage({role: 'user', text: draft.trim()});
+      addMessage({role: 'assistant', text: intent.topic === 'history' ? describeHistory(messages, liveResult, DEMO_TEXT) : metaReply(intent.topic)});
+      setDraft(''); setImage(null);
+      return;
+    }
+    if (intent.kind === 'followup' && !prevHasClaims) {
+      addMessage({role: 'user', text: draft.trim(), meta: '이전 검증에 이어서 확인'});
+      addMessage({role: 'assistant', text: '이전 검증에서 검증 가능한 주장을 못 찾았어. 확인할 원문·링크·이미지를 보내주면 바로 검증할게.'});
+      setDraft('');
+      return;
+    }
     if (configured === false) {setNotice(configurationHelp); return;}
 
     stop();
