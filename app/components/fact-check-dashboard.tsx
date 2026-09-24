@@ -6,7 +6,7 @@ import type { CSSProperties, FormEvent, ReactNode } from 'react';
 import { initialState, transition } from './demo-state';
 import type { Claim } from './demo-state';
 import { MODEL_OPTIONS } from '../lib/fact-check-contract';
-import type { AnswerBlock, AttachedImage, FactCheckAnswer, FactCheckRequest, FactCheckResult, FactSource, ModelOption, ModelPreference, ProgressClaim, ProgressSource } from '../lib/fact-check-contract';
+import type { AgentStage, AnswerBlock, AttachedImage, FactCheckAnswer, FactCheckRequest, FactCheckResult, FactSource, ModelOption, ModelPreference, ProgressClaim, ProgressSource } from '../lib/fact-check-contract';
 import { sourceDiscoveryLabel } from '../lib/source-discovery';
 import { scoreBand, scoreLabel } from '../lib/fact-score';
 import { formatYoutubePublishedAt, formatYoutubeViewCount, stripYoutubeApiDataForExport, youtubeThumbnailUrl } from '../lib/youtube-context';
@@ -19,6 +19,8 @@ import FloatingLinesBackground from './floating-lines-background';
 import LineSidebar from './line-sidebar';
 import CountUp from './count-up';
 import LatticeLoader from './lattice-loader';
+import BlurText from './blur-text';
+import { useSpotlight } from './spotlight';
 import VectorWordmark from './vector-wordmark';
 
 type IconName = 'lens' | 'grid' | 'book' | 'arrow' | 'file' | 'link' | 'close' | 'download' | 'plus' | 'shield' | 'check' | 'reset';
@@ -166,7 +168,7 @@ function TrustIndex({score, claimCount, sourceCount, evidenceCount, warningCount
 }
 
 type ChatProgress = {
-  status?: string; statusElapsedSeconds?: number;
+  status?: string; statusElapsedSeconds?: number; statusStage?: AgentStage;
   sourcesFound?: ProgressSource[]; sourcesFoundElapsedSeconds?: number;
   sourcesRead?: ProgressSource[]; sourcesReadElapsedSeconds?: number;
   claims?: ProgressClaim[]; claimsElapsedSeconds?: number; completed?: boolean; error?: string;
@@ -213,7 +215,7 @@ function AnswerBlockView({block, sources, citationState}: {block: AnswerBlock; s
 function AnswerOverview({answer, sources}: {answer: FactCheckAnswer; sources: FactSource[]; messageId: string}) {
   const citationState = createAnswerCitationDisplayState(sources);
   return <section className="ai-answer" aria-label="AI 개요">
-    <div className="ai-answer-heading"><span className="answer-spark" aria-hidden="true">✦</span><h3>AI 개요</h3></div>
+    <div className="ai-answer-heading"><span className="answer-spark" aria-hidden="true">✦</span><h3><BlurText text="AI 개요"/></h3></div>
     {answer.status === 'insufficient_evidence'
       ? <p className="answer-insufficient" role="note">확인된 원문 근거가 부족해 AI 개요를 만들지 않았어. 아래 출처 목록과 주장별 판정에서 확인 가능한 내용을 살펴봐.</p>
       : <>
@@ -229,13 +231,32 @@ function AnswerOverview({answer, sources}: {answer: FactCheckAnswer; sources: Fa
   </section>;
 }
 
+const VERIFY_STAGES: Array<{id: AgentStage; label: string}> = [
+  {id: 'extracting', label: '추출'},
+  {id: 'searching', label: '검색'},
+  {id: 'reading', label: '읽기'},
+  {id: 'verifying', label: '검증'},
+  {id: 'synthesizing', label: '합성'},
+];
+
+function VerifyTimeline({progress}: {progress: ChatProgress}) {
+  if (!progress.statusStage && !progress.completed && !progress.error) return null;
+  const currentIndex = progress.completed
+    ? VERIFY_STAGES.length
+    : Math.max(0, VERIFY_STAGES.findIndex(stage => stage.id === progress.statusStage));
+  return <ol className="verify-timeline" aria-label="검증 단계 진행">
+    {VERIFY_STAGES.map((stage, index) => <li key={stage.id} data-state={index < currentIndex ? 'done' : index === currentIndex ? 'active' : 'todo'}><span className="verify-timeline-dot" aria-hidden="true"/><span>{stage.label}</span></li>)}
+  </ol>;
+}
+
 function ProgressReply({progress}: {progress: ChatProgress}) {
   const claims = progress.claims;
   const sources = progress.sourcesRead ?? [];
   const sourceNumbers = new Map(sources.map((source, index) => [source.id, index + 1]));
   const heading = claims !== undefined ? '1차 검증 요약' : '검증 진행 상황';
   return <section className="progress-reply" data-testid="progress-reply" aria-label="검증 진행 결과">
-    <div className="progress-reply-heading"><span aria-hidden="true">✦</span><h3>{heading}</h3><span className="progress-reply-status">{progress.error ? '중단' : progress.completed ? '완료' : '중간 업데이트'}</span></div>
+    <div className="progress-reply-heading"><span aria-hidden="true">✦</span><h3><BlurText text={heading}/></h3><span className="progress-reply-status">{progress.error ? '중단' : progress.completed ? '완료' : '중간 업데이트'}</span></div>
+    <VerifyTimeline progress={progress}/>
     {progress.status && <p className="progress-current-stage" data-testid="progress-stage">
       <span>{progress.status}</span><time>{progress.statusElapsedSeconds ?? 0}초 경과</time>
     </p>}
@@ -303,6 +324,7 @@ export default function FactCheckDashboard() {
   const [modelPreference, setModelPreference] = useState<ModelPreference>('auto');
   const [configError, setConfigError] = useState(false);
   const [liveResult, setLiveResult] = useState<FactCheckResult | null>(null);
+  const spotlight = useSpotlight<HTMLElement>();
   const editor = useRef<HTMLTextAreaElement>(null);
   const snapshot = state.snapshot;
   const selected = snapshot?.claims.find(claim => claim.id === state.selectedId);
@@ -509,7 +531,7 @@ export default function FactCheckDashboard() {
         signal: controller.signal,
         onStage: stage => {
           if (generation.current !== current) return;
-          updateProgressMessage({status: stage.message, statusElapsedSeconds: elapsedSeconds()});
+          updateProgressMessage({status: stage.message, statusStage: stage.stage, statusElapsedSeconds: elapsedSeconds()});
           setNotice(stage.message);
         },
         onSources: event => {
@@ -695,24 +717,24 @@ export default function FactCheckDashboard() {
         </section>
 
         <section id="review" className="review-section" aria-labelledby="review-heading">
-          <div className="review-heading dashboard-heading"><div><span className="section-kicker">검증 대시보드</span><h2 id="review-heading">근거와 함께 확인하세요.</h2><p>주장별 신뢰지수, 확인된 인용, 출처의 관계를 한 흐름으로 살펴보세요.</p></div><button className="secondary-button export-button" disabled={!snapshot || busy} onClick={download}><Icon name="download" size={16}/><span>{snapshot?.demo ? '예시 내보내기' : '결과 내보내기'}</span></button></div>
+          <div className="review-heading dashboard-heading"><div><span className="section-kicker">검증 대시보드</span><h2 id="review-heading"><BlurText text="근거와 함께 확인하세요."/></h2><p>주장별 신뢰지수, 확인된 인용, 출처의 관계를 한 흐름으로 살펴보세요.</p></div><button className="secondary-button export-button" disabled={!snapshot || busy} onClick={download}><Icon name="download" size={16}/><span>{snapshot?.demo ? '예시 내보내기' : '결과 내보내기'}</span></button></div>
           {snapshot ? <>
             <div className="dashboard-meta"><span className="document-title"><Icon name={snapshot.demo ? 'book' : 'file'} size={16}/>{snapshot.demo ? '합성 예시 · 외부 전송 없음' : '직접 입력한 원문 · 실제 검증'}</span><div><span>{snapshot.claims.length}개 주장</span><span>{sourceCount}개 출처</span><span>{snapshot.demo ? '시연용 데이터' : liveResult?.checkedAt || '검증 시점 기록됨'}</span></div></div>
             <div className="dashboard-top-grid">
               <Panel className="trust-panel"><TrustIndex score={trustScore} claimCount={snapshot.claims.length} sourceCount={sourceCount} evidenceCount={evidenceCount} warningCount={warningCount}/></Panel>
-              <Panel className="claim-panel"><div className="panel-top"><h3><Icon name="grid" size={17}/>주장별 점수</h3><span>선택하면 근거가 바뀝니다</span></div><div className="claim-selector" aria-label="주장 후보 선택">{snapshot.claims.map((claim, index) => <motion.button key={claim.id} layout={!reduce} className={`claim-card ${selected?.id === claim.id ? 'is-selected' : ''}`} aria-pressed={selected?.id === claim.id} onClick={() => select(claim.id)}><div className="claim-card-top"><span>주장 {String(index + 1).padStart(2, '0')}</span><Badge claim={claim}/></div><div className="claim-card-score"><strong>{claim.factScore}</strong><span>점</span></div><p>{claim.quote}</p><span className="claim-card-bottom">{selected?.id === claim.id ? '선택한 주장' : '근거 살펴보기'}<Icon name={selected?.id === claim.id ? 'check' : 'arrow'} size={15}/></span></motion.button>)}</div></Panel>
+              <Panel className="claim-panel"><div className="panel-top"><h3><Icon name="grid" size={17}/><BlurText text="주장별 점수"/></h3><span>선택하면 근거가 바뀝니다</span></div><div className="claim-selector" aria-label="주장 후보 선택">{snapshot.claims.map((claim, index) => <motion.button key={claim.id} ref={spotlight} layout={!reduce} className={`claim-card ${selected?.id === claim.id ? 'is-selected' : ''}`} aria-pressed={selected?.id === claim.id} onClick={() => select(claim.id)}><div className="claim-card-top"><span>주장 {String(index + 1).padStart(2, '0')}</span><Badge claim={claim}/></div><div className="claim-card-score"><strong>{claim.factScore}</strong><span>점</span></div><p>{claim.quote}</p><span className="claim-card-bottom">{selected?.id === claim.id ? '선택한 주장' : '근거 살펴보기'}<Icon name={selected?.id === claim.id ? 'check' : 'arrow'} size={15}/></span></motion.button>)}</div></Panel>
             </div>
-            <div className="mobile-tabs" role="group" aria-label="검토 화면 선택"><button aria-pressed={mobileTab === 'original'} onClick={() => setMobileTab('original')}>원문</button><button aria-pressed={mobileTab === 'results'} onClick={() => setMobileTab('results')}>결과</button><button aria-pressed={mobileTab === 'sources'} onClick={() => setMobileTab('sources')}>출처</button></div>
+            <div className="mobile-tabs" role="group" aria-label="검토 화면 선택"><span className="mobile-tabs-indicator" data-active={mobileTab} aria-hidden="true"/><button aria-pressed={mobileTab === 'original'} onClick={() => setMobileTab('original')}>원문</button><button aria-pressed={mobileTab === 'results'} onClick={() => setMobileTab('results')}>결과</button><button aria-pressed={mobileTab === 'sources'} onClick={() => setMobileTab('sources')}>출처</button></div>
             <div className={`dashboard-detail-layout mobile-${mobileTab}`}>
-              <Panel as="article" className="original-panel"><div className="panel-top"><h3><Icon name="file" size={17}/>원문</h3><span>{snapshot.demo ? '합성 문서' : '제출한 원문'}</span></div><div className="original-content"><span className="article-kicker">{snapshot.demo ? '문화 행사 · 가상의 사례' : '검증 요청 시점의 원문'}</span><h3>{snapshot.demo ? '달빛시 가을빛 축제, 알아두면 좋은 내용' : '검증한 원문'}</h3><p className="article-byline">{snapshot.demo ? 'True or Not 예시 편집실 · 실제 기사 아님' : '원문을 보존한 상태로 주장을 추출했습니다.'}</p><div className="original-text">{original}</div><div className="highlight-legend"><span/>강조된 문장을 선택하면 오른쪽 근거가 바뀝니다.</div>{snapshot.focus && <div className="focus-note"><Icon name="lens" size={17}/><div><strong>확인하고 싶은 내용</strong><p>{snapshot.focus}</p><small>{snapshot.demo ? '예시의 비교 범위를 보여드립니다.' : '검증의 참고 범위로 전달했습니다.'}</small></div></div>}</div><div className="original-footer"><Icon name="shield" size={15}/>{snapshot.demo ? '실제 인물·지역·사건과 무관한 합성 예시입니다.' : '원문에서 추출한 최대 3개의 주장을 검증합니다.'}</div></Panel>
-              <Panel className="evidence-panel"><div className="panel-top"><h3><Icon name="lens" size={18}/>선택한 주장과 근거</h3><span>{snapshot.demo ? '예시 비교' : '수집된 원문 비교'}</span></div><AnimatePresence mode="wait" initial={false}><motion.div className="detail-content" key={selected?.id || 'empty'} initial={reduce ? false : {opacity: 0, y: 5}} animate={{opacity: 1, y: 0}} exit={{opacity: 0}} transition={{duration: reduce ? 0 : 0.18}}>{selected ? <>
+              <Panel as="article" className="original-panel"><div className="panel-top"><h3><Icon name="file" size={17}/><BlurText text="원문"/></h3><span>{snapshot.demo ? '합성 문서' : '제출한 원문'}</span></div><div className="original-content"><span className="article-kicker">{snapshot.demo ? '문화 행사 · 가상의 사례' : '검증 요청 시점의 원문'}</span><h3>{snapshot.demo ? '달빛시 가을빛 축제, 알아두면 좋은 내용' : '검증한 원문'}</h3><p className="article-byline">{snapshot.demo ? 'True or Not 예시 편집실 · 실제 기사 아님' : '원문을 보존한 상태로 주장을 추출했습니다.'}</p><div className="original-text">{original}</div><div className="highlight-legend"><span/>강조된 문장을 선택하면 오른쪽 근거가 바뀝니다.</div>{snapshot.focus && <div className="focus-note"><Icon name="lens" size={17}/><div><strong>확인하고 싶은 내용</strong><p>{snapshot.focus}</p><small>{snapshot.demo ? '예시의 비교 범위를 보여드립니다.' : '검증의 참고 범위로 전달했습니다.'}</small></div></div>}</div><div className="original-footer"><Icon name="shield" size={15}/>{snapshot.demo ? '실제 인물·지역·사건과 무관한 합성 예시입니다.' : '원문에서 추출한 최대 3개의 주장을 검증합니다.'}</div></Panel>
+              <Panel className="evidence-panel"><div className="panel-top"><h3><Icon name="lens" size={18}/><BlurText text="선택한 주장과 근거"/></h3><span>{snapshot.demo ? '예시 비교' : '수집된 원문 비교'}</span></div><AnimatePresence mode="wait" initial={false}><motion.div className="detail-content" key={selected?.id || 'empty'} initial={reduce ? false : {opacity: 0, y: 5}} animate={{opacity: 1, y: 0}} exit={{opacity: 0}} transition={{duration: reduce ? 0 : 0.18}}>{selected ? <>
                 <div className="result-overview"><span className="article-kicker">선택한 주장</span><h3>{selected.quote}</h3><FactScore claim={selected}/><Badge claim={selected}/><p>{selected.summary}</p></div>
                 <div className="source-content"><div className="source-heading"><h4>근거 출처</h4><span>{snapshot.demo ? `${sourceDocs.length}개 연결` : `${selectedEvidence.length}개 인용 · ${liveResult?.sources.length ?? 0}개 검색`}</span></div>
                   {snapshot.demo
                     ? sourceDocs.length
                       ? <>
                           <div className="comparison-note"><span className="group-symbol">A</span><p><strong>같은 원자료를 공유합니다.</strong><br/>출처 2개가 독립적인 근거 2개를 뜻하지 않습니다.</p></div>
-                          {sourceDocs.map((source, index) => <button className="source-card" key={source.id} onClick={() => setDialog(source.id)}><div className="source-card-top"><span className="source-index">{String(index + 1).padStart(2, '0')}</span><span className="source-kind">{source.relation} · 예시</span><Icon name="arrow" size={16}/></div><strong>{source.title}</strong><span className="source-publisher">{source.publisher} · {source.date}</span><blockquote>“{selected.id === 'claim-1' ? source.id === 'doc-1' ? '가을빛 축제는 10월 12일부터 14일까지 달빛공원에서 진행합니다.' : '행사는 10월 12일부터 14일까지 열립니다.' : source.id === 'doc-1' ? '공예 체험은 사전 예약이 필요하며 재료비 5,000원이 있습니다.' : '공예 체험은 별도 예약과 재료비가 필요합니다.'}”</blockquote><span className="source-footer">원자료 그룹 A <span>전문 보기</span></span></button>)}
+                          {sourceDocs.map((source, index) => <button className="source-card" ref={spotlight} key={source.id} onClick={() => setDialog(source.id)}><div className="source-card-top"><span className="source-index">{String(index + 1).padStart(2, '0')}</span><span className="source-kind">{source.relation} · 예시</span><Icon name="arrow" size={16}/></div><strong>{source.title}</strong><span className="source-publisher">{source.publisher} · {source.date}</span><blockquote>“{selected.id === 'claim-1' ? source.id === 'doc-1' ? '가을빛 축제는 10월 12일부터 14일까지 달빛공원에서 진행합니다.' : '행사는 10월 12일부터 14일까지 열립니다.' : source.id === 'doc-1' ? '공예 체험은 사전 예약이 필요하며 재료비 5,000원이 있습니다.' : '공예 체험은 별도 예약과 재료비가 필요합니다.'}”</blockquote><span className="source-footer">원자료 그룹 A <span>전문 보기</span></span></button>)}
                           <p className="evidence-caution">인용은 시연용 문서 전문에서 확인해 주세요. 실제 검색 결과가 아닙니다.</p>
                         </>
                       : <div className="empty-evidence"><Icon name="file" size={27}/><h4>비교할 근거가 없습니다</h4><p>미래 전망을 현재 사실로 확정하지 않습니다. 예시 문서에도 방문객 추정 근거는 없습니다.</p></div>
@@ -720,7 +742,7 @@ export default function FactCheckDashboard() {
                       ? <>{selectedEvidence.map((evidence, index) => {
                           const source = liveResult?.sources.find(item => item.id === evidence.sourceId);
                           const href = source && safeSourceUrl(source.url);
-                          return <article className="source-card" key={evidence.id}>
+                          return <article className="source-card" ref={spotlight} key={evidence.id}>
                             <div className="source-card-top"><span className="source-index">{String(index + 1).padStart(2, '0')}</span><span className="source-kind">{source?.sourceType || '출처'} · {evidence.relation === 'supports' ? '지지 근거' : evidence.relation === 'contradicts' ? '반박 근거' : '맥락 근거'}</span><span className="source-verified">{evidence.quoteVerified ? '인용 확인' : '확인 필요'}</span></div>
                             {href ? <a className="source-title-link" href={href} target="_blank" rel="noopener noreferrer">{source?.title || '출처 열기'} <Icon name="arrow" size={14}/></a> : <strong>{source?.title || '출처 확인 불가'}</strong>}
                             <span className="source-publisher">{source?.publisher || '발행 기관 미확인'} · {source?.publishedAt || '발행일 미확인'}</span>
@@ -738,11 +760,11 @@ export default function FactCheckDashboard() {
                         })}</>
                       : <div className="empty-evidence"><Icon name="file" size={27}/><h4>비교할 근거가 없습니다</h4><p>근거 부족은 거짓을 뜻하지 않습니다. 확인 가능한 원문이 없다는 의미입니다.</p></div>}
                 </div>
-                {!snapshot.demo && !selectedEvidence.length && otherSources.length ? <div className="source-candidate-list"><p className="evidence-caution">출처별 검색 경로와 순위를 확인해. Google 자연검색 순위는 그렇게 표시된 출처에만 해당하고, 아직 선택한 주장과 직접 대조된 인용은 아니야.</p>{otherSources.map((source, index) => {const href = safeSourceUrl(source.url); return <article className="source-card" key={source.id}><div className="source-card-top"><span className="source-index">{String(index + 1).padStart(2, '0')}</span><span className="source-kind">{source.sourceType || '검색 출처'}</span><span className="source-verified">{source.accessStatus === 'verified' ? '원문 확인' : '접근 불가'}</span></div>{href ? <a className="source-title-link" href={href} target="_blank" rel="noopener noreferrer">{source.title} <Icon name="arrow" size={14}/></a> : <strong>{source.title}</strong>}<span className="source-publisher">{source.publisher} · {source.publishedAt || '발행일 미확인'}</span><p className="source-caption">{sourceDiscoveryLabel(source)} · 원문 인용이 연결되기 전에는 판정 근거로 사용하지 않습니다.</p></article>;})}</div> : null}
+                {!snapshot.demo && !selectedEvidence.length && otherSources.length ? <div className="source-candidate-list"><p className="evidence-caution">출처별 검색 경로와 순위를 확인해. Google 자연검색 순위는 그렇게 표시된 출처에만 해당하고, 아직 선택한 주장과 직접 대조된 인용은 아니야.</p>{otherSources.map((source, index) => {const href = safeSourceUrl(source.url); return <article className="source-card" ref={spotlight} key={source.id}><div className="source-card-top"><span className="source-index">{String(index + 1).padStart(2, '0')}</span><span className="source-kind">{source.sourceType || '검색 출처'}</span><span className="source-verified">{source.accessStatus === 'verified' ? '원문 확인' : '접근 불가'}</span></div>{href ? <a className="source-title-link" href={href} target="_blank" rel="noopener noreferrer">{source.title} <Icon name="arrow" size={14}/></a> : <strong>{source.title}</strong>}<span className="source-publisher">{source.publisher} · {source.publishedAt || '발행일 미확인'}</span><p className="source-caption">{sourceDiscoveryLabel(source)} · 원문 인용이 연결되기 전에는 판정 근거로 사용하지 않습니다.</p></article>;})}</div> : null}
                 {!snapshot.demo && youtubeSources.length > 0 ? <section className="youtube-context-list" aria-label="유튜브 영상 정보와 공개 댓글"><div className="source-heading"><h4>유튜브 영상 정보·공개 댓글</h4><span>참고 맥락 · 판정 근거 아님</span></div>{youtubeSources.map(source => {const href = safeSourceUrl(source.url); return <article className="youtube-context-card" key={source.id}><div className="youtube-context-header"><YoutubeThumbnail source={source}/><div className="youtube-context-copy">{href ? <a className="source-title-link" href={href} target="_blank" rel="noopener noreferrer">{source.youtubeTitle || source.title} <Icon name="arrow" size={14}/></a> : <strong>{source.youtubeTitle || source.title}</strong>}<YoutubeVideoMetadata source={source}/></div></div><YoutubeCommentContext source={source}/></article>;})}</section> : null}
                 {!snapshot.demo && selectedLiveClaim && <div className="detail-blocks"><div><h4>확인된 내용</h4>{selectedLiveClaim.confirmed.length ? <ul>{selectedLiveClaim.confirmed.map((text, index) => <li key={index}>{text}</li>)}</ul> : <p>직접 확인된 내용이 없습니다.</p>}</div><div><h4>남은 불확실성</h4>{selectedLiveClaim.unresolved.length ? <ul>{selectedLiveClaim.unresolved.map((text, index) => <li key={index}>{text}</li>)}</ul> : <p>현재 기록된 불확실성이 없습니다.</p>}</div>{selectedLiveClaim.warnings.length > 0 && <div><h4>주장별 주의사항</h4><ul>{selectedLiveClaim.warnings.map((text, index) => <li key={index}>{text}</li>)}</ul></div>}</div>}
               </> : <div className="empty-evidence"><Icon name="lens" size={27}/><h4>주장을 선택해 주세요</h4><p>위의 주장 카드를 선택하면 연결된 출처와 인용이 표시됩니다.</p></div>}</motion.div></AnimatePresence></Panel>
-              <Panel className="source-index-panel"><div className="panel-top"><h3><Icon name="book" size={17}/>검토한 출처</h3><span>{sourceCount}개 수집</span></div><div className="source-index-grid">{snapshot.demo ? documents.map((source, index) => <button className="source-index-card" key={source.id} onClick={() => setDialog(source.id)}><span className="source-index-number">{String(index + 1).padStart(2, '0')}</span><span><strong>{source.title}</strong><small>{source.publisher}</small></span><Icon name="arrow" size={15}/></button>) : liveResult?.sources.map((source, index) => {const href = safeSourceUrl(source.url); const sourceLabel = source.sourceType === '유튜브' ? source.youtubeDataStatus === 'collected' ? `공개 댓글 ${source.youtubeComments.length}개` : source.youtubeDataStatus === 'not_configured' ? '댓글 API 미설정' : '댓글 조회 불가' : source.accessStatus === 'verified' ? '원문 확인' : '접근 불가'; const content = <><span className="source-index-number">{String(index + 1).padStart(2, '0')}</span><span><strong>{source.youtubeTitle || source.title}</strong><small>{source.sourceType} · {source.publisher} · {sourceDiscoveryLabel(source)} · {sourceLabel}</small></span><Icon name="arrow" size={15}/></>; return href ? <a className="source-index-card" href={href} target="_blank" rel="noopener noreferrer" key={source.id}>{content}</a> : <div className="source-index-card" key={source.id}>{content}</div>;})}{!sourceCount && <div className="source-index-empty">아직 수집된 출처가 없습니다.</div>}</div></Panel>
+              <Panel className="source-index-panel"><div className="panel-top"><h3><Icon name="book" size={17}/><BlurText text="검토한 출처"/></h3><span>{sourceCount}개 수집</span></div><div className="source-index-grid">{snapshot.demo ? documents.map((source, index) => <button className="source-index-card" ref={spotlight} key={source.id} onClick={() => setDialog(source.id)}><span className="source-index-number">{String(index + 1).padStart(2, '0')}</span><span><strong>{source.title}</strong><small>{source.publisher}</small></span><Icon name="arrow" size={15}/></button>) : liveResult?.sources.map((source, index) => {const href = safeSourceUrl(source.url); const sourceLabel = source.sourceType === '유튜브' ? source.youtubeDataStatus === 'collected' ? `공개 댓글 ${source.youtubeComments.length}개` : source.youtubeDataStatus === 'not_configured' ? '댓글 API 미설정' : '댓글 조회 불가' : source.accessStatus === 'verified' ? '원문 확인' : '접근 불가'; const content = <><span className="source-index-number">{String(index + 1).padStart(2, '0')}</span><span><strong>{source.youtubeTitle || source.title}</strong><small>{source.sourceType} · {source.publisher} · {sourceDiscoveryLabel(source)} · {sourceLabel}</small></span><Icon name="arrow" size={15}/></>; return href ? <a className="source-index-card" ref={spotlight} href={href} target="_blank" rel="noopener noreferrer" key={source.id}>{content}</a> : <div className="source-index-card" ref={spotlight} key={source.id}>{content}</div>;})}{!sourceCount && <div className="source-index-empty">아직 수집된 출처가 없습니다.</div>}</div></Panel>
             </div>
           </> : <Panel className="dashboard-empty"><div className="empty-orbit"><Icon name="lens" size={31}/></div><h3>검증 결과가 이곳에 쌓입니다.</h3><p>대화창에 원문을 보내면 주장별 신뢰지수와 근거 출처를 연결해 보여드립니다.</p><div className="empty-preview-stats"><span><strong>--</strong><small>신뢰지수</small></span><span><strong>--</strong><small>검토 출처</small></span><span><strong>--</strong><small>연결 근거</small></span></div><button className="secondary-button" onClick={loadSample}>예시 대시보드 보기 <Icon name="arrow"/></button></Panel>}
         </section>
