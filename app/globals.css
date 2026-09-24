@@ -176,6 +176,8 @@ button, p, h3, dd { overflow-wrap: anywhere; }
 .chat-tool { display: inline-flex; align-items: center; gap: 7px; min-height: 34px; padding: 0 7px; color: #a3abb2; font-size: 11px; }
 .chat-tool:hover { color: var(--accent); }
 .chat-tool.is-static { cursor: default; color: #8b959e; }
+.chat-tool > span { white-space: nowrap; }
+.jev-toggle { white-space: nowrap; flex-shrink: 0; }
 .chat-tool:disabled { cursor: not-allowed; opacity: .6; }
 .jev-toggle-dot { width: 8px; height: 8px; border-radius: 50%; background: #69737c; transition: background .2s ease, box-shadow .2s ease; }
 .chat-tool[aria-pressed='true'] { color: var(--accent); }
