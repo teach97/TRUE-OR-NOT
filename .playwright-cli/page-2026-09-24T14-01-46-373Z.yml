@@ -1,0 +1,147 @@
+- generic [ref=f1e1]:
+  - generic [ref=f1e2]:
+    - button "배경 움직임 끄기" [pressed] [ref=f1e3] [cursor=pointer]: 배경 모션 켬
+    - link "본문으로 건너뛰기" [ref=f1e6] [cursor=pointer]:
+      - /url: "#workspace-main"
+    - complementary [ref=f1e7]:
+      - link "True or Not 홈" [ref=f1e8] [cursor=pointer]:
+        - /url: "#top"
+        - generic [ref=f1e13]:
+          - generic "True or Not" [ref=f1e14]:
+            - generic [aria-hidden] [ref=f1e15]: True or Not
+          - generic [ref=f1e16]: 팩트체크 에이전트
+      - generic [ref=f1e17]:
+        - generic [ref=f1e18]: F
+        - generic [ref=f1e19]:
+          - text: 나의 워크스페이스
+          - generic [ref=f1e20]: 프로필
+      - paragraph [ref=f1e21]: 워크스페이스
+      - navigation "주요 메뉴" [ref=f1e22]:
+        - list [ref=f1e23]:
+          - listitem [ref=f1e24] [cursor=pointer]:
+            - button "01 대화 시작" [ref=f1e25]:
+              - generic [ref=f1e27]:
+                - generic [ref=f1e28]: "01"
+                - generic [ref=f1e29]: 대화 시작
+          - listitem [ref=f1e30] [cursor=pointer]:
+            - button "02 검증 대시보드" [ref=f1e31]:
+              - generic [ref=f1e33]:
+                - generic [ref=f1e34]: "02"
+                - generic [ref=f1e35]: 검증 대시보드
+          - listitem [ref=f1e36] [cursor=pointer]:
+            - button "03 검증 원칙" [ref=f1e37]:
+              - generic [ref=f1e39]:
+                - generic [ref=f1e40]: "03"
+                - generic [ref=f1e41]: 검증 원칙
+      - generic [ref=f1e42]:
+        - generic [ref=f1e43]:
+          - strong [ref=f1e47]: 결론보다, 근거를 먼저.
+          - paragraph [ref=f1e48]: 확인된 내용과 아직 모르는 내용을 함께 살펴보세요.
+          - button "검증 원칙 보기" [ref=f1e49] [cursor=pointer]
+        - generic [ref=f1e52]: LLM fallback 설정됨 · 접근 미확인
+        - paragraph [ref=f1e54]: TRUE OR NOT / EVIDENCE WORKSPACE
+    - generic [ref=f1e55]:
+      - banner [ref=f1e56]:
+        - generic:
+          - strong
+        - generic [ref=f1e57]:
+          - button "사용 가이드" [ref=f1e58] [cursor=pointer]
+          - generic "로컬 워크스페이스" [ref=f1e62]: F
+      - main [ref=f1e63]:
+        - region [ref=f1e64]:
+          - generic [ref=f1e65]:
+            - heading "True or Not" [level=1] [ref=f1e66]
+            - generic [ref=f1e67]:
+              - generic: 0, 43
+              - generic: 0, 26
+              - generic: 0, 60
+          - paragraph [ref=f1e76]: 확인하고 싶은 주장이나 원문을 보내주세요. 문장을 나누고, 직접 확인할 수 있는 출처와 인용을 연결하겠습니다.
+          - generic [ref=f1e77]:
+            - generic [ref=f1e78]:
+              - generic [ref=f1e79]: 확인할 원문
+              - textbox "확인할 원문" [ref=f1e80]:
+                - /placeholder: 확인하고 싶은 주장이나 원문을 입력해 주세요. 이미지는 Ctrl+V로 붙여넣을 수 있습니다.
+              - generic [ref=f1e81]:
+                - generic [ref=f1e82]: 0 / 12,000
+                - generic [ref=f1e83]: Shift+Enter로 줄바꾸기
+              - generic [ref=f1e84]:
+                - generic [ref=f1e85]:
+                  - button "검증 조건" [ref=f1e86] [cursor=pointer]
+                  - button "이미지 첨부" [ref=f1e90] [cursor=pointer]:
+                    - generic [ref=f1e93]: 이미지
+                  - button "이미지 첨부" [ref=f1e94]
+                  - generic [ref=f1e95]: 웹 검색
+                  - generic [ref=f1e99]:
+                    - generic [ref=f1e103]: 확인 요청
+                    - textbox "확인 요청" [ref=f1e104]:
+                      - /placeholder: 선택 입력
+                - generic [ref=f1e105]:
+                  - generic [ref=f1e106]:
+                    - generic [ref=f1e107]: 답변 모델
+                    - generic [ref=f1e108]:
+                      - combobox "답변 모델 선택" [expanded] [active] [ref=f1e109] [cursor=pointer]:
+                        - generic [ref=f1e110]: Auto
+                      - listbox "답변 모델 선택" [ref=f1e179]:
+                        - option "Auto Fallback" [selected] [ref=f1e180] [cursor=pointer]:
+                          - generic [ref=f1e181]: Auto
+                          - generic [ref=f1e182]: Fallback
+                        - option "Gemini 3.8 Flash Gemini" [ref=f1e185] [cursor=pointer]:
+                          - generic [ref=f1e186]: Gemini 3.8 Flash
+                          - generic [ref=f1e187]: Gemini
+                        - option "Gemini 3.7 Flash Gemini" [ref=f1e188] [cursor=pointer]:
+                          - generic [ref=f1e189]: Gemini 3.7 Flash
+                          - generic [ref=f1e190]: Gemini
+                        - option "GPT-6 Luna Max OpenAI" [ref=f1e191] [cursor=pointer]:
+                          - generic [ref=f1e192]: GPT-6 Luna Max
+                          - generic [ref=f1e193]: OpenAI
+                        - option "Jev TypeSafe" [ref=f1e194] [cursor=pointer]:
+                          - generic [ref=f1e195]: Jev
+                          - generic [ref=f1e196]: TypeSafe
+                  - generic [ref=f1e113]: 모델 순차 폴백
+                  - generic [ref=f1e114]: Auto는 설정된 모델을 순서대로 시도합니다. 개별 모델은 단독 사용합니다. JEV는 TypeSafe 빠른 판정을 사용하며 이미지는 지원하지 않습니다.
+                  - button "팩트 검증 시작" [disabled] [ref=f1e115]
+            - button "예시로 시작하기" [ref=f1e119] [cursor=pointer]
+          - status [ref=f1e122]: 원문을 입력하거나 예시로 시작해 근거를 확인해 보세요.
+        - region [ref=f1e123]:
+          - generic [ref=f1e124]:
+            - generic [ref=f1e125]:
+              - text: 검증 대시보드
+              - heading "근거와 함께 확인하세요." [level=2] [ref=f1e126]:
+                - generic [ref=f1e127]:
+                  - generic [ref=f1e128]: 근거와
+                  - generic [ref=f1e129]: 함께
+                  - generic [ref=f1e130]: 확인하세요.
+              - paragraph [ref=f1e131]: 주장별 신뢰지수, 확인된 인용, 출처의 관계를 한 흐름으로 살펴보세요.
+            - button "결과 내보내기" [disabled] [ref=f1e132]
+          - generic [ref=f1e136]:
+            - heading "검증 결과가 이곳에 쌓입니다." [level=3] [ref=f1e141]
+            - paragraph [ref=f1e142]: 대화창에 원문을 보내면 주장별 신뢰지수와 근거 출처를 연결해 보여드립니다.
+            - generic [ref=f1e143]:
+              - generic [ref=f1e144]:
+                - strong [ref=f1e145]: "--"
+                - generic [ref=f1e146]: 신뢰지수
+              - generic [ref=f1e147]:
+                - strong [ref=f1e148]: "--"
+                - generic [ref=f1e149]: 검토 출처
+              - generic [ref=f1e150]:
+                - strong [ref=f1e151]: "--"
+                - generic [ref=f1e152]: 연결 근거
+            - button "예시 대시보드 보기" [ref=f1e153] [cursor=pointer]
+        - generic [ref=f1e156]:
+          - generic [ref=f1e157]:
+            - generic [ref=f1e158]: F
+            - text: True or Not
+            - generic [ref=f1e159]: /
+            - text: 판단을 대신하지 않고, 근거를 연결합니다.
+          - generic [ref=f1e160]:
+            - link "개인정보 처리방침" [ref=f1e161] [cursor=pointer]:
+              - /url: /privacy
+            - link "이용약관" [ref=f1e162] [cursor=pointer]:
+              - /url: /terms
+            - link "YouTube 약관" [ref=f1e163] [cursor=pointer]:
+              - /url: https://www.youtube.com/t/terms
+            - link "Google 개인정보" [ref=f1e164] [cursor=pointer]:
+              - /url: https://policies.google.com/privacy
+          - button "검증 원칙" [ref=f1e165] [cursor=pointer]
+  - button "Open Next.js Dev Tools" [ref=f1e173] [cursor=pointer]
+  - alert [ref=f1e177]

@@ -1,5 +1,165 @@
 {
-  "generated_at": "2026-09-24T00:09:19.820176+00:00",
-  "nodes": {},
+  "generated_at": "2026-09-24T15:35:37.614035+00:00",
+  "nodes": {
+    "app_components_fact_check_dashboard": {
+      "code_fingerprint": "c0dabeb8ca86568138d67f279ce38d40867cf05c106c57cf95c0854444b60da1",
+      "label": "fact-check-dashboard.tsx",
+      "last": "2026-09-24T14:54:58.543528+00:00",
+      "provenance": [
+        {
+          "date": "2026-09-24T14:54:58.543528+00:00",
+          "outcome": "useful",
+          "q": "지금 레이아웃이 이상해 애니메이션 위치도 이상한곳에 걸쳐지고"
+        }
+      ],
+      "score": 0.999347962,
+      "source_file": "app/components/fact-check-dashboard.tsx",
+      "status": "tentative",
+      "uses": 1
+    },
+    "app_components_fact_check_dashboard_modelselection": {
+      "code_fingerprint": "c0dabeb8ca86568138d67f279ce38d40867cf05c106c57cf95c0854444b60da1",
+      "label": "ModelSelection",
+      "last": "2026-09-24T14:54:58.543528+00:00",
+      "provenance": [
+        {
+          "date": "2026-09-24T14:54:58.543528+00:00",
+          "outcome": "useful",
+          "q": "지금 레이아웃이 이상해 애니메이션 위치도 이상한곳에 걸쳐지고"
+        }
+      ],
+      "score": 0.999347962,
+      "source_file": "app/components/fact-check-dashboard.tsx",
+      "status": "tentative",
+      "uses": 1
+    },
+    "app_components_glide_select": {
+      "code_fingerprint": "60a6652ffeaea5f8a9ad507ac72312cd34766a0d1c3a70d247114d75357950d3",
+      "label": "glide-select.tsx",
+      "last": "2026-09-24T14:54:58.543528+00:00",
+      "provenance": [
+        {
+          "date": "2026-09-24T14:54:58.543528+00:00",
+          "outcome": "useful",
+          "q": "지금 레이아웃이 이상해 애니메이션 위치도 이상한곳에 걸쳐지고"
+        }
+      ],
+      "score": 0.999347962,
+      "source_file": "app/components/glide-select.tsx",
+      "status": "tentative",
+      "uses": 1
+    },
+    "app_components_glide_select_glideselectoption": {
+      "code_fingerprint": "60a6652ffeaea5f8a9ad507ac72312cd34766a0d1c3a70d247114d75357950d3",
+      "label": "GlideSelectOption",
+      "last": "2026-09-24T14:54:58.543528+00:00",
+      "provenance": [
+        {
+          "date": "2026-09-24T14:54:58.543528+00:00",
+          "outcome": "useful",
+          "q": "지금 레이아웃이 이상해 애니메이션 위치도 이상한곳에 걸쳐지고"
+        }
+      ],
+      "score": 0.999347962,
+      "source_file": "app/components/glide-select.tsx",
+      "status": "tentative",
+      "uses": 1
+    },
+    "backend_main_agent_status": {
+      "code_fingerprint": "9bc4aa7a124d6e0db6b5068d65e176149a272a2249b95530f9e7b5f280a7d4b6",
+      "label": "agent_status()",
+      "last": "2026-09-24T14:39:01.880631+00:00",
+      "provenance": [
+        {
+          "date": "2026-09-24T14:39:01.880631+00:00",
+          "outcome": "useful",
+          "q": "JEV 선택이 안 되고 8010에서 Errno 10048이 발생함"
+        },
+        {
+          "date": "2026-09-24T14:32:03.632507+00:00",
+          "outcome": "useful",
+          "q": "미설정으로 뜨는데? API 입력은 되있는데"
+        }
+      ],
+      "score": 1.998072925,
+      "source_file": "backend/main.py",
+      "status": "preferred",
+      "uses": 2
+    },
+    "backend_readme_env_config": {
+      "code_fingerprint": "dfa9a8fe9aba6f8d95359bc37109ea2dbc18de798afa0f5cdc27c65d5af40df0",
+      "label": "Backend Environment Keys Configuration",
+      "last": "2026-09-24T14:39:01.880631+00:00",
+      "provenance": [
+        {
+          "date": "2026-09-24T14:39:01.880631+00:00",
+          "outcome": "useful",
+          "q": "JEV 선택이 안 되고 8010에서 Errno 10048이 발생함"
+        },
+        {
+          "date": "2026-09-24T14:32:03.632507+00:00",
+          "outcome": "useful",
+          "q": "미설정으로 뜨는데? API 입력은 되있는데"
+        }
+      ],
+      "score": 1.998072925,
+      "source_file": "backend/README.md",
+      "status": "preferred",
+      "uses": 2
+    },
+    "backend_runtime_run_jev_fast_check": {
+      "code_fingerprint": "0cb01334a518ad87659b9bf2aae2bbff9219df26b3f7e20d7824350576444a12",
+      "label": "run_jev_fast_check()",
+      "last": "2026-09-24T15:04:44.314614+00:00",
+      "provenance": [
+        {
+          "date": "2026-09-24T15:04:44.314614+00:00",
+          "outcome": "useful",
+          "q": "지금 jev가 제대로 작동하지 않아"
+        }
+      ],
+      "score": 0.999504517,
+      "source_file": "backend/runtime.py",
+      "status": "tentative",
+      "uses": 1
+    },
+    "backend_verification_verify_claims_jev": {
+      "code_fingerprint": "ecfe8ecdd7030db2bfec00a90d44f2c5cfc7be6325b9313d1321fdd48b7020cc",
+      "label": "verify_claims_jev()",
+      "last": "2026-09-24T15:04:44.314614+00:00",
+      "provenance": [
+        {
+          "date": "2026-09-24T15:04:44.314614+00:00",
+          "outcome": "useful",
+          "q": "지금 jev가 제대로 작동하지 않아"
+        }
+      ],
+      "score": 0.999504517,
+      "source_file": "backend/verification.py",
+      "status": "tentative",
+      "uses": 1
+    },
+    "handoff_nextjs_proxy_route": {
+      "code_fingerprint": "62f20bd2ccf5cf229ba80449af2150e53cd74d2ec274e9a1f0b47095b1beb9f6",
+      "label": "Next.js → FastAPI Proxy Route (6-B, app/api/fact-check/route.ts)",
+      "last": "2026-09-24T14:39:01.880631+00:00",
+      "provenance": [
+        {
+          "date": "2026-09-24T14:39:01.880631+00:00",
+          "outcome": "useful",
+          "q": "JEV 선택이 안 되고 8010에서 Errno 10048이 발생함"
+        },
+        {
+          "date": "2026-09-24T14:32:03.632507+00:00",
+          "outcome": "useful",
+          "q": "미설정으로 뜨는데? API 입력은 되있는데"
+        }
+      ],
+      "score": 1.998072925,
+      "source_file": "HANDOFF.md",
+      "status": "preferred",
+      "uses": 2
+    }
+  },
   "version": 1
 }

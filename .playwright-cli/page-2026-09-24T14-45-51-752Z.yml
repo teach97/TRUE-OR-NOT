@@ -1,0 +1,123 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - link "본문으로 건너뛰기" [ref=e3] [cursor=pointer]:
+      - /url: "#workspace-main"
+    - complementary [ref=e4]:
+      - link "True or Not 홈" [ref=e5] [cursor=pointer]:
+        - /url: "#top"
+        - generic [ref=e10]:
+          - generic "True or Not" [ref=e11]:
+            - generic [aria-hidden] [ref=e12]: True or Not
+          - generic [ref=e13]: 팩트체크 에이전트
+      - generic [ref=e14]:
+        - generic [ref=e15]: F
+        - generic [ref=e16]:
+          - text: 나의 워크스페이스
+          - generic [ref=e17]: 프로필
+      - paragraph [ref=e18]: 워크스페이스
+      - navigation "주요 메뉴" [ref=e19]:
+        - list [ref=e20]:
+          - listitem [ref=e21] [cursor=pointer]:
+            - button "01 대화 시작" [ref=e22]:
+              - generic [ref=e24]:
+                - generic [ref=e25]: "01"
+                - generic [ref=e26]: 대화 시작
+          - listitem [ref=e27] [cursor=pointer]:
+            - button "02 검증 대시보드" [ref=e28]:
+              - generic [ref=e30]:
+                - generic [ref=e31]: "02"
+                - generic [ref=e32]: 검증 대시보드
+          - listitem [ref=e33] [cursor=pointer]:
+            - button "03 검증 원칙" [ref=e34]:
+              - generic [ref=e36]:
+                - generic [ref=e37]: "03"
+                - generic [ref=e38]: 검증 원칙
+      - generic [ref=e39]:
+        - generic [ref=e40]:
+          - strong [ref=e44]: 결론보다, 근거를 먼저.
+          - paragraph [ref=e45]: 확인된 내용과 아직 모르는 내용을 함께 살펴보세요.
+          - button "검증 원칙 보기" [ref=e46] [cursor=pointer]
+        - generic [ref=e49]: 서버 설정 확인 중
+        - paragraph [ref=e51]: TRUE OR NOT / EVIDENCE WORKSPACE
+    - generic [ref=e52]:
+      - banner [ref=e53]:
+        - generic:
+          - strong
+        - generic [ref=e54]:
+          - button "사용 가이드" [ref=e55] [cursor=pointer]
+          - generic "로컬 워크스페이스" [ref=e59]: F
+      - main [ref=e60]:
+        - region [ref=e61]:
+          - heading "True or Not" [level=1] [ref=e63]
+          - paragraph [ref=e73]: 확인하고 싶은 주장이나 원문을 보내주세요. 문장을 나누고, 직접 확인할 수 있는 출처와 인용을 연결하겠습니다.
+          - generic [ref=e74]:
+            - generic [ref=e75]:
+              - generic [ref=e76]: 확인할 원문
+              - textbox "확인할 원문" [ref=e77]:
+                - /placeholder: 확인하고 싶은 주장이나 원문을 입력해 주세요. 이미지는 Ctrl+V로 붙여넣을 수 있습니다.
+              - generic [ref=e78]:
+                - generic [ref=e79]: 0 / 12,000
+                - generic [ref=e80]: Shift+Enter로 줄바꾸기
+              - generic [ref=e81]:
+                - generic [ref=e82]:
+                  - button "검증 조건" [ref=e83] [cursor=pointer]
+                  - button "이미지 첨부" [ref=e87] [cursor=pointer]:
+                    - generic [ref=e90]: 이미지
+                  - button "이미지 첨부" [ref=e91]
+                  - generic [ref=e92]: 웹 검색
+                  - generic [ref=e96]:
+                    - generic [ref=e100]: 확인 요청
+                    - textbox "확인 요청" [ref=e101]:
+                      - /placeholder: 선택 입력
+                - generic [ref=e102]:
+                  - generic [ref=e103]:
+                    - generic [ref=e104]: 답변 모델
+                    - combobox "답변 모델 선택" [ref=e106] [cursor=pointer]:
+                      - generic [ref=e107]: Auto
+                  - generic [ref=e110]: 모델 순차 폴백
+                  - generic [ref=e111]: Auto는 설정된 모델을 순서대로 시도합니다. 개별 모델은 단독 사용합니다. JEV는 TypeSafe 빠른 판정을 사용하며 이미지는 지원하지 않습니다.
+                  - button "팩트 검증 시작" [disabled] [ref=e112]
+            - button "예시로 시작하기" [ref=e116] [cursor=pointer]
+          - status [ref=e119]: 원문을 입력하거나 예시로 시작해 근거를 확인해 보세요.
+        - region [ref=e120]:
+          - generic [ref=e121]:
+            - generic [ref=e122]:
+              - text: 검증 대시보드
+              - heading "근거와 함께 확인하세요." [level=2] [ref=e123]:
+                - generic [ref=e124]:
+                  - generic [ref=e125]: 근거와
+                  - generic [ref=e126]: 함께
+                  - generic [ref=e127]: 확인하세요.
+              - paragraph [ref=e128]: 주장별 신뢰지수, 확인된 인용, 출처의 관계를 한 흐름으로 살펴보세요.
+            - button "결과 내보내기" [disabled] [ref=e129]
+          - generic [ref=e133]:
+            - heading "검증 결과가 이곳에 쌓입니다." [level=3] [ref=e138]
+            - paragraph [ref=e139]: 대화창에 원문을 보내면 주장별 신뢰지수와 근거 출처를 연결해 보여드립니다.
+            - generic [ref=e140]:
+              - generic [ref=e141]:
+                - strong [ref=e142]: "--"
+                - generic [ref=e143]: 신뢰지수
+              - generic [ref=e144]:
+                - strong [ref=e145]: "--"
+                - generic [ref=e146]: 검토 출처
+              - generic [ref=e147]:
+                - strong [ref=e148]: "--"
+                - generic [ref=e149]: 연결 근거
+            - button "예시 대시보드 보기" [ref=e150] [cursor=pointer]
+        - generic [ref=e153]:
+          - generic [ref=e154]:
+            - generic [ref=e155]: F
+            - text: True or Not
+            - generic [ref=e156]: /
+            - text: 판단을 대신하지 않고, 근거를 연결합니다.
+          - generic [ref=e157]:
+            - link "개인정보 처리방침" [ref=e158] [cursor=pointer]:
+              - /url: /privacy
+            - link "이용약관" [ref=e159] [cursor=pointer]:
+              - /url: /terms
+            - link "YouTube 약관" [ref=e160] [cursor=pointer]:
+              - /url: https://www.youtube.com/t/terms
+            - link "Google 개인정보" [ref=e161] [cursor=pointer]:
+              - /url: https://policies.google.com/privacy
+          - button "검증 원칙" [ref=e162] [cursor=pointer]
+  - button "Open Next.js Dev Tools" [ref=e170] [cursor=pointer]

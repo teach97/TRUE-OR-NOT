@@ -1,17 +1,17 @@
-# Graph Report - my-app  (2026-09-24)
+# Graph Report - my-app  (2026-09-25)
 
 ## Corpus Check
-- 119 files · ~92,109 words
+- 130 files · ~107,651 words
 - Verdict: corpus is large enough that graph structure adds value.
-- Unclassified: 20 file(s) not represented in the graph (top: (none) 5, .log 4, .css 4)
+- Unclassified: 24 file(s) not represented in the graph (top: .log 7, (none) 5, .css 5)
 
 ## Summary
-- 1461 nodes · 2868 edges · 108 communities (82 shown, 26 thin omitted)
-- Extraction: 90% EXTRACTED · 10% INFERRED · 0% AMBIGUOUS · INFERRED: 301 edges (avg confidence: 0.88)
+- 1588 nodes · 3122 edges · 117 communities (91 shown, 26 thin omitted)
+- Extraction: 89% EXTRACTED · 11% INFERRED · 0% AMBIGUOUS · INFERRED: 333 edges (avg confidence: 0.88)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `28610332`
+- Built from commit: `f3934721`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -19,7 +19,7 @@
 - contracts.py
 - LLMProvider
 - verification.py
-- search_sources
+- test_search_errors.py
 - sources.py
 - build_workflow
 - Four-Node LangGraph Runtime (extracting→searching→reading→verifying)
@@ -28,7 +28,7 @@
 - test_source_fetch.py
 - probe-recovery.py
 - main.py
-- ProviderCallError
+- providers.py
 - fetch_youtube_data
 - ref_node_assert
 - extraction.py
@@ -36,39 +36,42 @@
 - extract_claims
 - demo-state.ts
 - agent.ts
-- stream_events
+- test_providers.py
 - vector-wordmark.tsx
 - fact-check-contract.ts
 - FactCheckRequest
 - score_band
 - search.py
 - compilerOptions
-- test_contracts.py
-- line-sidebar.tsx
-- model_validator
+- FactCheckResult
+- test_verification.py
+- test_jev.py
 - fact-check-reply.ts
 - lattice-loader.tsx
 - Next.js Wordmark Logo
-- classify_intent
-- _gemini_schema
+- verify_claims
+- test_runtime.py
 - Backend Environment Keys Configuration
 - Settings
-- test_all_synthesis_providers_failing_preserves_verified_result
+- source
 - next
-- test_runtime.py
-- _openai_schema
+- answer_synthesis.py
+- ProviderCallError
 - package.json
+- test_jev_endpoint_maps_gateway_failure_to_502
 - test_free_quota_exhaustion_falls_back_with_an_explicit_notice
+- search_sources
 - floating-lines.tsx
 - floating-lines-background.tsx
 - scramble-text.tsx
-- test_runtime_assembly.py
+- fact-check-client.ts
 - Framework Route Modules
 - home.tsx
 - devDependencies
 - root.tsx
+- Q: jev 키 입력되있음 env에 AI_GATEWAY_API_KEY=; Vercel AI Gateway Jev
 - SVG root 1080x174
-- build_runtime_workflow
+- test_runtime_assembly.py
 - globe.svg
 - ref_react_router_dev
 - dependencies
@@ -76,6 +79,7 @@
 - Document File Icon
 - intent/route.ts
 - Dark Mode Logo SVG
+- Q: 미설정으로 뜨는데? API 입력은 되있는데
 - eslint.config.mjs
 - next-env.d.ts
 - Browser Window Icon SVG in Gray
@@ -107,14 +111,19 @@
 - FactLens Evidence Workspace Snapshot 13:11
 - FactLens Evidence Workspace Snapshot 13:12
 - FactLens Evidence Workspace Snapshot 13:14
+- test_sources.py
 - Globe Components and Clip Container
 - Globe Layout and Meridian Grid
 - FactLens frontend README
 - FactLens frontend Next.js App Router TypeScript Tailwind
-- recovery_probe_app.py
+- Q: JEV 선택이 안 되고 8010에서 Errno 10048이 발생함
+- Q: 지금 레이아웃이 이상해 애니메이션 위치도 이상한곳에 걸쳐지고
+- Q: 지금 jev가 제대로 작동하지 않아
 - youtube-context.ts
-- _TextParser
+- Q: 점수 판정이 이상해
+- test_extract_url_only_fetches_page
 - 12. API 계약 초안
+- glide-select.tsx
 - 19. 소개 문구와 데모 안내
 - 9. 화면 설계
 - 15. QA와 수용 기준
@@ -127,15 +136,15 @@
 
 ## God Nodes (most connected - your core abstractions)
 1. `LLMProvider` - 67 edges
-2. `make_runtime_adapters()` - 46 edges
+2. `make_runtime_adapters()` - 51 edges
 3. `ProviderCallError` - 45 edges
-4. `search_sources()` - 41 edges
-5. `Settings` - 39 edges
+4. `Settings` - 45 edges
+5. `search_sources()` - 41 edges
 6. `synthesize_answer()` - 34 edges
-7. `search_google_free()` - 30 edges
+7. `search_google_free()` - 31 edges
 8. `extract_claims()` - 29 edges
-9. `ground_judgments()` - 28 edges
-10. `verify_claims()` - 27 edges
+9. `ground_judgments()` - 29 edges
+10. `verify_claims()` - 28 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `12.4 원문 위치 규약` --references--> `start()`  [INFERRED]
@@ -167,31 +176,31 @@
 - **public_globe_composition** — public_globe_globe_path, public_globe_clip_path, public_globe_wireframe [INFERRED 0.85]
 - **public_next_composition** — public_next_n_mark, public_next_main_letterforms, public_next_js_suffix [INFERRED 0.85]
 
-## Communities (108 total, 26 thin omitted)
+## Communities (117 total, 26 thin omitted)
 
 ### Community 0 - "contracts.py"
-Cohesion: 0.21
-Nodes (16): AgentStatus, AnswerBlock, AnswerCitation, AnswerSection, _ContractModel, FactCheckAnswer, FactCheckProgressCitation, FactCheckProgressClaim (+8 more)
+Cohesion: 0.15
+Nodes (17): AgentStatus, AnswerCitation, _ContractModel, FactCheckAnswer, FactCheckProgressCitation, FactCheckProgressClaim, FactCheckProgressSource, FactClaim (+9 more)
 
 ### Community 1 - "LLMProvider"
-Cohesion: 0.06
-Nodes (72): eligible_sources(), _limit_sections_to_source_breadth(), _project_claims(), Any, AsyncClient, BaseModel, model_validator, Synthesize a user-facing answer from verified source text only. (+64 more)
+Cohesion: 0.10
+Nodes (49): eligible_sources(), insufficient_answer(), AsyncClient, Generate and validate a grounded answer, leaving provider retries to runtime., Project at most six verified non-YouTube texts into a provider-safe shape., Return a fixed answer that makes no unsupported assertions., synthesize_answer(), LLMProvider (+41 more)
 
 ### Community 2 - "verification.py"
-Cohesion: 0.09
-Nodes (51): html_text(), claim(), Offline citation-grounding and judgment tests; no provider traffic., test_context_mismatch_is_reported_as_missing_context(), test_date_or_context_mismatch_cannot_support_a_claim(), test_ground_judgments_accepts_a_verified_contiguous_quote(), test_ground_judgments_accepts_a_verified_quote_for_an_unclear_checkable_claim(), test_ground_judgments_attaches_only_the_matching_section_not_the_whole_page() (+43 more)
+Cohesion: 0.22
+Nodes (19): _claim_index(), _evidence_dict(), ground_judgments(), Judgment, JudgmentEvidence, _normalize_text(), _parse_judgments(), Any (+11 more)
 
-### Community 3 - "search_sources"
-Cohesion: 0.08
-Nodes (32): AsyncClient, search_sources(), parametrize, Offline failure, safety and empty-result tests., test_candidates_filter_unsafe_urls_and_limit_results(), run(), test_completed_empty_search_is_not_a_verdict(), run() (+24 more)
+### Community 3 - "test_search_errors.py"
+Cohesion: 0.14
+Nodes (13): parametrize, Offline failure, safety and empty-result tests., test_candidates_filter_unsafe_urls_and_limit_results(), run(), test_completed_empty_search_is_not_a_verdict(), run(), test_nonfacts_skip_network(), run() (+5 more)
 
 ### Community 4 - "sources.py"
-Cohesion: 0.10
-Nodes (20): AbstractResolver, aiohttp, aiohttp_abc, checked_url(), _generic_title(), html_sections(), html_title(), _is_japanese_page_text() (+12 more)
+Cohesion: 0.12
+Nodes (19): AbstractResolver, aiohttp, aiohttp_abc, asyncio, checked_url(), _generic_title(), html_title(), _is_japanese_page_text() (+11 more)
 
 ### Community 5 - "build_workflow"
 Cohesion: 0.06
-Nodes (34): test_workflow_preserves_link_and_image_state_keys(), parametrize, Real LangGraph via HTTP boundary; adapters contain offline fixtures only., test_graph_failure_returns_safe_error(), stage(), test_invalid_http_input_is_safe_and_never_runs_graph(), test_post_rejects_malformed_result_contract(), test_post_runs_graph_and_returns_only_result() (+26 more)
+Nodes (22): test_workflow_preserves_link_and_image_state_keys(), parametrize, Real LangGraph via HTTP boundary; adapters contain offline fixtures only., test_graph_failure_returns_safe_error(), stage(), test_invalid_http_input_is_safe_and_never_runs_graph(), test_post_rejects_malformed_result_contract(), test_post_runs_graph_and_returns_only_result() (+14 more)
 
 ### Community 6 - "Four-Node LangGraph Runtime (extracting→searching→reading→verifying)"
 Cohesion: 0.06
@@ -199,91 +208,95 @@ Nodes (45): Document Input Panel (원문 입력 + 확인 요청), Evidence-First
 
 ### Community 7 - "search_google_free"
 Cohesion: 0.09
-Nodes (33): asyncio, FreeSearchUnavailable, _json_response(), AsyncClient, Optional SerpApi Google organic discovery, restricted to a free account., Safe failure code for the optional, free-only search path., Use only an account confirmed to be on the free plan with quota left., search_google_free() (+25 more)
+Nodes (30): FreeSearchUnavailable, _json_response(), AsyncClient, Safe failure code for the optional, free-only search path., Use only an account confirmed to be on the free plan with quota left., search_google_free(), main(), One-query live check for the optional free-only Google search adapter. (+22 more)
 
 ### Community 8 - "fact-check-dashboard.tsx"
-Cohesion: 0.08
-Nodes (22): BlurText(), CountUp(), CountUpProps, base, DEMO_FOCUS, DEMO_TEXT, demoPreview, documents (+14 more)
+Cohesion: 0.06
+Nodes (29): BlurText(), CountUp(), CountUpProps, base, DEMO_FOCUS, DEMO_TEXT, demoPreview, documents (+21 more)
 
 ### Community 9 - "test_source_fetch.py"
-Cohesion: 0.08
-Nodes (22): parametrize, Deterministic HTTP response fixtures; resolver safety tested separately., Response, run(), Session, test_low_reach_youtube_source_is_dropped_from_results(), youtube_reader(), test_read_follows_same_origin_meta_refresh() (+14 more)
+Cohesion: 0.06
+Nodes (25): html_sections(), _TextParser, _TitleParser, parametrize, Deterministic HTTP response fixtures; resolver safety tested separately., run(), Session, test_low_reach_youtube_source_is_dropped_from_results() (+17 more)
 
 ### Community 10 - "probe-recovery.py"
 Cohesion: 0.10
-Nodes (25): blocking_extract(), cancellation_state(), InstrumentedGraph, get, Explicit integration-test entry point ONLY; never imported by main/runtime. No…, record(), os, free_port() (+17 more)
+Nodes (26): blocking_extract(), cancellation_state(), InstrumentedGraph, get, Explicit integration-test entry point ONLY; never imported by main/runtime. No…, record(), os, pathlib (+18 more)
 
 ### Community 11 - "main.py"
-Cohesion: 0.10
-Nodes (29): agent_status(), _code_revision(), fact_check(), fact_check_stream(), get_workflow(), health(), HealthStatus, intent() (+21 more)
+Cohesion: 0.12
+Nodes (21): _code_revision(), fact_check(), fact_check_jev(), fact_check_stream(), health(), HealthStatus, IntentClaim, IntentContext (+13 more)
 
-### Community 12 - "ProviderCallError"
-Cohesion: 0.15
-Nodes (31): _endpoint_and_headers(), _gemini_text(), _openai_text(), ProviderCallError, Any, AsyncClient, Provider-neutral requests and ordered LLM fallback policy. Credentials stay in…, Call a provider's structured-output endpoint and return only model text. (+23 more)
+### Community 12 - "providers.py"
+Cohesion: 0.12
+Nodes (31): _endpoint_and_headers(), _gemini_schema(), clean(), _gemini_text(), _openai_schema(), clean(), _openai_text(), Any (+23 more)
 
 ### Community 13 - "fetch_youtube_data"
 Cohesion: 0.11
-Nodes (27): youtube_reader(), Offline YouTube Data API contract tests; no Google credentials or traffic., test_comments_unavailable_keeps_video_title_without_exposing_provider_error(), run(), test_fetches_official_video_title_and_bounded_plain_text_comments(), handler(), run(), test_ignores_malformed_youtube_metadata_without_rejecting_comments() (+19 more)
+Nodes (26): youtube_reader(), Offline YouTube Data API contract tests; no Google credentials or traffic., test_comments_unavailable_keeps_video_title_without_exposing_provider_error(), run(), test_fetches_official_video_title_and_bounded_plain_text_comments(), handler(), run(), test_ignores_malformed_youtube_metadata_without_rejecting_comments() (+18 more)
 
 ### Community 14 - "ref_node_assert"
 Cohesion: 0.08
 Nodes (18): insufficientAnswer, result, verifiedSource, ref_node_assert, ref_node_fs, ref_node_test, ref_node_url, observations (+10 more)
 
 ### Community 15 - "extraction.py"
-Cohesion: 0.22
-Nodes (13): extract_image_claims(), extract_page_claims(), ExtractedClaim, Extraction, ImageObservation, _project_extracted_claims(), AsyncClient, BaseModel (+5 more)
+Cohesion: 0.13
+Nodes (20): extract_image_claims(), extract_page_claims(), ExtractedClaim, Extraction, ImageObservation, _project_extracted_claims(), AsyncClient, BaseModel (+12 more)
 
 ### Community 16 - "FactCheckDashboard"
-Cohesion: 0.12
-Nodes (23): ChatIntent, CLAIM_PATTERNS, classifyChatInput(), describeHistory(), EARLY_META, FOLLOW_UP_PATTERNS, HELP_PATTERNS, isFollowUpText() (+15 more)
+Cohesion: 0.11
+Nodes (25): ChatIntent, CLAIM_PATTERNS, classifyChatInput(), describeHistory(), EARLY_META, FOLLOW_UP_PATTERNS, HELP_PATTERNS, isFollowUpText() (+17 more)
 
 ### Community 17 - "extract_claims"
 Cohesion: 0.14
 Nodes (19): extract_claims(), Return a LangGraph state update; callers own the client and credential., parametrize, Offline provider transport fixtures, never real model responses., test_extractor_drops_invented_claim_without_fabricating_source_text(), run(), test_extractor_keeps_forecast_and_returns_search_keywords_separately(), handler() (+11 more)
 
 ### Community 18 - "demo-state.ts"
-Cohesion: 0.23
-Nodes (13): Action, Claim, createPreview(), initialState, State, transition(), TrustIndex(), FACT_SCORE_LABELS (+5 more)
+Cohesion: 0.21
+Nodes (14): Action, Claim, createPreview(), initialState, State, transition(), TrustIndex(), FACT_SCORE_BANDS (+6 more)
 
 ### Community 19 - "agent.ts"
-Cohesion: 0.07
-Nodes (40): backend(), dynamic, error(), GET(), headers, MODEL_OPTIONS, POST(), runtime (+32 more)
+Cohesion: 0.06
+Nodes (47): backend(), dynamic, error(), headers, POST(), runtime, input, backend() (+39 more)
 
-### Community 20 - "stream_events"
+### Community 20 - "test_providers.py"
 Cohesion: 0.11
-Nodes (19): build_progress_preview(), build_progress_sources(), Expose only source identity and access state before final answer assembly., Build an early, strictly projected claim summary from validated evidence., encode(), NDJSON boundary: only stage labels and validated final results are public., Propagate cancellation and close the graph iterator on every exit path., stream_events() (+11 more)
+Nodes (17): agent_status(), Report whether the real four-stage workflow can be constructed., configured_model_options(), configured_providers(), providers_for_preference(), Return configured providers in the user-requested priority order., Return the automatic chain or exactly one explicitly selected model., Provider priority and fallback policy tests; no network traffic. (+9 more)
 
 ### Community 21 - "vector-wordmark.tsx"
 Cohesion: 0.17
 Nodes (21): Atlas, buildAtlas(), clamp(), compile(), FontSpec, fontString(), fract(), HANDLE_DEFAULTS (+13 more)
 
 ### Community 22 - "fact-check-contract.ts"
-Cohesion: 0.08
-Nodes (32): FactCheckError, Options, line(), validAnswer(), validEvidenceSection(), validProgressCitation(), validProgressClaim(), validProgressClaims() (+24 more)
+Cohesion: 0.10
+Nodes (18): AgentEvent, AgentStage, AgentStatus, AnswerSection, FACT_CHECK_MODEL, FACT_CHECK_REASONING, FactSource, MODEL_OPTIONS (+10 more)
 
 ### Community 23 - "FactCheckRequest"
-Cohesion: 0.14
-Nodes (14): FactCheckRequest, ImageAttachment, BaseModel, model_validator, Request boundary compatible with the existing TypeScript request fields., Link and image attachment paths; no external traffic (all transports mocked)., test_request_accepts_blank_text_only_with_image(), test_request_rejects_bad_link_and_image() (+6 more)
+Cohesion: 0.12
+Nodes (13): FactCheckRequest, ImageAttachment, BaseModel, model_validator, Link and image attachment paths; no external traffic (all transports mocked)., test_extract_image_claims_replaces_state_text(), test_extract_page_claims_replaces_state_text(), test_read_prepends_link_seed_without_network() (+5 more)
 
 ### Community 24 - "score_band"
-Cohesion: 0.19
-Nodes (15): FactClaim, default_fact_score(), normalize_fact_score(), Evidence-grounded public score policy for fact-check claims., Return the public band for an inclusive 0–100 score., Preserve the model's reasoned score, clamped only to the 0-100 range. The…, Supply a compatible score when an older result omits the new field., score_band() (+7 more)
+Cohesion: 0.20
+Nodes (14): default_fact_score(), normalize_fact_score(), Evidence-grounded public score policy for fact-check claims., Return the public band for an inclusive 0–100 score., Preserve the model's reasoned score, clamped only to the 0-100 range. The…, Supply a compatible score when an older result omits the new field., score_band(), score_label() (+6 more)
 
 ### Community 25 - "search.py"
-Cohesion: 0.10
-Nodes (32): read(), build_search_query(), candidate_url(), is_japanese_candidate(), is_unreliable_candidate(), _normalized_host(), origin_group_for_url(), _project_candidates() (+24 more)
+Cohesion: 0.15
+Nodes (21): Optional SerpApi Google organic discovery, restricted to a free account., read(), candidate_url(), is_japanese_candidate(), is_unreliable_candidate(), _normalized_host(), origin_group_for_url(), _project_candidates() (+13 more)
 
 ### Community 26 - "compilerOptions"
 Cohesion: 0.11
 Nodes (18): compilerOptions, allowJs, esModuleInterop, incremental, isolatedModules, jsx, lib, module (+10 more)
 
-### Community 27 - "test_contracts.py"
-Cohesion: 0.29
-Nodes (16): FactCheckResult, grounded_answer(), parametrize, Final Python contract tests; no provider calls., result_payload(), test_evidence_may_expose_only_a_bounded_matching_article_section(), test_final_contract_accepts_frontend_shape_and_wrapper(), test_final_contract_rejects_broken_links_or_unverified_evidence() (+8 more)
+### Community 27 - "FactCheckResult"
+Cohesion: 0.15
+Nodes (22): FactCheckResult, get, post, TEST ONLY deterministic recovery app. Never imported by runtime/main., recover(), status(), verify(), grounded_answer() (+14 more)
 
-### Community 28 - "line-sidebar.tsx"
-Cohesion: 0.29
-Nodes (6): Falloff, FALLOFF_CURVES, LineSidebar(), LineSidebarItem, LineSidebarProps, LineSidebarStyle
+### Community 28 - "test_verification.py"
+Cohesion: 0.21
+Nodes (17): html_text(), claim(), Offline citation-grounding and judgment tests; no provider traffic., test_context_mismatch_is_reported_as_missing_context(), test_date_or_context_mismatch_cannot_support_a_claim(), test_ground_judgments_accepts_a_verified_contiguous_quote(), test_ground_judgments_accepts_a_verified_quote_for_an_unclear_checkable_claim(), test_ground_judgments_attaches_only_the_matching_section_not_the_whole_page() (+9 more)
+
+### Community 29 - "test_jev.py"
+Cohesion: 0.06
+Nodes (52): evaluate_claims_jev(), JevError, _parse_strength(), _parse_verdict(), Any, AsyncClient, RuntimeError, Jev (TypeSafe System One) verdicts through Vercel AI Gateway. The gateway API… (+44 more)
 
 ### Community 30 - "fact-check-reply.ts"
 Cohesion: 0.12
@@ -297,45 +310,53 @@ Nodes (14): DEFAULT_PATTERN, formatElapsed(), GridSize, LatticeLoader(), Lattice
 Cohesion: 0.17
 Nodes (15): Geometric Brand Emblem (Red & Black Circles), Light Theme Variant (Dark Glyphs on Light Background), logo-light.svg light-mode branding logo, Path-Drawn Brand Wordmark, Next.js Framework Brand, Default template branding, next.svg, .js suffix glyphs (+7 more)
 
-### Community 33 - "classify_intent"
-Cohesion: 0.50
-Nodes (4): classify_intent(), Any, AsyncClient, Return a verify/reply decision; invalid model output is a retryable failure.
+### Community 33 - "verify_claims"
+Cohesion: 0.17
+Nodes (15): test_verify_claims_bounds_source_text_sent_to_model(), run(), test_verify_claims_requires_a_key_when_verified_source_text_exists(), run(), test_verify_claims_sends_only_verified_source_text(), handler(), run(), test_verify_claims_supports_gemini_interactions_structured_output() (+7 more)
 
-### Community 34 - "_gemini_schema"
-Cohesion: 0.67
-Nodes (3): _gemini_schema(), clean(), Remove JSON Schema keywords unsupported by Gemini structured output.
+### Community 34 - "test_runtime.py"
+Cohesion: 0.17
+Nodes (13): get_workflow(), Build the provider-backed graph only when a server-side key is configured., build_extraction_graph(), load_settings(), Stage, Read the backend-local file without mutating process environment., End after extraction; do not simulate search, sources, or judgments., Isolated settings and extraction graph tests; no paid API calls. (+5 more)
 
 ### Community 35 - "Backend Environment Keys Configuration"
 Cohesion: 0.16
 Nodes (14): Backend Environment Keys Configuration, FactLens Backend Fact-check API, Search Verification Flow Max 3 Claims 6 Sources, Fact-check Streaming Endpoint, Five Stage Search Improvement Pipeline, Free Google Organic Search via SerpApi, Multi-LLM Fallback Priority Order, Duplicate Link and Japanese Search Result Correction (+6 more)
 
 ### Community 36 - "Settings"
-Cohesion: 0.09
-Nodes (25): providers_for_preference(), Return the automatic chain or exactly one explicitly selected model., BaseModel, Settings, parametrize, Offline API boundary checks; no provider calls., test_health_and_status_do_not_claim_provider_readiness(), test_request_preserves_original_text() (+17 more)
+Cohesion: 0.16
+Nodes (14): BaseModel, Settings, parametrize, Offline API boundary checks; no provider calls., test_health_and_status_do_not_claim_provider_readiness(), test_request_preserves_original_text(), test_request_rejects_invalid_input(), test_request_rejects_unknown_model_preference() (+6 more)
 
-### Community 37 - "test_all_synthesis_providers_failing_preserves_verified_result"
-Cohesion: 0.12
-Nodes (14): test_all_synthesis_providers_failing_preserves_verified_result(), failing_provider(), mock_client(), test_forecast_synthesis_preserves_prediction_and_citations(), mock_client(), provider_response(), test_real_graph_carries_free_search_fallback_notice_to_later_stages(), extract() (+6 more)
+### Community 37 - "source"
+Cohesion: 0.40
+Nodes (5): source(), read(), search(), read(), search()
 
 ### Community 38 - "next"
 Cohesion: 0.15
 Nodes (6): app_globals, metadata, metadata, metadata, nextConfig, next
 
-### Community 39 - "test_runtime.py"
-Cohesion: 0.21
-Nodes (11): build_extraction_graph(), load_settings(), Stage, End after extraction; do not simulate search, sources, or judgments., Read the backend-local file without mutating process environment., Isolated settings and extraction graph tests; no paid API calls., test_extraction_graph_ends_without_fabricating_verdict(), test_serpapi_key_is_server_only_and_redacted() (+3 more)
+### Community 39 - "answer_synthesis.py"
+Cohesion: 0.10
+Nodes (24): _limit_sections_to_source_breadth(), _project_claims(), Any, BaseModel, model_validator, Synthesize a user-facing answer from verified source text only., Build a minimal JSON-safe input; never forward raw source/search records., Keep answer breadth proportional to the cited source base. A single supporting… (+16 more)
 
-### Community 40 - "_openai_schema"
-Cohesion: 0.67
-Nodes (3): _openai_schema(), clean(), Normalize Pydantic schemas for OpenAI strict structured output.
+### Community 40 - "ProviderCallError"
+Cohesion: 0.20
+Nodes (15): intent(), Decide verify-vs-reply with one cheap model call; never streams., ProviderCallError, RuntimeError, A provider attempt failed and the next configured provider may retry., Run an operation in priority order and return its result and provider., run_with_fallback(), main() (+7 more)
 
 ### Community 41 - "package.json"
 Cohesion: 0.15
 Nodes (12): name, private, type, postcss, react-dom, tailwindcss, @tailwindcss/postcss, @types/node (+4 more)
 
+### Community 42 - "test_jev_endpoint_maps_gateway_failure_to_502"
+Cohesion: 0.36
+Nodes (6): test_jev_endpoint_maps_gateway_failure_to_502(), mock_client(), test_jev_endpoint_returns_scored_result(), fake_fetch(), handler(), mock_client()
+
 ### Community 43 - "test_free_quota_exhaustion_falls_back_with_an_explicit_notice"
 Cohesion: 0.23
 Nodes (9): test_configured_free_google_search_is_selected_before_llm_search(), handler(), mock_async_client(), test_free_quota_exhaustion_falls_back_with_an_explicit_notice(), mock_async_client(), test_llm_runtime_ignores_environment_proxy_for_provider_connection(), mock_async_client(), test_runtime_read_stage_uses_youtube_adapter_without_adding_comments_to_source_texts() (+1 more)
+
+### Community 44 - "search_sources"
+Cohesion: 0.09
+Nodes (29): build_search_query(), AsyncClient, Conservative fallback when extraction did not supply semantic keywords., search_sources(), parametrize, Offline search fixtures, not verified sources., test_aitimes_is_classified_as_korean_news_in_google_results(), test_build_search_query_keeps_entity_and_year_from_forecast_question() (+21 more)
 
 ### Community 45 - "floating-lines.tsx"
 Cohesion: 0.22
@@ -349,9 +370,9 @@ Nodes (7): BackgroundBoundary, FloatingLines, FloatingLinesBackground(), floatin
 Cohesion: 0.36
 Nodes (9): getRevealOrder(), randomCharacter(), randomizeText(), ScrambleRun, ScrambleText(), resetVisual(), startRun(), writeVisual() (+1 more)
 
-### Community 48 - "test_runtime_assembly.py"
-Cohesion: 0.17
-Nodes (13): insufficient_answer(), Return a fixed answer that makes no unsupported assertions., build_fact_check_result(), synthesizing(), _normalize_source(), Project internal source state onto the public TypeScript contract., Validate and assemble the only result shape exposed by the API., _result_warnings() (+5 more)
+### Community 48 - "fact-check-client.ts"
+Cohesion: 0.22
+Nodes (13): Options, validAnswer(), validEvidenceSection(), validProgressCitation(), validProgressClaim(), validProgressClaims(), validProgressSource(), validProgressSources() (+5 more)
 
 ### Community 49 - "Framework Route Modules"
 Cohesion: 0.22
@@ -369,13 +390,17 @@ Nodes (9): devDependencies, postcss, tailwindcss, @tailwindcss/postcss, @types/n
 Cohesion: 0.25
 Nodes (3): app_app, ref_react_router, ref_types_root
 
+### Community 53 - "Q: jev 키 입력되있음 env에 AI_GATEWAY_API_KEY=; Vercel AI Gateway Jev"
+Cohesion: 0.40
+Nodes (4): Answer, Outcome, Q: jev 키 입력되있음 env에 AI_GATEWAY_API_KEY=; Vercel AI Gateway Jev, Source Nodes
+
 ### Community 54 - "SVG root 1080x174"
 Cohesion: 0.29
 Nodes (8): Dark circular dots, logo-light.svg, Logo icon mark, Light theme variant, Red accent path, SVG root 1080x174, Welcome page branding, Wordmark letter paths
 
-### Community 55 - "build_runtime_workflow"
-Cohesion: 0.14
-Nodes (13): build_runtime_workflow(), Compile five ordered stages and assemble the result after synthesis., The five graph stages, injectable for offline orchestration tests., RuntimeAdapters, test_forecast_keywords_reach_search_through_graph_without_leaking_into_result(), handler(), run(), extract() (+5 more)
+### Community 55 - "test_runtime_assembly.py"
+Cohesion: 0.05
+Nodes (47): FactCheckResponse, build_fact_check_result(), build_runtime_workflow(), Validate and assemble the only result shape exposed by the API., Compile five ordered stages and assemble the result after synthesis., The five graph stages, injectable for offline orchestration tests., RuntimeAdapters, encode() (+39 more)
 
 ### Community 56 - "globe.svg"
 Cohesion: 0.33
@@ -405,6 +430,10 @@ Nodes (3): backend(), error(), POST()
 Cohesion: 0.50
 Nodes (4): Dark Background Variant Purpose for Welcome Page, Geometric Icon Mark with Red Accent and White Nodes, Dark Mode Logo SVG, React Router Wordmark in White
 
+### Community 63 - "Q: 미설정으로 뜨는데? API 입력은 되있는데"
+Cohesion: 0.40
+Nodes (4): Answer, Outcome, Q: 미설정으로 뜨는데? API 입력은 되있는데, Source Nodes
+
 ### Community 64 - "eslint.config.mjs"
 Cohesion: 0.50
 Nodes (3): eslintConfig, ref_eslint, ref_eslint_config_next
@@ -430,12 +459,12 @@ Cohesion: 0.67
 Nodes (3): RSC Client Server Boundaries, RSC Route Module Differences, RSC Detection Signals
 
 ### Community 70 - "runtime.py"
-Cohesion: 0.12
-Nodes (17): IntentDecision, BaseModel, Cheap intent gate: verify with the pipeline or answer conversationally., Server settings and the assembled four-stage verification workflow., Safe diagnostics for failed provider fallbacks., test_provider_fallback_logs_model_stage_and_status_without_secrets(), fail_extraction(), Provider-independent graph. All real service adapters must be supplied… (+9 more)
+Cohesion: 0.10
+Nodes (22): build_progress_sources(), _normalize_source(), AsyncClient, Server settings and the assembled four-stage verification workflow., Project internal source state onto the public TypeScript contract., Truncate to a UTF-16 unit budget without splitting astral characters., Search and read evidence, then return Jev's score-only claim result., Expose only source identity and access state before final answer assembly. (+14 more)
 
 ### Community 71 - "make_runtime_adapters"
-Cohesion: 0.18
-Nodes (16): _http_status_from_exception(), make_runtime_adapters(), extract(), page_operation(), search(), synthesize(), operation(), verify() (+8 more)
+Cohesion: 0.15
+Nodes (17): _http_status_from_exception(), make_runtime_adapters(), extract(), page_operation(), search(), synthesize(), operation(), verify() (+9 more)
 
 ### Community 72 - "True or Not agent architecture"
 Cohesion: 0.67
@@ -453,21 +482,37 @@ Nodes (3): Vercel Brand Mark Purpose for Deployment Branding, White Filled Trian
 Cohesion: 0.14
 Nodes (13): 10. 현재 프론트엔드와의 차이 및 이행 우선순위, 11. 기술 구성 제안, 13. 상태 관리와 비동기 실행, 17. 구현 백로그, 18. 미확정 사항과 착수 전 결정, 20. 기준 자료와 문서 이력, 2. 문제 정의와 사용자 시나리오, 3. 제품 원칙 (+5 more)
 
-### Community 102 - "recovery_probe_app.py"
+### Community 95 - "test_sources.py"
 Cohesion: 0.22
-Nodes (6): get, post, TEST ONLY deterministic recovery app. Never imported by runtime/main., recover(), status(), verify()
+Nodes (14): module(), parametrize, Public-source security tests; no external traffic., test_html_excludes_noncontent(), test_html_excludes_video_and_custom_player_elements(), test_html_extracts_article_text_without_navigation_or_player_chrome(), test_html_fallback_still_excludes_menu_and_player_without_article_markers(), test_html_preserves_paragraph_breaks_for_readable_source_text() (+6 more)
+
+### Community 100 - "Q: JEV 선택이 안 되고 8010에서 Errno 10048이 발생함"
+Cohesion: 0.40
+Nodes (4): Answer, Outcome, Q: JEV 선택이 안 되고 8010에서 Errno 10048이 발생함, Source Nodes
+
+### Community 101 - "Q: 지금 레이아웃이 이상해 애니메이션 위치도 이상한곳에 걸쳐지고"
+Cohesion: 0.40
+Nodes (4): Answer, Outcome, Q: 지금 레이아웃이 이상해 애니메이션 위치도 이상한곳에 걸쳐지고, Source Nodes
+
+### Community 102 - "Q: 지금 jev가 제대로 작동하지 않아"
+Cohesion: 0.40
+Nodes (4): Answer, Outcome, Q: 지금 jev가 제대로 작동하지 않아, Source Nodes
 
 ### Community 103 - "youtube-context.ts"
-Cohesion: 0.26
-Nodes (8): download(), YoutubeVideoMetadata(), FactSource, sourceDiscoveryLabel(), formatYoutubePublishedAt(), formatYoutubeViewCount(), stripYoutubeApiDataForExport(), youtubeThumbnailUrl()
+Cohesion: 0.43
+Nodes (6): download(), YoutubeVideoMetadata(), formatYoutubePublishedAt(), formatYoutubeViewCount(), stripYoutubeApiDataForExport(), youtubeThumbnailUrl()
 
-### Community 104 - "_TextParser"
-Cohesion: 0.17
-Nodes (3): _TextParser, _TitleParser, HTMLParser
+### Community 104 - "Q: 점수 판정이 이상해"
+Cohesion: 0.40
+Nodes (4): Answer, Outcome, Q: 점수 판정이 이상해, Source Nodes
 
 ### Community 106 - "12. API 계약 초안"
 Cohesion: 0.29
 Nodes (7): start(), 12.1 엔드포인트, 12.2 입력 예시, 12.3 최소 데이터 모델, 12.4 원문 위치 규약, 12.5 오류 분류, 12. API 계약 초안
+
+### Community 107 - "glide-select.tsx"
+Cohesion: 0.31
+Nodes (8): GlideSelect(), GlideSelectOption, GlideSelectProps, labelText(), nextEnabled(), normalizeOption(), OptionInput, SIZES
 
 ### Community 110 - "19. 소개 문구와 데모 안내"
 Cohesion: 0.40
@@ -498,23 +543,30 @@ Cohesion: 0.67
 Nodes (3): 4.1 3일 MVP 필수 범위, 4.2 MVP 이후, 4. MVP 범위와 단계별 확장
 
 ## Knowledge Gaps
-- **260 isolated node(s):** `runtime`, `dynamic`, `headers`, `MODEL_OPTIONS`, `ChatIntent` (+255 more)
-  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 585 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
+- **286 isolated node(s):** `input`, `runtime`, `dynamic`, `headers`, `runtime` (+281 more)
+  These have ≤1 connection - possible missing edges or undocumented components. (Counts symbols only; 639 node(s) total have ≤1 connection when file, concept and rationale nodes are included.)
 - **26 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+
+## Work-memory lessons
+
+**Preferred sources** — corroborated by past sessions; start here.
+- `agent_status()` (2× useful, score=1.998072925) _(code changed — re-verify)_
+- `Backend Environment Keys Configuration` (2× useful, score=1.998072925)
+- `Next.js → FastAPI Proxy Route (6-B, app/api/fact-check/route.ts)` (2× useful, score=1.998072925)
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `make_runtime_adapters()` connect `make_runtime_adapters` to `LLMProvider`, `verification.py`, `search_sources`, `Settings`, `sources.py`, `runtime.py`, `search_google_free`, `test_runtime.py`, `test_all_synthesis_providers_failing_preserves_verified_result`, `test_free_quota_exhaustion_falls_back_with_an_explicit_notice`, `ProviderCallError`, `fetch_youtube_data`, `extraction.py`, `test_runtime_assembly.py`, `extract_claims`, `FactCheckRequest`, `build_runtime_workflow`, `search.py`?**
-  _High betweenness centrality (0.031) - this node is a cross-community bridge._
-- **Why does `search_sources()` connect `search_sources` to `LLMProvider`, `runtime.py`, `make_runtime_adapters`, `ProviderCallError`, `extraction.py`, `test_runtime_assembly.py`, `build_runtime_workflow`, `search.py`?**
+- **Why does `make_runtime_adapters()` connect `make_runtime_adapters` to `LLMProvider`, `sources.py`, `search_google_free`, `fetch_youtube_data`, `extraction.py`, `extract_claims`, `test_providers.py`, `FactCheckRequest`, `search.py`, `test_jev.py`, `verify_claims`, `test_runtime.py`, `Settings`, `answer_synthesis.py`, `ProviderCallError`, `test_free_quota_exhaustion_falls_back_with_an_explicit_notice`, `search_sources`, `test_runtime_assembly.py`, `runtime.py`, `test_extract_url_only_fetches_page`?**
+  _High betweenness centrality (0.029) - this node is a cross-community bridge._
+- **Why does `LLMProvider` connect `LLMProvider` to `verify_claims`, `verification.py`, `runtime.py`, `answer_synthesis.py`, `ProviderCallError`, `providers.py`, `search_sources`, `extraction.py`, `extract_claims`, `test_providers.py`, `FactCheckRequest`, `search.py`, `test_verification.py`?**
   _High betweenness centrality (0.025) - this node is a cross-community bridge._
-- **Why does `search_google_free()` connect `search_google_free` to `search.py`, `runtime.py`, `make_runtime_adapters`?**
+- **Why does `True or Not 고도화 기획서 v2` connect `True or Not 고도화 기획서 v2` to `12. API 계약 초안`, `19. 소개 문구와 데모 안내`, `9. 화면 설계`, `15. QA와 수용 기준`, `6. 주장 추출과 검증 계획`, `8. 판정 정책`, `14. 보안·개인정보·이용 조건`, `4. MVP 범위와 단계별 확장`, `16. 팀 역할과 3일 실행 계획`, `1. 핵심 방향`?**
   _High betweenness centrality (0.024) - this node is a cross-community bridge._
 - **Are the 8 inferred relationships involving `LLMProvider` (e.g. with `synthesize_answer()` and `extract_claims()`) actually correct?**
   _`LLMProvider` has 8 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 7 inferred relationships involving `make_runtime_adapters()` (e.g. with `FreeSearchUnavailable` and `extract()`) actually correct?**
-  _`make_runtime_adapters()` has 7 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 8 inferred relationships involving `make_runtime_adapters()` (e.g. with `FreeSearchUnavailable` and `JevError`) actually correct?**
+  _`make_runtime_adapters()` has 8 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 9 inferred relationships involving `ProviderCallError` (e.g. with `extract_claims()` and `extract_image_claims()`) actually correct?**
   _`ProviderCallError` has 9 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 2 inferred relationships involving `search_sources()` (e.g. with `LLMProvider` and `ProviderCallError`) actually correct?**
