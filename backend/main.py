@@ -3,14 +3,16 @@ import subprocess
 from pathlib import Path
 from typing import Literal
 
+import httpx
 from fastapi import Depends, FastAPI, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, StreamingResponse
 from streaming import stream_events
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 
 from contracts import AgentStatus, FactCheckResponse
-from providers import configured_model_options, configured_providers
+from intent import classify_intent
+from providers import ProviderCallError, configured_model_options, configured_providers, run_with_fallback
 from runtime import build_runtime_workflow, load_settings
 from schemas import FactCheckRequest
 
@@ -112,6 +114,63 @@ async def fact_check_stream(payload: FactCheckRequest, graph=Depends(get_workflo
     if graph is None:
         return JSONResponse({'code':'NOT_CONFIGURED','message':'서버의 LLM provider 설정이 필요합니다.'}, status_code=503, headers={'Cache-Control':'no-store'})
     return StreamingResponse(stream_events(graph, payload.model_dump(exclude_defaults=True)), media_type='application/x-ndjson', headers={'Cache-Control':'no-store','X-Accel-Buffering':'no','X-Content-Type-Options':'nosniff'})
+
+
+class IntentClaim(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    quote: str = Field(max_length=200)
+    verdict: str = Field(max_length=100)
+    score: int = Field(ge=0, le=100)
+
+
+class IntentContext(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    previousText: str | None = Field(default=None, max_length=3000)
+    previousClaims: list[IntentClaim] = Field(default_factory=list, max_length=3)
+    recentUser: list[str] = Field(default_factory=list, max_length=5)
+
+
+class IntentRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+    text: str = Field(min_length=1, max_length=2000)
+    context: IntentContext = Field(default_factory=IntentContext)
+
+
+@app.post("/api/intent")
+async def intent(payload: IntentRequest):
+    """Decide verify-vs-reply with one cheap model call; never streams."""
+    settings = load_settings()
+    providers = configured_providers(settings)
+    if not providers:
+        return JSONResponse(
+            {"code": "NOT_CONFIGURED", "message": "서버의 LLM provider 설정이 필요합니다."},
+            status_code=503,
+            headers={"Cache-Control": "no-store"},
+        )
+    try:
+        async with httpx.AsyncClient(timeout=30.0, trust_env=False) as client:
+            decision, _ = await run_with_fallback(
+                providers,
+                lambda provider: classify_intent(
+                    payload.text,
+                    payload.context.model_dump(),
+                    client=client,
+                    provider=provider,
+                ),
+            )
+    except ProviderCallError:
+        return JSONResponse(
+            {"code": "AGENT_FAILED", "message": "의도 파악에 실패했습니다."},
+            status_code=502,
+            headers={"Cache-Control": "no-store"},
+        )
+    return JSONResponse(
+        {"action": decision["action"], "reply": decision["reply"], "focus": decision["focus"]},
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 @app.exception_handler(RequestValidationError)

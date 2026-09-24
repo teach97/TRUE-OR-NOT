@@ -38,6 +38,11 @@ const LATE_META: Array<{topic: MetaTopic; patterns: RegExp[]}> = [
   {topic: 'smalltalk', patterns: [/뭐해/, /뭐하냐/, /뭐하니/, /뭐하고 있/, /심심/, /놀자/, /놀아줘/, /잘자/, /잘 자/, /밥 먹었/, /밥먹었/]},
 ];
 
+export function isFollowUpText(text: string): boolean {
+  const trimmed = text.trim();
+  return trimmed.length > 0 && trimmed.length <= 60 && FOLLOW_UP_PATTERNS.some(pattern => pattern.test(trimmed));
+}
+
 export function classifyChatInput(
   text: string,
   options: {hasPrevious: boolean; hasAttachment: boolean},

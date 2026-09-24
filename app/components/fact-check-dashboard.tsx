@@ -12,7 +12,7 @@ import { scoreBand, scoreLabel } from '../lib/fact-score';
 import { formatYoutubePublishedAt, formatYoutubeViewCount, stripYoutubeApiDataForExport, youtubeThumbnailUrl } from '../lib/youtube-context';
 import { FactCheckError, readFactCheckStream, safeSourceUrl } from './fact-check-client';
 import { composeAssistantReply, createAnswerCitationDisplayState, presentAnswerCitations } from './fact-check-reply';
-import { classifyChatInput, describeHistory, metaReply } from './chat-intent';
+import { classifyChatInput, describeHistory, isFollowUpText, metaReply } from './chat-intent';
 import { DEMO_FOCUS, DEMO_TEXT, demoPreview, documents } from './demo-fixture';
 import ScrambleText from './scramble-text';
 import FloatingLinesBackground from './floating-lines-background';
@@ -383,11 +383,25 @@ export default function FactCheckDashboard() {
   }
 
   const detectedLink = firstUrl(draft);
-  const intent = classifyChatInput(draft, {hasPrevious: !sample && liveResult !== null, hasAttachment: !!(image || detectedLink)});
+
+  type GateDecision = {action: 'verify' | 'reply'; reply: string | null; focus: string | null};
+  function gateContext() {
+    return {
+      previousText: liveResult?.text.slice(0, 2000) ?? null,
+      previousClaims: liveResult?.claims.slice(0, 3).map(claim => ({quote: claim.quote.slice(0, 200), verdict: claim.verdict, score: claim.factScore})) ?? [],
+      recentUser: messages.filter(message => message.role === 'user' && message.text).slice(-3).map(message => message.text!.slice(0, 200)),
+    };
+  }
+  async function requestGate(text: string, signal: AbortSignal): Promise<GateDecision> {
+    const response = await fetch('/api/intent', {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify({text, context: gateContext()}), signal});
+    if (!response.ok) throw new Error('INTENT_FAILED');
+    const value = await response.json() as {action?: unknown; reply?: unknown; focus?: unknown};
+    if (value?.action !== 'verify' && value?.action !== 'reply') throw new Error('INTENT_FAILED');
+    if (value.action === 'reply' && typeof value.reply !== 'string') throw new Error('INTENT_FAILED');
+    return {action: value.action, reply: typeof value.reply === 'string' ? value.reply : null, focus: typeof value.focus === 'string' ? value.focus : null};
+  }
   const prevHasClaims = (liveResult?.claims.length ?? 0) > 0;
-  const followUp = intent.kind === 'followup' && prevHasClaims;
-  const effectiveText = followUp && liveResult ? liveResult.text : draft;
-  const effectiveFocus = followUp ? (focus ? `${focus} / ${draft.trim()}` : draft.trim()) : focus;
+  const followUp = !sample && !image && !detectedLink && prevHasClaims && isFollowUpText(draft);
 
   function loadSample() {
     stop();
@@ -425,19 +439,6 @@ export default function FactCheckDashboard() {
     if (!draft.trim() && !image) {setNotice('검증할 원문이나 이미지를 입력해 주세요.'); return;}
     if (draft.length > 12000 || focus.length > 500) {setNotice('원문은 12,000자, 확인 요청은 500자 이내로 입력해 주세요.'); return;}
     if (sample) {dispatch({type: 'load', snapshot: {...demoPreview, focus}}); setNotice('합성 예시입니다. 실제 검증 요청은 전송하지 않았습니다.'); return;}
-    if (intent.kind === 'meta') {
-      addMessage({role: 'user', text: draft.trim()});
-      addMessage({role: 'assistant', text: intent.topic === 'history' ? describeHistory(messages, liveResult, DEMO_TEXT) : metaReply(intent.topic)});
-      setDraft(''); setImage(null);
-      return;
-    }
-    if (intent.kind === 'followup' && !prevHasClaims) {
-      addMessage({role: 'user', text: draft.trim(), meta: '이전 검증에 이어서 확인'});
-      addMessage({role: 'assistant', text: '이전 검증에서 검증 가능한 주장을 못 찾았어. 확인할 원문·링크·이미지를 보내주면 바로 검증할게.'});
-      setDraft('');
-      return;
-    }
-    if (configured === false) {setNotice(configurationHelp); return;}
 
     stop();
     const controller = new AbortController();
@@ -446,6 +447,7 @@ export default function FactCheckDashboard() {
     const startedAt = performance.now();
     const elapsedSeconds = () => Math.floor((performance.now() - startedAt) / 1000);
     let progressMessageId: string | null = null;
+    const release = () => {if (request.current === controller) request.current = null;};
     const updateProgressMessage = (patch: Partial<ChatProgress>) => {
       if (generation.current !== current) return;
       if (progressMessageId === null) {
@@ -459,6 +461,40 @@ export default function FactCheckDashboard() {
         ? {...message, progress: {...message.progress, ...patch}}
         : message));
     };
+    let gate: GateDecision | null = null;
+    if (!image && !detectedLink && draft.trim().length <= 120) {
+      try {
+        gate = await requestGate(draft.trim(), controller.signal);
+      } catch { gate = null; }
+      if (generation.current !== current || controller.signal.aborted) {release(); return;}
+    }
+    if (gate?.action === 'reply' && gate.reply) {
+      addMessage({role: 'user', text: draft.trim()});
+      addMessage({role: 'assistant', text: gate.reply});
+      setDraft(''); setImage(null); release();
+      return;
+    }
+    const gateFocus = gate?.action === 'verify' ? (gate.focus || '') : '';
+    if (!gate) {
+      const fallback = classifyChatInput(draft, {hasPrevious: !sample && liveResult !== null, hasAttachment: !!(image || detectedLink)});
+      if (fallback.kind === 'meta') {
+        addMessage({role: 'user', text: draft.trim()});
+        addMessage({role: 'assistant', text: fallback.topic === 'history' ? describeHistory(messages, liveResult, DEMO_TEXT) : metaReply(fallback.topic)});
+        setDraft(''); setImage(null); release();
+        return;
+      }
+      if (fallback.kind === 'followup' && !prevHasClaims) {
+        addMessage({role: 'user', text: draft.trim(), meta: '이전 검증에 이어서 확인'});
+        addMessage({role: 'assistant', text: '이전 검증에서 검증 가능한 주장을 못 찾았어. 확인할 원문·링크·이미지를 보내주면 바로 검증할게.'});
+        setDraft(''); release();
+        return;
+      }
+    }
+    if (configured === false) {setNotice(configurationHelp); release(); return;}
+    const effectiveText = followUp && liveResult ? liveResult.text : draft;
+    const effectiveFocus = followUp
+      ? [focus.trim(), gateFocus.trim(), draft.trim()].filter(part => part).join(' / ')
+      : [focus.trim(), gateFocus.trim()].filter(part => part).join(' / ');
     const submitted: FactCheckRequest = {text: effectiveText, focus: effectiveFocus, consent: true as const, modelPreference, ...(detectedLink && !followUp ? {linkUrl: detectedLink} : {}), ...(image ? {image: {mime: image.mime, data: image.data}} : {})};
     addMessage({role: 'user', text: followUp ? draft.trim() : draft, meta: followUp ? '이전 검증에 이어서 확인' : focus ? `확인 요청: ${focus}` : undefined, ...(image ? {imagePreview: image.preview} : {})});
     setLiveResult(null);
