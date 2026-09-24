@@ -608,10 +608,16 @@ button, p, h3, dd { overflow-wrap: anywhere; }
 .verify-timeline li[data-state='active'] { color: #d9f0ed; }
 .verify-timeline-dot { width: 11px; height: 11px; border-radius: 50%; border: 1px solid rgb(255 255 255 / .22); background: #15191e; transition: background .4s ease, border-color .4s ease, box-shadow .4s ease; z-index: 1; }
 .verify-timeline li[data-state='done'] .verify-timeline-dot { border-color: var(--accent); background: var(--accent); }
-.verify-timeline li[data-state='active'] .verify-timeline-dot { border-color: var(--accent); box-shadow: 0 0 0 4px rgb(155 221 212 / .15); animation: timeline-pulse 1.6s ease-in-out infinite; }
-@keyframes timeline-pulse {
-  0%, 100% { box-shadow: 0 0 0 3px rgb(155 221 212 / .12); }
-  50% { box-shadow: 0 0 0 7px rgb(155 221 212 / .05); }
+.verify-timeline li[data-state='active'] { color: #ffffff; text-shadow: 0 0 12px rgb(155 221 212 / .6); }
+.verify-timeline li[data-state='active'] .verify-timeline-dot {
+  border-color: #eafffb;
+  background: radial-gradient(circle, #ffffff 0 28%, var(--accent) 52%, rgb(155 221 212 / .1) 78%);
+  box-shadow: 0 0 12px 3px rgb(155 221 212 / .55), 0 0 30px 8px rgb(155 221 212 / .18);
+  animation: timeline-glow 1.6s ease-in-out infinite;
+}
+@keyframes timeline-glow {
+  0%, 100% { box-shadow: 0 0 10px 2px rgb(155 221 212 / .5), 0 0 26px 6px rgb(155 221 212 / .15); }
+  50% { box-shadow: 0 0 18px 6px rgb(155 221 212 / .75), 0 0 44px 14px rgb(155 221 212 / .28); }
 }
 
 /* Answer stagger entrance (Animata Soft Blur In) */
