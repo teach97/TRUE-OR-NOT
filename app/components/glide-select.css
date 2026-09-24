@@ -100,8 +100,9 @@
   background: var(--gs-highlight);
   opacity: .65;
   pointer-events: none;
-  transition: transform var(--gs-glide) var(--gs-ease-out), opacity 150ms ease;
+  transition: opacity 150ms ease;
 }
+.glide-select__list[data-geometry-ready] .glide-select__pill { transition: transform var(--gs-glide) var(--gs-ease-out), height var(--gs-glide) var(--gs-ease-out), opacity 150ms ease; }
 .glide-select__list:not([data-live]) .glide-select__pill { opacity: 0; }
 .glide-select__option {
   position: relative;
@@ -140,5 +141,6 @@
   .glide-select__menu { transform: none !important; transition: opacity var(--gs-pop) ease; }
   .glide-select__menu[data-state='closed'] { transition-duration: var(--gs-pop-out); }
   .glide-select__pill { transition: opacity 150ms ease; }
+  .glide-select__list[data-geometry-ready] .glide-select__pill { transition: opacity 150ms ease; }
   .glide-select__chevron, .glide-select__trigger { transition: none; }
 }

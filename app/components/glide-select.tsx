@@ -41,8 +41,6 @@ const SIZES = {
   md: {chip: 32, row: 30, font: 13},
   lg: {chip: 44, row: 40, font: 14},
 } as const;
-const PAD = 4;
-const GAP = 1;
 const MENU_GAP = 6;
 
 function normalizeOption(option: OptionInput): GlideSelectOption {
@@ -92,6 +90,8 @@ export default function GlideSelect({
   const selected = items.findIndex(option => option.value === current);
   const [phase, setPhase] = useState<'closed' | 'open' | 'closing'>('closed');
   const [active, setActive] = useState<number | null>(null);
+  const [highlightGeometry, setHighlightGeometry] = useState({top: 0, height: 0});
+  const [highlightReady, setHighlightReady] = useState(false);
   const [side, setSide] = useState(placement);
   const rootRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -100,7 +100,6 @@ export default function GlideSelect({
   const typeaheadTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const id = useId();
   const sizeValues = SIZES[size] ?? SIZES.md;
-  const step = sizeValues.row + GAP;
   const popOut = Math.round(popDuration * 2 / 3);
 
   const close = useCallback((instant = false) => {
@@ -119,6 +118,7 @@ export default function GlideSelect({
     if (closeTimer.current) clearTimeout(closeTimer.current);
     setSide(placement);
     setActive(selected >= 0 ? selected : (viaKeyboard ? items.findIndex(option => !option.disabled) : null));
+    setHighlightReady(false);
     setPhase('open');
   }, [disabled, items, placement, selected]);
 
@@ -209,6 +209,29 @@ export default function GlideSelect({
   };
 
   const highlightIndex = active ?? selected;
+
+  useLayoutEffect(() => {
+    if (phase !== 'open' || highlightIndex < 0) return;
+    const list = menuRef.current?.querySelector<HTMLDivElement>('.glide-select__list');
+    const option = list?.querySelector<HTMLButtonElement>(`[data-index="${highlightIndex}"]`);
+    if (!list || !option) return;
+
+    const updateGeometry = () => {
+      const next = {top: option.offsetTop, height: option.offsetHeight};
+      setHighlightGeometry(current => current.top === next.top && current.height === next.height ? current : next);
+    };
+
+    updateGeometry();
+    const readyFrame = requestAnimationFrame(() => setHighlightReady(true));
+    const observer = new ResizeObserver(updateGeometry);
+    observer.observe(list);
+    observer.observe(option);
+    return () => {
+      cancelAnimationFrame(readyFrame);
+      observer.disconnect();
+    };
+  }, [phase, highlightIndex, items.length]);
+
   const style = {
     '--gs-accent': accentColor,
     '--gs-surface': surfaceColor,
@@ -244,8 +267,8 @@ export default function GlideSelect({
       <svg className="glide-select__chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg>
     </button>
     {phase !== 'closed' && <div ref={menuRef} className="glide-select__menu" data-state={phase === 'open' ? 'open' : 'closed'} data-side={side} data-align={align}>
-      <div id={`${id}-listbox`} className="glide-select__list" role="listbox" aria-label={ariaLabel} data-live={active !== null ? '' : undefined}>
-        {highlightIndex >= 0 && <span className="glide-select__pill" aria-hidden="true" style={{transform: `translateY(${highlightIndex * step}px)`}}/>}
+      <div id={`${id}-listbox`} className="glide-select__list" role="listbox" aria-label={ariaLabel} data-live={active !== null ? '' : undefined} data-geometry-ready={highlightReady ? '' : undefined}>
+        {highlightIndex >= 0 && <span className="glide-select__pill" aria-hidden="true" style={{transform: `translateY(${highlightGeometry.top}px)`, height: `${highlightGeometry.height}px`}}/>}
         {items.map((option, index) => <button
           id={`${id}-option-${index}`}
           className="glide-select__option"
