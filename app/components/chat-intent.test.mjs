@@ -17,6 +17,7 @@ test('routes short follow-ups to the previous verification', () => {
   assert.deepEqual(classifyChatInput('그럼 검색해서 찾아', previous), {kind: 'followup'});
   assert.deepEqual(classifyChatInput('그것에 대해 더 자세히 알아봐줘', previous), {kind: 'followup'});
   assert.deepEqual(classifyChatInput('그거 맞아?', previous), {kind: 'followup'});
+  assert.deepEqual(classifyChatInput('그래서 팩트점수는 몇점이야?', previous), {kind: 'followup'});
   assert.deepEqual(classifyChatInput('그럼 검색해서 찾아', {hasPrevious: false, hasAttachment: false}), {kind: 'meta', topic: 'control'});
   assert.deepEqual(classifyChatInput('마크저커버그는 뱀파이어인가', previous), {kind: 'verify'});
   assert.deepEqual(classifyChatInput('추가 접종 맞아?', previous), {kind: 'verify'});

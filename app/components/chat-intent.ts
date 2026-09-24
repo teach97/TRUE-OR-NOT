@@ -9,7 +9,7 @@ type MetaTopic = 'history' | 'greeting' | 'thanks' | 'identity' | 'control' | 't
 
 // Previous conversation in short order: demonstratives pointing at it.
 const FOLLOW_UP_PATTERNS = [
-  /그럼/, /그거/, /그것/, /그건/, /그걸/, /그게/, /그런/, /그렇게/,
+  /그럼/, /그거/, /그것/, /그건/, /그걸/, /그게/, /그런/, /그렇게/, /그래서/, /그러면/, /그러니까/,
   /이거/, /이것/, /이건/, /이걸/, /이게/, /이런/, /이렇게/,
   /저거/, /저것/, /저건/, /저걸/, /이어서/,
 ];

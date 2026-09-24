@@ -16,10 +16,14 @@ _INTENT_INSTRUCTIONS = (
     "provocations, small talk, style requests, and anything without checkable content. "
     "When action is verify and the message refers to previous context, copy the message into focus; "
     "otherwise leave focus empty. "
+    "When the message asks about the previous verification results (scores, verdicts, sources, claims) "
+    "and previousClaims are present, answer directly from them with action reply — never re-verify to answer. "
+    "State each claim's score and verdict plainly. "
     "When action is reply, write reply in concise friendly Korean (1-3 short sentences, casual helper tone, "
     "no honorific excess); never invent verification results. "
     "Examples: '하이' -> reply; '마크저커버그는 뱀파이어인가' -> verify; "
     "'그럼 검색해서 찾아' with previous claims -> verify with that focus; "
+    "'그래서 팩트점수는 몇점이야?' with previousClaims -> reply stating each score and verdict; "
     "'너 대화 기록 볼수있어?' -> reply; '야임마' -> reply."
 )
 

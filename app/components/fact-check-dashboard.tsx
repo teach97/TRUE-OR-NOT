@@ -497,8 +497,10 @@ export default function FactCheckDashboard() {
       : [focus.trim(), gateFocus.trim()].filter(part => part).join(' / ');
     const submitted: FactCheckRequest = {text: effectiveText, focus: effectiveFocus, consent: true as const, modelPreference, ...(detectedLink && !followUp ? {linkUrl: detectedLink} : {}), ...(image ? {image: {mime: image.mime, data: image.data}} : {})};
     addMessage({role: 'user', text: followUp ? draft.trim() : draft, meta: followUp ? '이전 검증에 이어서 확인' : focus ? `확인 요청: ${focus}` : undefined, ...(image ? {imagePreview: image.preview} : {})});
-    setLiveResult(null);
-    dispatch({type: 'reset'});
+    if (!followUp) {
+      setLiveResult(null);
+      dispatch({type: 'reset'});
+    }
     dispatch({type: 'start'});
     setNotice(followUp ? '이전 원문을 유지하고 확인 요청으로 이어서 검증합니다.' : '검증 요청을 서버로 전송하고 있습니다.');
     try {
@@ -530,10 +532,14 @@ export default function FactCheckDashboard() {
       if (!submitted.linkUrl && !submitted.image && (result.text !== submitted.text || result.focus !== submitted.focus)) throw new Error('제출한 원문과 검증 결과가 일치하지 않습니다. 다시 시도해 주세요.');
       setImage(null);
       setDraft('');
-      setLiveResult(result);
-      dispatch({type: 'load', snapshot: result});
+      if (followUp && !result.claims.length) {
+        setNotice('추가로 확인된 게 없어서 이전 결과를 유지할게.');
+      } else {
+        setLiveResult(result);
+        dispatch({type: 'load', snapshot: result});
+      }
       setMobileTab('results');
-      setNotice(result.claims.length ? '검증이 완료되었습니다. 아래에서 출처와 남은 불확실성을 확인해 주세요.' : '검증 가능한 주장을 찾지 못했습니다. 결과의 경고를 확인해 주세요.');
+      if (!(followUp && !result.claims.length)) setNotice(result.claims.length ? '검증이 완료되었습니다. 아래에서 출처와 남은 불확실성을 확인해 주세요.' : '검증 가능한 주장을 찾지 못했습니다. 결과의 경고를 확인해 주세요.');
       const reply = composeAssistantReply(result);
       const finalMessage: ChatMessage = {id: `message-${messageCounter.current++}`, role: 'assistant', ...reply};
       if (progressMessageId) {
