@@ -16,7 +16,22 @@ test('routes short follow-ups to the previous verification', () => {
   const previous = {hasPrevious: true, hasAttachment: false};
   assert.deepEqual(classifyChatInput('그럼 검색해서 찾아', previous), {kind: 'followup'});
   assert.deepEqual(classifyChatInput('그것에 대해 더 자세히 알아봐줘', previous), {kind: 'followup'});
-  assert.deepEqual(classifyChatInput('그럼 검색해서 찾아', {hasPrevious: false, hasAttachment: false}), {kind: 'verify'});
+  assert.deepEqual(classifyChatInput('그거 맞아?', previous), {kind: 'followup'});
+  assert.deepEqual(classifyChatInput('그럼 검색해서 찾아', {hasPrevious: false, hasAttachment: false}), {kind: 'meta', topic: 'control'});
+  assert.deepEqual(classifyChatInput('마크저커버그는 뱀파이어인가', previous), {kind: 'verify'});
+  assert.deepEqual(classifyChatInput('추가 접종 맞아?', previous), {kind: 'verify'});
+});
+
+test('handles speech style, provocation, small talk and help locally', () => {
+  const previous = {hasPrevious: true, hasAttachment: false};
+  assert.deepEqual(classifyChatInput('존댓말 실시', previous), {kind: 'meta', topic: 'control'});
+  assert.deepEqual(classifyChatInput('야임마', previous), {kind: 'meta', topic: 'tease'});
+  assert.deepEqual(classifyChatInput('거짓말하지마', previous), {kind: 'meta', topic: 'tease'});
+  assert.deepEqual(classifyChatInput('뭐해', previous), {kind: 'meta', topic: 'smalltalk'});
+  assert.deepEqual(classifyChatInput('밥 먹었어?', previous), {kind: 'meta', topic: 'smalltalk'});
+  assert.deepEqual(classifyChatInput('뭘 할 수 있어?', previous), {kind: 'meta', topic: 'help'});
+  assert.deepEqual(classifyChatInput('이거 진짜인지 알려줘', previous), {kind: 'followup'});
+  assert.deepEqual(classifyChatInput('이거 진짜인지 알려줘', {hasPrevious: false, hasAttachment: false}), {kind: 'verify'});
 });
 
 test('keeps substantive inputs and attachments on verification', () => {
