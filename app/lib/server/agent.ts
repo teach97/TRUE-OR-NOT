@@ -1,4 +1,4 @@
-import type { FactCheckRequest, FactClaim, FactSource, FactEvidence, FactCheckResult, AgentEvent, VerdictCode } from '../fact-check-contract';
+import type { AttachedImage, FactCheckRequest, FactClaim, FactSource, FactEvidence, FactCheckResult, AgentEvent, VerdictCode } from '../fact-check-contract';
 // @ts-ignore -- explicit extension is required by the Node 24 native test runner.
 import { normalizeFactScore, scoreBand, scoreLabel } from '../fact-score.ts';
 
@@ -171,13 +171,29 @@ export async function* runAgent(request: FactCheckRequest, key: string, signal: 
 export function validateRequest(value: unknown): FactCheckRequest {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('INVALID_REQUEST');
   const v = value as Record<string, unknown>;
-  const keys = Object.keys(v).sort().join(',');
-  const allowedKeys = keys === 'consent,focus,text' || keys === 'consent,focus,modelPreference,text';
+  const keySet = new Set(Object.keys(v));
+  const allowed = new Set(['consent', 'focus', 'text', 'modelPreference', 'linkUrl', 'image']);
+  if (!keySet.has('consent') || !keySet.has('focus') || !keySet.has('text') || ![...keySet].every(key => allowed.has(key))) throw new Error('INVALID_REQUEST');
   const modelPreference = v.modelPreference ?? 'auto';
   const validPreference = modelPreference === 'auto' ||
     ['gemini-3.8-flash', 'gemini-3.7-flash', 'gpt-6-luna'].includes(modelPreference as string);
-  if (!allowedKeys || !validPreference || v.consent !== true ||
-      typeof v.text !== 'string' || !v.text.trim() || v.text.length > 12000 ||
+  let linkUrl: string | null = null;
+  if (v.linkUrl !== undefined && v.linkUrl !== null) {
+    if (typeof v.linkUrl !== 'string') throw new Error('INVALID_REQUEST');
+    const normalized = canonical(v.linkUrl);
+    if (!normalized) throw new Error('INVALID_REQUEST');
+    linkUrl = normalized;
+  }
+  let image: FactCheckRequest['image'] = null;
+  if (v.image !== undefined && v.image !== null) {
+    const attachment = v.image as Record<string, unknown>;
+    if (!attachment || typeof attachment !== 'object' || Array.isArray(attachment)) throw new Error('INVALID_REQUEST');
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(attachment.mime as string)) throw new Error('INVALID_REQUEST');
+    if (typeof attachment.data !== 'string' || !attachment.data || attachment.data.length > 1500000 || !/^[A-Za-z0-9+/]*={0,2}$/.test(attachment.data)) throw new Error('INVALID_REQUEST');
+    image = {mime: attachment.mime as AttachedImage['mime'], data: attachment.data};
+  }
+  if (!validPreference || v.consent !== true ||
+      typeof v.text !== 'string' || v.text.length > 12000 || (!v.text.trim() && !image) ||
       typeof v.focus !== 'string' || v.focus.length > 500) throw new Error('INVALID_REQUEST');
-  return { text: v.text, focus: v.focus, consent: true, modelPreference: modelPreference as FactCheckRequest['modelPreference'] };
+  return { text: v.text, focus: v.focus, consent: true, modelPreference: modelPreference as FactCheckRequest['modelPreference'], ...(linkUrl ? {linkUrl} : {}), ...(image ? {image} : {}) };
 }

@@ -321,6 +321,80 @@ async def request_structured(
         raise ProviderCallError("Provider request failed") from exc
 
 
+_IMAGE_MIMES = ("image/jpeg", "image/png", "image/webp")
+_MAX_IMAGE_DATA = 20_000_000
+
+
+def _structured_image_input(
+    provider: LLMProvider,
+    serialized_input: str,
+    image: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """Build the multimodal input parts for each provider's wire format."""
+    if provider.kind == "openai":
+        return [{
+            "role": "user",
+            "content": [
+                {"type": "input_text", "text": serialized_input},
+                {
+                    "type": "input_image",
+                    "image_url": f"data:{image['mime']};base64,{image['data']}",
+                },
+            ],
+        }]
+    return [
+        {"type": "text", "text": serialized_input},
+        {"type": "image", "data": image["data"], "mime_type": image["mime"]},
+    ]
+
+
+async def request_structured_image(
+    provider: LLMProvider,
+    client: httpx.AsyncClient,
+    *,
+    instructions: str,
+    input_data: dict[str, Any],
+    image: dict[str, Any],
+    schema: dict[str, Any],
+    max_output_tokens: int,
+) -> str:
+    """Call a provider's structured-output endpoint with an attached image."""
+    if not provider.api_key.strip():
+        raise ProviderCallError("Missing provider key")
+    if (
+        not isinstance(image, dict)
+        or image.get("mime") not in _IMAGE_MIMES
+        or not isinstance(image.get("data"), str)
+        or not image["data"]
+        or len(image["data"]) > _MAX_IMAGE_DATA
+    ):
+        raise ProviderCallError("Invalid image attachment")
+    endpoint, headers = _endpoint_and_headers(provider)
+    payload = _structured_payload(
+        provider,
+        instructions=instructions,
+        input_data=input_data,
+        schema=schema,
+        max_output_tokens=max_output_tokens,
+    )
+    payload["input"] = _structured_image_input(
+        provider, json.dumps(input_data, ensure_ascii=False), image
+    )
+    try:
+        response = await client.post(
+            endpoint,
+            json=payload,
+            headers=headers,
+            timeout=90,
+        )
+        data = _response_json(response)
+        return _openai_text(data) if provider.kind == "openai" else _gemini_text(data)
+    except ProviderCallError:
+        raise
+    except (httpx.HTTPError, TimeoutError, ValueError, KeyError, TypeError) as exc:
+        raise ProviderCallError("Provider request failed") from exc
+
+
 async def request_search(
     provider: LLMProvider,
     client: httpx.AsyncClient,

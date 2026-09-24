@@ -187,11 +187,20 @@ button, p, h3, dd { overflow-wrap: anywhere; }
 .chat-model-policy { color: var(--subtle); font-size: 9px; white-space: nowrap; }
 .chat-send { display: grid; place-items: center; width: 42px; height: 42px; min-height: 42px; border-radius: 11px; color: #183236; background: var(--accent); }
 .chat-send:hover:not(:disabled) { color: #10282a; background: var(--accent-strong); transform: translateY(-1px); }
+.chat-attachments { display: flex; flex-wrap: wrap; gap: 8px; padding: 2px 2px 0; }
+.attach-chip { display: inline-flex; align-items: center; gap: 7px; padding: 4px 6px 4px 4px; border: 1px solid var(--line); border-radius: 9px; color: #c3cdd0; background: #0d1116; font-size: 11px; }
+.attach-chip img { width: 44px; height: 44px; border-radius: 6px; object-fit: cover; }
+.attach-chip button { display: grid; place-items: center; width: 20px; height: 20px; border-radius: 6px; color: #8f9da3; font-size: 14px; line-height: 1; }
+.attach-chip button:hover { color: #ffffff; background: rgb(255 255 255 / .08); }
+.attach-chip.is-link svg { color: var(--accent); }
+.chat-image-preview { display: block; max-width: 100%; max-height: 220px; margin-bottom: 8px; border: 1px solid var(--line); border-radius: 10px; object-fit: contain; }
 .chat-footer { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 12px; padding: 0 4px; color: var(--muted); font-size: 11px; }
 .consent-control { display: inline-flex; align-items: flex-start; gap: 8px; line-height: 1.55; }
 .consent-control input { width: 15px; height: 15px; margin: 1px 0 0; accent-color: var(--accent); }
 .consent-links { display: flex; flex-wrap: wrap; gap: 5px 12px; margin: 5px 0 0 23px; font-size: 10px; }
 .consent-links a { color: #9fb3b7; text-decoration: underline; text-underline-offset: 2px; }
+.footer-links { display: inline-flex; flex-wrap: wrap; gap: 5px 12px; font-size: 10px; }
+.footer-links a { color: #9fb3b7; text-decoration: underline; text-underline-offset: 2px; }
 .sample-state { display: inline-flex; align-items: center; gap: 7px; color: #aab8bd; }
 .sample-state svg { color: var(--accent); }
 .sample-chip { display: inline-flex; align-items: center; gap: 7px; min-height: 32px; padding: 0 10px; color: #c3c9cc; font-size: 11px; white-space: nowrap; }

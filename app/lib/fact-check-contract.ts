@@ -14,7 +14,8 @@ export type Reasoning = 'max' | 'high';
 export type ModelId = typeof MODEL_OPTIONS[number]['id'];
 export type ModelPreference = 'auto' | ModelId;
 export type ModelOption = {id: ModelId; label: string; configured: boolean};
-export type FactCheckRequest = { text: string; focus: string; consent: true; modelPreference: ModelPreference };
+export type AttachedImage = {mime: 'image/jpeg' | 'image/png' | 'image/webp'; data: string};
+export type FactCheckRequest = { text: string; focus: string; consent: true; modelPreference: ModelPreference; linkUrl?: string | null; image?: AttachedImage | null };
 export type YouTubeDataStatus = 'not_applicable' | 'not_configured' | 'collected' | 'unavailable';
 export type FactSource = {
   id: string; url: string; title: string; publisher: string; publishedAt: string | null;

@@ -39,6 +39,26 @@ def test_health_and_status_do_not_claim_provider_readiness(monkeypatch):
         assert client.get("/openapi.json").status_code == 200
 
 
+def test_stream_rejects_bad_link_and_image_attachments():
+    from fastapi.testclient import TestClient
+    from main import app
+
+    with TestClient(app) as client:
+        bad_image = client.post("/api/fact-check/stream", json={
+            "text": "hi", "focus": "", "consent": True,
+            "image": {"mime": "image/gif", "data": "eA=="},
+        })
+        assert bad_image.status_code == 422
+        bad_link = client.post("/api/fact-check/stream", json={
+            "text": "hi", "focus": "", "consent": True, "linkUrl": "ftp://x/y",
+        })
+        assert bad_link.status_code == 422
+        blank_text = client.post("/api/fact-check/stream", json={
+            "text": "   ", "focus": "", "consent": True,
+        })
+        assert blank_text.status_code == 422
+
+
 def test_status_reports_ready_for_configured_runtime(monkeypatch):
     from fastapi.testclient import TestClient
     from pydantic import SecretStr
@@ -114,7 +134,7 @@ def test_request_preserves_original_text():
     request = FactCheckRequest(text="  검증할 주장  ", focus="", consent=True)
     assert request.model_dump() == {
         "text": "  검증할 주장  ", "focus": "", "consent": True,
-        "modelPreference": "auto",
+        "modelPreference": "auto", "linkUrl": None, "image": None,
     }
     selected = FactCheckRequest(
         text="claim", focus="", consent=True, modelPreference="gpt-6-luna"

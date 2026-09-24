@@ -6,7 +6,7 @@ import type { CSSProperties, FormEvent, ReactNode } from 'react';
 import { initialState, transition } from './demo-state';
 import type { Claim } from './demo-state';
 import { MODEL_OPTIONS } from '../lib/fact-check-contract';
-import type { AnswerBlock, FactCheckAnswer, FactCheckResult, FactSource, ModelOption, ModelPreference, ProgressClaim, ProgressSource } from '../lib/fact-check-contract';
+import type { AnswerBlock, AttachedImage, FactCheckAnswer, FactCheckRequest, FactCheckResult, FactSource, ModelOption, ModelPreference, ProgressClaim, ProgressSource } from '../lib/fact-check-contract';
 import { sourceDiscoveryLabel } from '../lib/source-discovery';
 import { scoreBand, scoreLabel } from '../lib/fact-score';
 import { formatYoutubePublishedAt, formatYoutubeViewCount, stripYoutubeApiDataForExport, youtubeThumbnailUrl } from '../lib/youtube-context';
@@ -170,7 +170,7 @@ type ChatProgress = {
   sourcesRead?: ProgressSource[]; sourcesReadElapsedSeconds?: number;
   claims?: ProgressClaim[]; claimsElapsedSeconds?: number; completed?: boolean; error?: string;
 };
-type ChatMessage = {id: string; role: 'assistant' | 'user'; text?: string; answer?: FactCheckAnswer; sources?: FactSource[]; progress?: ChatProgress; meta?: string; tone?: 'normal' | 'error'};
+type ChatMessage = {id: string; role: 'assistant' | 'user'; text?: string; answer?: FactCheckAnswer; sources?: FactSource[]; progress?: ChatProgress; meta?: string; tone?: 'normal' | 'error'; imagePreview?: string};
 const WELCOME_MESSAGE: ChatMessage = {id: 'welcome', role: 'assistant', text: '확인하고 싶은 주장이나 원문을 보내주세요. 문장을 나누고, 직접 확인할 수 있는 출처와 인용을 연결하겠습니다.'};
 
 function Modal({open, title, onClose, children}: {open: boolean; title: string; onClose: () => void; children: ReactNode}) {
@@ -294,7 +294,8 @@ export default function FactCheckDashboard() {
   const request = useRef<AbortController | null>(null);
   const generation = useRef(0);
   const messageCounter = useRef(0);
-  const [consent, setConsent] = useState(false);
+  const [image, setImage] = useState<{mime: AttachedImage['mime']; data: string; preview: string} | null>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
   const [configured, setConfigured] = useState<boolean | null>(null);
   const [configuredModel, setConfiguredModel] = useState<string | null>(null);
   const [modelOptions, setModelOptions] = useState<ModelOption[]>([]);
@@ -355,6 +356,33 @@ export default function FactCheckDashboard() {
     request.current = null;
   }
 
+  function firstUrl(text: string): string | null {
+    const match = text.match(/https?:\/\/[^\s)\]]+/);
+    if (!match) return null;
+    return safeSourceUrl(match[0].replace(/[.,;:!?)\]]+$/, ''));
+  }
+
+  async function downscaleImage(file: File): Promise<{mime: 'image/jpeg'; data: string; preview: string} | null> {
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {setNotice('JPEG·PNG·WebP 이미지만 보낼 수 있습니다.'); return null;}
+    if (file.size > 8_000_000) {setNotice('이미지는 8MB 이하로 보내 주세요.'); return null;}
+    const bitmap = await createImageBitmap(file).catch(() => null);
+    if (!bitmap) {setNotice('이미지를 읽을 수 없습니다.'); return null;}
+    const scale = Math.min(1, 1568 / Math.max(bitmap.width, bitmap.height));
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+    canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+    const context = canvas.getContext('2d');
+    if (!context) {bitmap.close(); setNotice('이미지를 읽을 수 없습니다.'); return null;}
+    context.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close();
+    const preview = canvas.toDataURL('image/jpeg', 0.82);
+    const data = preview.split(',', 2)[1] ?? '';
+    if (!data || data.length > 1500000) {setNotice('이미지가 너무 큽니다. 더 작은 이미지로 보내 주세요.'); return null;}
+    return {mime: 'image/jpeg', data, preview};
+  }
+
+  const detectedLink = firstUrl(draft);
+
   function loadSample() {
     stop();
     setLiveResult(null);
@@ -363,7 +391,7 @@ export default function FactCheckDashboard() {
     setDraft(DEMO_TEXT);
     setFocus(DEMO_FOCUS);
     setSample(true);
-    setConsent(false);
+    setImage(null);
     setMessages([
       WELCOME_MESSAGE,
       {id: 'sample-user', role: 'user', text: DEMO_TEXT, meta: `확인 요청: ${DEMO_FOCUS}`},
@@ -375,7 +403,7 @@ export default function FactCheckDashboard() {
   function reset() {
     stop();
     setLiveResult(null);
-    setConsent(false);
+    setImage(null);
     dispatch({type: 'reset'});
     setDraft('');
     setFocus('');
@@ -388,11 +416,10 @@ export default function FactCheckDashboard() {
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (busy || request.current) return;
-    if (!draft.trim()) {setNotice('검증할 원문을 입력해 주세요.'); return;}
+    if (!draft.trim() && !image) {setNotice('검증할 원문이나 이미지를 입력해 주세요.'); return;}
     if (draft.length > 12000 || focus.length > 500) {setNotice('원문은 12,000자, 확인 요청은 500자 이내로 입력해 주세요.'); return;}
     if (sample) {dispatch({type: 'load', snapshot: {...demoPreview, focus}}); setNotice('합성 예시입니다. 실제 검증 요청은 전송하지 않았습니다.'); return;}
     if (configured === false) {setNotice(configurationHelp); return;}
-    if (!consent) {setNotice('외부 전송과 유료 검증 안내를 확인하고 동의해 주세요.'); return;}
 
     stop();
     const controller = new AbortController();
@@ -414,8 +441,8 @@ export default function FactCheckDashboard() {
         ? {...message, progress: {...message.progress, ...patch}}
         : message));
     };
-    const submitted = {text: draft, focus, consent: true as const, modelPreference};
-    addMessage({role: 'user', text: draft, meta: focus ? `확인 요청: ${focus}` : undefined});
+    const submitted: FactCheckRequest = {text: draft, focus, consent: true as const, modelPreference, ...(detectedLink ? {linkUrl: detectedLink} : {}), ...(image ? {image: {mime: image.mime, data: image.data}} : {})};
+    addMessage({role: 'user', text: draft, meta: focus ? `확인 요청: ${focus}` : undefined, ...(image ? {imagePreview: image.preview} : {})});
     setLiveResult(null);
     dispatch({type: 'reset'});
     dispatch({type: 'start'});
@@ -446,7 +473,8 @@ export default function FactCheckDashboard() {
         },
       });
       if (generation.current !== current || controller.signal.aborted) return;
-      if (result.text !== submitted.text || result.focus !== submitted.focus) throw new Error('제출한 원문과 검증 결과가 일치하지 않습니다. 다시 시도해 주세요.');
+      if (!submitted.linkUrl && !submitted.image && (result.text !== submitted.text || result.focus !== submitted.focus)) throw new Error('제출한 원문과 검증 결과가 일치하지 않습니다. 다시 시도해 주세요.');
+      setImage(null);
       setLiveResult(result);
       dispatch({type: 'load', snapshot: result});
       setMobileTab('results');
@@ -562,7 +590,7 @@ export default function FactCheckDashboard() {
             {messages.map(message => <motion.div key={message.id} className={`chat-message ${message.role === 'user' ? 'is-user' : 'is-assistant'} ${message.answer ? 'has-answer' : ''} ${message.progress ? 'has-progress' : ''} ${message.tone === 'error' ? 'is-error' : ''}`} initial={reduce ? false : {opacity: 0, y: 10}} animate={{opacity: 1, y: 0}} transition={{duration: reduce ? 0 : .22}}>
               {message.role === 'assistant' && <span className="chat-avatar"><Icon name="lens" size={16}/></span>}
               <div className={`chat-bubble ${message.answer ? 'chat-bubble--answer' : ''}`}>
-                {message.answer ? <AnswerOverview answer={message.answer} sources={message.sources ?? []} messageId={message.id}/> : message.progress ? <ProgressReply progress={message.progress}/> : message.text ? <p>{message.text}</p> : null}
+                {message.answer ? <AnswerOverview answer={message.answer} sources={message.sources ?? []} messageId={message.id}/> : message.progress ? <ProgressReply progress={message.progress}/> : <>{message.imagePreview && <img className="chat-image-preview" src={message.imagePreview} alt="사용자가 보낸 이미지"/>}{message.text ? <p>{message.text}</p> : null}</>}
                 {message.meta && <small>{message.meta}</small>}
               </div>
             </motion.div>)}
@@ -573,8 +601,12 @@ export default function FactCheckDashboard() {
               <label className="sr-only" htmlFor="document-text">확인할 원문</label>
               <textarea ref={editor} id="document-text" value={draft} onChange={event => {setDraft(event.target.value); if (sample) {setSample(false); setMessages([WELCOME_MESSAGE]);}}} placeholder="확인하고 싶은 주장이나 원문을 입력해 주세요." rows={3} maxLength={12000} onKeyDown={event => {if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {event.preventDefault(); event.currentTarget.form?.requestSubmit();}}}/>
               <div className="chat-input-meta"><span>{draft.length.toLocaleString()} / 12,000</span><span>Ctrl + Enter로 보내기</span></div>
+              {(image || detectedLink) && <div className="chat-attachments">
+                {image && <span className="attach-chip"><img src={image.preview} alt="첨부 이미지 미리보기"/><button type="button" onClick={() => setImage(null)} aria-label="이미지 제거">×</button></span>}
+                {detectedLink && <span className="attach-chip is-link"><Icon name="link" size={14}/><span>링크 인식됨</span></span>}
+              </div>}
               <div className="chat-toolbar">
-                <div className="chat-tools"><button type="button" className="chat-tool" onClick={() => setDialog('guide')}><Icon name="plus" size={17}/><span>검증 조건</span></button><span className="chat-tool is-static"><Icon name="link" size={16}/><span>웹 검색</span></span><label className="chat-focus-control" htmlFor="focus-request"><Icon name="lens" size={15}/><span>확인 요청</span><input id="focus-request" value={focus} maxLength={500} onChange={event => setFocus(event.target.value)} placeholder="선택 입력"/></label></div>
+                <div className="chat-tools"><button type="button" className="chat-tool" onClick={() => setDialog('guide')}><Icon name="plus" size={17}/><span>검증 조건</span></button><button type="button" className="chat-tool" onClick={() => fileInput.current?.click()} disabled={busy} aria-label="이미지 첨부"><Icon name="file" size={16}/><span>이미지</span></button><input ref={fileInput} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" aria-label="이미지 첨부" tabIndex={-1} onChange={async event => {const file = event.target.files?.[0]; event.target.value = ''; if (!file || busy) return; const attached = await downscaleImage(file); if (attached) setImage(attached);}}/><span className="chat-tool is-static"><Icon name="link" size={16}/><span>웹 검색</span></span><label className="chat-focus-control" htmlFor="focus-request"><Icon name="lens" size={15}/><span>확인 요청</span><input id="focus-request" value={focus} maxLength={500} onChange={event => setFocus(event.target.value)} placeholder="선택 입력"/></label></div>
                 <div className="chat-send-group">
                   <label className="chat-model-control">
                     <span className="sr-only">답변 모델</span>
@@ -585,11 +617,11 @@ export default function FactCheckDashboard() {
                   </label>
                   <span className="chat-model-policy">{modelPreference === 'auto' ? '순서대로 재시도' : '선택 모델만 사용'}</span>
                   <span id="model-preference-help" className="sr-only">자동은 설정된 Gemini 3.8 Flash, Gemini 3.7 Flash, GPT-6 Luna Max 순서로 시도합니다. 특정 모델을 선택하면 다른 모델로 폴백하지 않습니다.</span>
-                  <button type="submit" className="chat-send" disabled={busy || !draft.trim()} aria-label={busy ? '검증 진행 중' : sample ? '예시 다시 보기' : '팩트 검증 시작'}><Icon name="arrow" size={19}/></button>
+                  <button type="submit" className="chat-send" disabled={busy || (!draft.trim() && !image)} aria-label={busy ? '검증 진행 중' : sample ? '예시 다시 보기' : '팩트 검증 시작'}><Icon name="arrow" size={19}/></button>
                 </div>
               </div>
             </div>
-            <div className="chat-footer"><div>{!sample && <><label className="consent-control"><input type="checkbox" checked={consent} onChange={event => setConsent(event.target.checked)} disabled={busy}/><span>원문·확인 요청의 외부 전송과 검색, YouTube Data API의 영상 제목·채널명·게시일·조회수 및 공개 댓글(최대 10개) 조회에 동의합니다. 댓글은 판정 근거로 사용하지 않습니다.</span></label><div className="consent-links"><a href="/privacy">개인정보 처리방침</a><a href="/terms">이용약관</a><a href="https://www.youtube.com/t/terms" target="_blank" rel="noopener noreferrer">YouTube 약관</a><a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">Google 개인정보</a></div></>}{sample && <span className="sample-state"><Icon name="shield" size={14}/>합성 예시는 외부로 전송하지 않습니다.</span>}</div><button type="button" className="sample-chip" onClick={loadSample}>예시로 시작하기 <Icon name="arrow" size={14}/></button></div>
+            <div className="chat-footer"><div>{sample && <span className="sample-state"><Icon name="shield" size={14}/>합성 예시는 외부로 전송하지 않습니다.</span>}</div><button type="button" className="sample-chip" onClick={loadSample}>예시로 시작하기 <Icon name="arrow" size={14}/></button></div>
           </form>
           <div className={`chat-status ${busy ? 'is-busy' : ''}`} role="status" aria-live="polite">{busy ? notice || '검증을 진행하고 있습니다.' : notice || (configured === false ? configurationHelp : '원문을 입력하거나 예시로 시작해 근거를 확인해 보세요.')}</div>
         </section>
@@ -646,9 +678,9 @@ export default function FactCheckDashboard() {
             </div>
           </> : <Panel className="dashboard-empty"><div className="empty-orbit"><Icon name="lens" size={31}/></div><h3>검증 결과가 이곳에 쌓입니다.</h3><p>대화창에 원문을 보내면 주장별 신뢰지수와 근거 출처를 연결해 보여드립니다.</p><div className="empty-preview-stats"><span><strong>--</strong><small>신뢰지수</small></span><span><strong>--</strong><small>검토 출처</small></span><span><strong>--</strong><small>연결 근거</small></span></div><button className="secondary-button" onClick={loadSample}>예시 대시보드 보기 <Icon name="arrow"/></button></Panel>}
         </section>
-        <footer className="page-footer"><span><span className="footer-mark">F</span>True or Not <span className="footer-divider">/</span>판단을 대신하지 않고, 근거를 연결합니다.</span><button className="text-button" onClick={() => setDialog('guide')}>검증 원칙<Icon name="arrow" size={15}/></button></footer>
+        <footer className="page-footer"><span><span className="footer-mark">F</span>True or Not <span className="footer-divider">/</span>판단을 대신하지 않고, 근거를 연결합니다.</span><span className="footer-links"><a href="/privacy">개인정보 처리방침</a><a href="/terms">이용약관</a><a href="https://www.youtube.com/t/terms" target="_blank" rel="noopener noreferrer">YouTube 약관</a><a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">Google 개인정보</a></span><button className="text-button" onClick={() => setDialog('guide')}>검증 원칙<Icon name="arrow" size={15}/></button></footer>
       </main>
     </div>
-    <Modal open={dialog !== null} title={activeDocument?.title || (dialog === 'guide' ? '근거를 읽는 세 가지 원칙' : '검증 안내')} onClose={() => setDialog(null)}>{activeDocument ? <><p className="dialog-notice">합성 예시 문서 · 외부 출처 링크가 아닙니다.</p><dl className="document-metadata"><dt>작성 주체</dt><dd>{activeDocument.publisher}</dd><dt>설정 날짜</dt><dd>{activeDocument.date}</dd><dt>원자료 관계</dt><dd>그룹 {activeDocument.group} · {activeDocument.relation}</dd></dl><div className="document-fulltext">{activeDocument.text}</div></> : dialog === 'guide' ? <ol className="guide-list"><li><span>01</span><div><h3>주장을 작게 나누세요.</h3><p>누가, 언제, 어디서, 어떤 조건으로 한 말인지 원문과 함께 확인하세요.</p></div></li><li><span>02</span><div><h3>출처의 수보다 관계를 보세요.</h3><p>같은 발표를 옮긴 여러 문서는 하나의 원자료를 공유할 수 있습니다.</p></div></li><li><span>03</span><div><h3>모르는 것은 남겨 두세요.</h3><p>근거가 없다고 거짓은 아닙니다. 의견과 미래 예측을 확정된 사실처럼 판정하지 않습니다.</p></div></li></ol> : <div className="about-copy"><p>동의 후 검증을 시작하면 원문과 확인 요청은 서버, 외부 AI 및 검색 서비스로 전송됩니다. 관련 YouTube 영상 제목과 공개 댓글 최대 10개는 YouTube Data API로 조회할 수 있습니다. 댓글은 LLM 입력 및 판정 근거로 사용하지 않습니다.</p><p>검증 결과와 YouTube 댓글은 현재 화면 메모리에만 유지되며 새로고침하면 사라집니다. YouTube API 제목·댓글은 JSON 내보내기에서 제외됩니다. 자세한 내용은 <a href="/privacy">개인정보 처리방침</a>과 <a href="/terms">이용약관</a>을 확인해 주세요.</p></div>}</Modal>
+    <Modal open={dialog !== null} title={activeDocument?.title || (dialog === 'guide' ? '근거를 읽는 세 가지 원칙' : '검증 안내')} onClose={() => setDialog(null)}>{activeDocument ? <><p className="dialog-notice">합성 예시 문서 · 외부 출처 링크가 아닙니다.</p><dl className="document-metadata"><dt>작성 주체</dt><dd>{activeDocument.publisher}</dd><dt>설정 날짜</dt><dd>{activeDocument.date}</dd><dt>원자료 관계</dt><dd>그룹 {activeDocument.group} · {activeDocument.relation}</dd></dl><div className="document-fulltext">{activeDocument.text}</div></> : dialog === 'guide' ? <ol className="guide-list"><li><span>01</span><div><h3>주장을 작게 나누세요.</h3><p>누가, 언제, 어디서, 어떤 조건으로 한 말인지 원문과 함께 확인하세요.</p></div></li><li><span>02</span><div><h3>출처의 수보다 관계를 보세요.</h3><p>같은 발표를 옮긴 여러 문서는 하나의 원자료를 공유할 수 있습니다.</p></div></li><li><span>03</span><div><h3>모르는 것은 남겨 두세요.</h3><p>근거가 없다고 거짓은 아닙니다. 의견과 미래 예측을 확정된 사실처럼 판정하지 않습니다.</p></div></li></ol> : <div className="about-copy"><p>검증을 시작하면 원문과 확인 요청은 서버, 외부 AI 및 검색 서비스로 전송됩니다. 채팅에 붙인 링크의 페이지는 서버에서 직접 가져오고, 첨부한 이미지는 주장 추출을 위해 AI 제공자에게 보내며 서버에 저장하지 않습니다. 관련 YouTube 영상 제목과 공개 댓글 최대 10개는 YouTube Data API로 조회할 수 있습니다. 댓글은 LLM 입력 및 판정 근거로 사용하지 않습니다.</p><p>검증 결과와 YouTube 댓글은 현재 화면 메모리에만 유지되며 새로고침하면 사라집니다. YouTube API 제목·댓글은 JSON 내보내기에서 제외됩니다. 자세한 내용은 <a href="/privacy">개인정보 처리방침</a>과 <a href="/terms">이용약관</a>을 확인해 주세요.</p></div>}</Modal>
   </div></MotionConfig>;
 }

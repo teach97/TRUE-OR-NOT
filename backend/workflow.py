@@ -14,6 +14,8 @@ class FactCheckState(TypedDict, total=False):
     focus: str
     consent: bool
     modelPreference: str
+    linkUrl: str | None
+    image: dict[str, Any] | None
     claims: list[dict[str, Any]]
     searchQueries: dict[str, str]
     searchNotice: str

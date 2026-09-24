@@ -18,12 +18,12 @@ from contracts import (
     FactCheckProgressSource,
     FactCheckResult,
 )
-from extraction import extract_claims
+from extraction import extract_claims, extract_image_claims, extract_page_claims
 from google_serp import FreeSearchUnavailable, search_google_free
 from providers import ProviderCallError, providers_for_preference, run_with_fallback
 from schemas import FactCheckRequest
-from search import search_sources
-from sources import read_sources
+from search import origin_group_for_url, search_sources, source_type_for_url
+from sources import fetch_public_text, read_sources
 from verification import verify_claims
 from youtube import fetch_youtube_data
 from workflow import FactCheckState, Stage, build_workflow
@@ -142,6 +142,36 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
         }
 
     async def extract(state: FactCheckState):
+        image = state.get("image")
+        if isinstance(image, dict) and image.get("data"):
+            return await with_fallback(
+                state,
+                lambda provider, client: extract_image_claims(
+                    state, image, client=client, provider=provider
+                ),
+                "EXTRACTION_FAILED",
+            )
+        link_url = state.get("linkUrl")
+        if (
+            isinstance(link_url, str)
+            and link_url
+            and state.get("text", "").strip() == link_url.strip()
+        ):
+            try:
+                page_text, _ = await fetch_public_text(link_url)
+            except Exception:
+                page_text = ""
+            if isinstance(page_text, str) and page_text.strip():
+                async def page_operation(provider, client):
+                    return await extract_page_claims(
+                        page_text,
+                        focus=state.get("focus", ""),
+                        client=client,
+                        provider=provider,
+                    )
+
+                update = await with_fallback(state, page_operation, "EXTRACTION_FAILED")
+                return {**update, "text": page_text}
         return await with_fallback(
             state,
             lambda provider, client: extract_claims(
@@ -172,16 +202,43 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
         return {**update, "searchNotice": search_notice} if search_notice else update
 
     async def read(state: FactCheckState):
+        sources = state.get("sources", [])
+        link_url = state.get("linkUrl")
+        if (
+            isinstance(link_url, str)
+            and link_url
+            and not any(
+                isinstance(source, dict)
+                and (source.get("url") == link_url or source.get("resolvedUrl") == link_url)
+                for source in sources
+            )
+        ):
+            host = urlsplit(link_url).hostname or link_url
+            seed = {
+                "id": "s0",
+                "url": link_url,
+                "title": host,
+                "publisher": host,
+                "sourceType": source_type_for_url(link_url),
+                "originGroupId": origin_group_for_url(link_url),
+                "accessStatus": "pending",
+                "searchProvider": None,
+                "searchQuery": None,
+                "candidateOrder": None,
+            }
+            # Keep the linked page plus at most five searched candidates.
+            sources = [seed, *sources][:6]
+        read_state = {**state, "sources": sources}
         youtube_key = settings.youtube_api_key.get_secret_value()
         if not youtube_key or not any(
-            source.get("sourceType") == "유튜브" for source in state.get("sources", [])
+            source.get("sourceType") == "유튜브" for source in sources if isinstance(source, dict)
         ):
-            return await read_sources(state)
+            return await read_sources(read_state)
         async with httpx.AsyncClient(timeout=8.0, trust_env=False) as client:
             async def youtube_reader(url):
                 return await fetch_youtube_data(url, api_key=youtube_key, client=client)
 
-            return await read_sources(state, youtube_reader=youtube_reader)
+            return await read_sources(read_state, youtube_reader=youtube_reader)
 
     async def verify(state: FactCheckState):
         return await with_fallback(

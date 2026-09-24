@@ -60,8 +60,8 @@ export async function POST(req: Request) {
   let input:FactCheckRequest;
   try {
     const signal=AbortSignal.any([req.signal,AbortSignal.timeout(5000)]);
-    if(Number(req.headers.get('content-length'))>80000)throw new Error('BODY_TOO_LARGE');
-    input=validateRequest(JSON.parse(await limitedText(new Response(req.body),80000,signal)));
+    if(Number(req.headers.get('content-length'))>3000000)throw new Error('BODY_TOO_LARGE');
+    input=validateRequest(JSON.parse(await limitedText(new Response(req.body),3000000,signal)));
   }catch{return error(400,'INVALID_REQUEST','본문, 확인 요청 길이 및 외부 전송 동의를 확인해 주세요.');}
   if(active>=1)return error(429,'BUSY','진행 중인 검증이 있습니다. 완료 후 다시 시도해 주세요.');
   if(req.signal.aborted)return error(400,'CANCELLED','요청이 취소되었습니다.');

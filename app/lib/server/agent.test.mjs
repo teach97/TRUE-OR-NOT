@@ -47,7 +47,9 @@ test('validates request consent, lengths and unknown fields', async () => {
   const { validateRequest } = await import('./agent.ts');
   assert.deepEqual(validateRequest({text:'hello',focus:'',consent:true}), {text:'hello',focus:'',consent:true,modelPreference:'auto'});
   assert.equal(validateRequest({text:'hello',focus:'',consent:true,modelPreference:'gpt-6-luna'}).modelPreference,'gpt-6-luna');
-  for (const value of [null, {}, {text:'x',focus:'',consent:false}, {text:'x'.repeat(12001),focus:'',consent:true}, {text:'x',focus:'y'.repeat(501),consent:true}, {text:'x',focus:'',consent:true,apiKey:'bad'}, {text:'x',focus:'',consent:true,modelPreference:'unlisted'}]) {
+  assert.deepEqual(validateRequest({text:'https://example.com/a',focus:'',consent:true,linkUrl:'https://example.com/a'}), {text:'https://example.com/a',focus:'',consent:true,modelPreference:'auto',linkUrl:'https://example.com/a'});
+  assert.deepEqual(validateRequest({text:'',focus:'',consent:true,image:{mime:'image/jpeg',data:'eA=='}}), {text:'',focus:'',consent:true,modelPreference:'auto',image:{mime:'image/jpeg',data:'eA=='}});
+  for (const value of [null, {}, {text:'x',focus:'',consent:false}, {text:'x'.repeat(12001),focus:'',consent:true}, {text:'x',focus:'y'.repeat(501),consent:true}, {text:'x',focus:'',consent:true,apiKey:'bad'}, {text:'x',focus:'',consent:true,modelPreference:'unlisted'}, {text:'',focus:'',consent:true}, {text:'hi',focus:'',consent:true,linkUrl:'ftp://x/y'}, {text:'hi',focus:'',consent:true,image:{mime:'image/gif',data:'eA=='}}, {text:'hi',focus:'',consent:true,image:{mime:'image/png',data:'!!!'}}, {text:'hi',focus:'',consent:true,image:{mime:'image/png',data:'eA=='.repeat(400000)}}]) {
     assert.throws(() => validateRequest(value));
   }
 });
