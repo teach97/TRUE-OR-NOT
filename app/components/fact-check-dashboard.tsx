@@ -240,11 +240,24 @@ const VERIFY_STAGES: Array<{id: AgentStage; label: string}> = [
 ];
 
 function VerifyTimeline({progress}: {progress: ChatProgress}) {
-  if (!progress.statusStage && !progress.completed && !progress.error) return null;
   const currentIndex = progress.completed
     ? VERIFY_STAGES.length
     : Math.max(0, VERIFY_STAGES.findIndex(stage => stage.id === progress.statusStage));
+  const [travel, setTravel] = useState<{from: number; to: number; key: number} | null>(null);
+  const prevRef = useRef(currentIndex);
+  useEffect(() => {
+    const from = prevRef.current;
+    const to = Math.min(currentIndex, VERIFY_STAGES.length - 1);
+    prevRef.current = currentIndex;
+    if (to <= from) return;
+    const key = from * 10 + to;
+    setTravel({from, to, key});
+    const timer = setTimeout(() => setTravel(active => active?.key === key ? null : active), 900);
+    return () => clearTimeout(timer);
+  }, [currentIndex]);
+  if (!progress.statusStage && !progress.completed && !progress.error) return null;
   return <ol className="verify-timeline" aria-label="검증 단계 진행">
+    {travel && <span key={travel.key} className="verify-traveler" aria-hidden="true" style={{'--travel-from': `${((travel.from + 0.5) / VERIFY_STAGES.length) * 100}%`, '--travel-width': `${((travel.to - travel.from) / VERIFY_STAGES.length) * 100}%`} as CSSProperties}/>}
     {VERIFY_STAGES.map((stage, index) => <li key={stage.id} data-state={index < currentIndex ? 'done' : index === currentIndex ? 'active' : 'todo'}><span className="verify-timeline-dot" aria-hidden="true"/><span>{stage.label}</span></li>)}
   </ol>;
 }

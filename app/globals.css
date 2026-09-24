@@ -599,9 +599,23 @@ button, p, h3, dd { overflow-wrap: anywhere; }
 .blur-text.is-visible .blur-text-word { filter: blur(0); opacity: 1; transform: none; }
 
 /* Verification timeline (Animata Animated Timeline, horizontal stepper) */
-.verify-timeline { display: flex; margin: 12px 0 4px; padding: 0; list-style: none; }
+.verify-timeline { position: relative; display: flex; margin: 12px 0 4px; padding: 0; list-style: none; }
+.verify-traveler {
+  position: absolute; top: 5px; left: var(--travel-from); width: var(--travel-width); height: 2px;
+  border-radius: 2px; pointer-events: none;
+  background: linear-gradient(90deg, transparent, var(--accent));
+  box-shadow: 0 0 10px 2px rgb(155 221 212 / .5);
+  transform: scaleX(0); transform-origin: left center;
+  animation: traveler-sweep .8s cubic-bezier(.3, .7, .3, 1) forwards;
+}
+@keyframes traveler-sweep {
+  0% { transform: scaleX(0); opacity: 0; }
+  20% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { transform: scaleX(1); opacity: 0; }
+}
 .verify-timeline li { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; gap: 5px; color: var(--subtle); font-size: 10px; }
-.verify-timeline li::before { content: ''; position: absolute; top: 5px; left: -50%; width: 100%; height: 1px; background: rgb(255 255 255 / .1); }
+.verify-timeline li::before { content: ''; position: absolute; top: 5px; left: -50%; width: 100%; height: 1px; background: rgb(255 255 255 / .1); transition: background .6s ease; }
 .verify-timeline li:first-child::before { display: none; }
 .verify-timeline li[data-state='done'] { color: #9fb3b7; }
 .verify-timeline li[data-state='done']::before { background: var(--accent); }
@@ -613,7 +627,12 @@ button, p, h3, dd { overflow-wrap: anywhere; }
   border-color: #eafffb;
   background: radial-gradient(circle, #ffffff 0 28%, var(--accent) 52%, rgb(155 221 212 / .1) 78%);
   box-shadow: 0 0 12px 3px rgb(155 221 212 / .55), 0 0 30px 8px rgb(155 221 212 / .18);
-  animation: timeline-glow 1.6s ease-in-out infinite;
+  animation: timeline-glow 1.6s ease-in-out infinite, dot-pop .45s cubic-bezier(.2, .7, .3, 1.4);
+}
+@keyframes dot-pop {
+  0% { transform: scale(.4); }
+  60% { transform: scale(1.2); }
+  100% { transform: scale(1); }
 }
 @keyframes timeline-glow {
   0%, 100% { box-shadow: 0 0 10px 2px rgb(155 221 212 / .5), 0 0 26px 6px rgb(155 221 212 / .15); }
