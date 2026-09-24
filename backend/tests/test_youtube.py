@@ -100,6 +100,40 @@ def test_comments_unavailable_keeps_video_title_without_exposing_provider_error(
     }
 
 
+def test_low_reach_video_skips_comment_fetch():
+    requests = []
+
+    def handler(request):
+        requests.append(request)
+        return httpx.Response(200, json={"items": [{
+            "snippet": {
+                "title": "제목",
+                "channelTitle": "채널",
+                "publishedAt": "2026-09-20T12:30:00Z",
+            },
+            "statistics": {"viewCount": "9"},
+        }]})
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            return await fetch_youtube_data(
+                "https://www.youtube.com/watch?v=aB_12345678",
+                api_key="youtube-test-key",
+                client=client,
+            )
+
+    assert asyncio.run(run()) == {
+        "title": "제목",
+        "channelTitle": "채널",
+        "publishedAt": "2026-09-20T12:30:00Z",
+        "viewCount": "9",
+        "comments": [],
+        "status": "unavailable",
+    }
+    assert len(requests) == 1
+    assert requests[0].url.path.endswith("/youtube/v3/videos")
+
+
 def test_missing_key_or_invalid_video_url_makes_no_api_request():
     requests = []
 

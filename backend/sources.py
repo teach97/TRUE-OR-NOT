@@ -7,6 +7,7 @@ from html.parser import HTMLParser
 from datetime import datetime, timezone
 from urllib.parse import urljoin, urlsplit
 from search import _source_identity, candidate_url
+from youtube import MIN_YOUTUBE_VIEWS
 
 import aiohttp
 from aiohttp.abc import AbstractResolver
@@ -465,6 +466,14 @@ async def read_sources(state, *, reader=fetch_public_text, youtube_reader=None):
                 except Exception:
                     # One unavailable YouTube item must not fail other source reads.
                     item['youtubeDataStatus'] = 'unavailable'
+            if (
+                item['youtubeDataStatus'] == 'unavailable'
+                and isinstance(item['youtubeViewCount'], str)
+                and item['youtubeViewCount'].isdigit()
+                and int(item['youtubeViewCount']) <= MIN_YOUTUBE_VIEWS
+            ):
+                # Low-reach videos are excluded from results entirely.
+                continue
             sources.append(item)
             continue
         try:

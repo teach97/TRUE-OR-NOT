@@ -10,6 +10,7 @@ import httpx
 API_ROOT = "https://www.googleapis.com/youtube/v3"
 MAX_COMMENT_COUNT = 10
 MAX_RESPONSE_BYTES = 256_000
+MIN_YOUTUBE_VIEWS = 10_000
 _VIDEO_ID = re.compile(r"^[A-Za-z0-9_-]{11}$")
 _VIEW_COUNT = re.compile(r"^\d{1,30}$")
 _PUBLISHED_AT = re.compile(
@@ -157,6 +158,9 @@ async def fetch_youtube_data(
     statistics = videos[0].get("statistics") if isinstance(videos[0], dict) else None
     raw_view_count = statistics.get("viewCount") if isinstance(statistics, dict) else None
     view_count = raw_view_count if isinstance(raw_view_count, str) and _VIEW_COUNT.fullmatch(raw_view_count) else None
+    if view_count is not None and int(view_count) <= MIN_YOUTUBE_VIEWS:
+        # Low-reach videos are doorway-grade noise; skip the comment quota.
+        return _unavailable(title, channel_title, published_at, view_count)
 
     try:
         comments_payload = await _request_json(

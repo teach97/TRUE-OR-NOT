@@ -177,6 +177,30 @@ def test_read_node_uses_page_title_when_search_only_provided_a_host():
     assert state['sources'][0]['title'] == 'Astra research update · Example newsroom'
 
 
+def test_low_reach_youtube_source_is_dropped_from_results():
+    async def youtube_reader(url):
+        return {
+            "title": "AGI 전망 인터뷰",
+            "channelTitle": "채널",
+            "publishedAt": None,
+            "viewCount": "9",
+            "comments": [],
+            "status": "unavailable",
+        }
+
+    state = asyncio.run(sources.read_sources({
+        "sources": [{
+            "id": "s1",
+            "url": "https://www.youtube.com/watch?v=aB_12345678",
+            "title": "검색 결과 제목",
+            "sourceType": "유튜브",
+        }],
+    }, youtube_reader=youtube_reader))
+
+    assert state["sources"] == []
+    assert state["sourceTexts"] == {}
+
+
 def test_youtube_comments_are_context_only_and_never_become_source_text():
     async def youtube_reader(url):
         assert url == 'https://www.youtube.com/watch?v=aB_12345678'
