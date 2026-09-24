@@ -172,7 +172,7 @@ export function validateRequest(value: unknown): FactCheckRequest {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('INVALID_REQUEST');
   const v = value as Record<string, unknown>;
   const keySet = new Set(Object.keys(v));
-  const allowed = new Set(['consent', 'focus', 'text', 'modelPreference', 'linkUrl', 'image']);
+  const allowed = new Set(['consent', 'focus', 'text', 'modelPreference', 'linkUrl', 'image', 'jevMode']);
   if (!keySet.has('consent') || !keySet.has('focus') || !keySet.has('text') || ![...keySet].every(key => allowed.has(key))) throw new Error('INVALID_REQUEST');
   const modelPreference = v.modelPreference ?? 'auto';
   const validPreference = modelPreference === 'auto' ||
@@ -192,8 +192,9 @@ export function validateRequest(value: unknown): FactCheckRequest {
     if (typeof attachment.data !== 'string' || !attachment.data || attachment.data.length > 1500000 || !/^[A-Za-z0-9+/]*={0,2}$/.test(attachment.data)) throw new Error('INVALID_REQUEST');
     image = {mime: attachment.mime as AttachedImage['mime'], data: attachment.data};
   }
+  if (v.jevMode !== undefined && v.jevMode !== null && typeof v.jevMode !== 'boolean') throw new Error('INVALID_REQUEST');
   if (!validPreference || v.consent !== true ||
       typeof v.text !== 'string' || v.text.length > 12000 || (!v.text.trim() && !image) ||
       typeof v.focus !== 'string' || v.focus.length > 500) throw new Error('INVALID_REQUEST');
-  return { text: v.text, focus: v.focus, consent: true, modelPreference: modelPreference as FactCheckRequest['modelPreference'], ...(linkUrl ? {linkUrl} : {}), ...(image ? {image} : {}) };
+  return { text: v.text, focus: v.focus, consent: true, modelPreference: modelPreference as FactCheckRequest['modelPreference'], ...(linkUrl ? {linkUrl} : {}), ...(image ? {image} : {}), ...(v.jevMode ? {jevMode: true} : {}) };
 }

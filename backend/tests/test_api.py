@@ -134,7 +134,7 @@ def test_request_preserves_original_text():
     request = FactCheckRequest(text="  검증할 주장  ", focus="", consent=True)
     assert request.model_dump() == {
         "text": "  검증할 주장  ", "focus": "", "consent": True,
-        "modelPreference": "auto", "linkUrl": None, "image": None,
+        "modelPreference": "auto", "linkUrl": None, "image": None, "jevMode": False,
     }
     selected = FactCheckRequest(
         text="claim", focus="", consent=True, modelPreference="gpt-6-luna"

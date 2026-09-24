@@ -16,6 +16,7 @@ class FactCheckState(TypedDict, total=False):
     modelPreference: str
     linkUrl: str | None
     image: dict[str, Any] | None
+    jevMode: bool
     claims: list[dict[str, Any]]
     searchQueries: dict[str, str]
     searchNotice: str

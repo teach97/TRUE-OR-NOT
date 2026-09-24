@@ -45,6 +45,7 @@ class FactCheckRequest(BaseModel):
     modelPreference: ModelPreference = "auto"
     linkUrl: str | None = Field(default=None, max_length=2048)
     image: ImageAttachment | None = None
+    jevMode: bool = False
 
     @field_validator("text", "focus")
     @classmethod

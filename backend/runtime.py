@@ -20,11 +20,12 @@ from contracts import (
 )
 from extraction import extract_claims, extract_image_claims, extract_page_claims
 from google_serp import FreeSearchUnavailable, search_google_free
+from jev import JevError
 from providers import ProviderCallError, providers_for_preference, run_with_fallback
 from schemas import FactCheckRequest
 from search import origin_group_for_url, search_sources, source_type_for_url
 from sources import fetch_public_text, read_sources
-from verification import verify_claims
+from verification import verify_claims, verify_claims_jev
 from youtube import fetch_youtube_data
 from workflow import FactCheckState, Stage, build_workflow
 
@@ -52,6 +53,7 @@ class Settings(BaseModel):
     gemini_api_key: SecretStr = SecretStr("")
     youtube_api_key: SecretStr = SecretStr("")
     serpapi_api_key: SecretStr = SecretStr("")
+    ai_gateway_api_key: SecretStr = SecretStr("")
 
 
 def load_settings(env_path: Path | None = None) -> Settings:
@@ -62,11 +64,13 @@ def load_settings(env_path: Path | None = None) -> Settings:
     gemini_key = os.environ.get("GEMINI_API_KEY", values.get("GEMINI_API_KEY") or "")
     youtube_key = os.environ.get("YOUTUBE_API_KEY", values.get("YOUTUBE_API_KEY") or "")
     serpapi_key = os.environ.get("SERPAPI_API_KEY", values.get("SERPAPI_API_KEY") or "")
+    gateway_key = os.environ.get("AI_GATEWAY_API_KEY", values.get("AI_GATEWAY_API_KEY") or "")
     return Settings(
         api_key=SecretStr(key.strip()),
         gemini_api_key=SecretStr(gemini_key.strip()),
         youtube_api_key=SecretStr(youtube_key.strip()),
         serpapi_api_key=SecretStr(serpapi_key.strip()),
+        ai_gateway_api_key=SecretStr(gateway_key.strip()),
     )
 
 
@@ -241,6 +245,17 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
             return await read_sources(read_state, youtube_reader=youtube_reader)
 
     async def verify(state: FactCheckState):
+        if state.get("jevMode"):
+            try:
+                async with httpx.AsyncClient(timeout=90, trust_env=False) as client:
+                    update = await verify_claims_jev(
+                        state,
+                        client=client,
+                        api_key=settings.ai_gateway_api_key.get_secret_value(),
+                    )
+                return {**update, "llmModel": "typesafe-ai/jev"}
+            except JevError as exc:
+                _logger.warning("jev verify failed, escalating to llm: %s", type(exc).__name__)
         return await with_fallback(
             state,
             lambda provider, client: verify_claims(
@@ -250,6 +265,12 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
         )
 
     async def synthesize(state: FactCheckState):
+        if state.get("jevMode"):
+            return {
+                "answer": insufficient_answer(),
+                "answerModel": None,
+                "answerReasoning": None,
+            }
         if not eligible_sources(state):
             return {
                 "answer": insufficient_answer(),

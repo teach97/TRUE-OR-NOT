@@ -15,6 +15,7 @@ from providers import (
     openai_provider,
     request_structured,
 )
+from jev import JevError, evaluate_claims_jev
 from scoring import normalize_fact_score, score_band, score_label
 
 
@@ -129,6 +130,23 @@ def _source_index(sources: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
             raise ValueError("INVALID_STATE")
         indexed[source_id] = source
     return indexed
+
+
+def _verifiable_inputs(state):
+    """Share the checkable-claim and verified-source filter between paths."""
+    claims = state.get("claims", [])
+    sources = state.get("sources", [])
+    source_texts = state.get("sourceTexts", {})
+    checkable_claims = [claim for claim in claims if claim.get("kind") in _CHECKABLE_KINDS]
+    verified_sources = [
+        source
+        for source in sources
+        if source.get("accessStatus") == "verified"
+        and isinstance(source.get("id"), str)
+        and isinstance(source_texts.get(source.get("id")), str)
+        and source_texts.get(source.get("id"), "").strip()
+    ]
+    return claims, sources, source_texts, checkable_claims, verified_sources
 
 
 def _parse_judgments(judgments: list[dict[str, Any]] | list[Judgment]) -> list[Judgment]:
@@ -431,18 +449,7 @@ async def verify_claims(
     provider: LLMProvider | None = None,
 ) -> dict[str, list[dict[str, Any]]]:
     """Request a source-only judgment and ground it before returning state."""
-    claims = state.get("claims", [])
-    sources = state.get("sources", [])
-    source_texts = state.get("sourceTexts", {})
-    checkable_claims = [claim for claim in claims if claim.get("kind") in _CHECKABLE_KINDS]
-    verified_sources = [
-        source
-        for source in sources
-        if source.get("accessStatus") == "verified"
-        and isinstance(source.get("id"), str)
-        and isinstance(source_texts.get(source.get("id")), str)
-        and source_texts.get(source.get("id"), "").strip()
-    ]
+    claims, sources, source_texts, checkable_claims, verified_sources = _verifiable_inputs(state)
 
     if not checkable_claims or not verified_sources:
         return ground_judgments(
@@ -516,3 +523,74 @@ async def verify_claims(
         source_texts,
         source_sections=state.get("sourceSections", {}),
     )
+
+
+_JEV_SUMMARIES = {
+    "mostly_supported": "제시된 근거가 주장을 뒷받침합니다.",
+    "partially_supported": "근거가 주장을 일부만 뒷받침합니다.",
+    "contradicted": "제시된 근거가 주장에 반대됩니다.",
+    "insufficient_evidence": "직접 근거가 부족하여 결론을 유보합니다.",
+}
+
+_JEV_MODE_WARNING = "Jev 고속 판정: 직접 인용을 표시하지 않습니다."
+
+
+async def verify_claims_jev(
+    state: dict[str, Any],
+    *,
+    client: httpx.AsyncClient,
+    api_key: str | None = None,
+) -> dict[str, list[dict[str, Any]]]:
+    """Judge checkable claims with Jev; evidence lists stay empty for the score view.
+
+    Raises JevError so the caller can escalate to the LLM path on transport
+    failure, malformed output, or low confidence.
+    """
+    claims, sources, source_texts, checkable_claims, verified_sources = _verifiable_inputs(state)
+    if not checkable_claims or not verified_sources:
+        return ground_judgments(
+            claims,
+            _empty_judgments(checkable_claims),
+            sources,
+            source_texts,
+            source_sections=state.get("sourceSections", {}),
+        )
+    evidence_by_claim = {
+        claim["id"]: "\n\n".join(
+            f"[{source['id']}] {source_texts[source['id']][:_MAX_MODEL_SOURCE_TEXT]}"
+            for source in verified_sources
+        )
+        for claim in checkable_claims
+    }
+    judgments = await evaluate_claims_jev(
+        checkable_claims, evidence_by_claim, client=client, api_key=api_key
+    )
+    by_claim = {judgment["claimId"]: judgment for judgment in judgments}
+    final_claims: list[dict[str, Any]] = []
+    for claim in claims:
+        kind = claim.get("kind")
+        if kind in {"opinion", "prediction"}:
+            final_claims.append(
+                _base_claim_result(
+                    claim,
+                    "not_checkable",
+                    "의견 또는 예측은 현재 사실로 확정할 수 없습니다.",
+                )
+            )
+            continue
+        judgment = by_claim.get(claim.get("id"))
+        if judgment is None:
+            final_claims.append(
+                _base_claim_result(
+                    claim,
+                    "insufficient_evidence",
+                    "직접 근거 또는 검증 조건이 부족합니다.",
+                )
+            )
+            continue
+        result = _base_claim_result(
+            claim, judgment["verdictCode"], _JEV_SUMMARIES[judgment["verdictCode"]], judgment["factScore"]
+        )
+        result["warnings"] = [_JEV_MODE_WARNING]
+        final_claims.append(result)
+    return {"claims": final_claims, "evidence": []}

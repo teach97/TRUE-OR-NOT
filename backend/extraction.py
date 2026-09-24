@@ -103,7 +103,7 @@ async def extract_claims(
             active,
             client,
             instructions=_EXTRACTION_INSTRUCTIONS,
-            input_data=request.model_dump(exclude={"modelPreference", "linkUrl", "image"}),
+            input_data=request.model_dump(exclude={"modelPreference", "linkUrl", "image", "jevMode"}),
             schema=Extraction.model_json_schema(),
             max_output_tokens=6000,
         )
