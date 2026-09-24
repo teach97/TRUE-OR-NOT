@@ -67,6 +67,29 @@ def test_unavailable_and_oversized_content_rejected(response):
         run([response]*4)
 
 
+def test_read_rejects_cross_origin_meta_refresh_doorway():
+    html = ('<html><head><meta http-equiv="refresh" content="0; url=https://ads.example.net/promo">'
+            '<title>Moved</title></head><body><p>The Document has moved here</p></body></html>')
+    with pytest.raises(ValueError):
+        run([Response(body=html.encode('utf-8'))])
+
+
+def test_read_follows_same_origin_meta_refresh():
+    first = ('<html><head><meta http-equiv="refresh" content="0; URL=/real-article">'
+             '</head><body></body></html>')
+    second = '<html><body><article><p>Real article content on the same site.</p></article></body></html>'
+    (text, url), session = run([Response(body=first.encode()), Response(body=second.encode())])
+    assert text == 'Real article content on the same site.'
+    assert url == 'https://example.org/real-article'
+    assert session.urls == ['https://example.org/a', 'https://example.org/real-article']
+
+
+def test_read_rejects_doorway_stub_text_without_usable_content():
+    html = '<html><head><title>Moved</title></head><body><p>The Document has moved here</p></body></html>'
+    with pytest.raises(ValueError):
+        run([Response(body=html.encode('utf-8'))])
+
+
 def test_read_node_records_failure_without_inventing_text():
     assert hasattr(sources, 'read_sources'), 'Read node missing'
     async def reader(url):
@@ -94,6 +117,29 @@ def test_read_node_deduplicates_distinct_search_urls_that_resolve_to_the_same_pa
 
     assert [source['id'] for source in state['sources']] == ['s1']
     assert state['sourceTexts'] == {'s1': 'Same article text'}
+
+
+def test_read_node_keeps_bounded_article_sections_for_the_verified_source():
+    sections = [{
+        'level': 2,
+        'title': '4. 텔러린 앱',
+        'text': '텔러린 앱은 여러 기능을 통합해 제공하는 서비스입니다.',
+        'truncated': False,
+    }]
+
+    async def reader(url):
+        return sources.SourceReadResult(
+            '4. 텔러린 앱 텔러린 앱은 여러 기능을 통합해 제공하는 서비스입니다.',
+            url,
+            '마크 저커버그',
+            sections,
+        )
+
+    state = asyncio.run(sources.read_sources({
+        'sources': [{'id': 's1', 'url': 'https://example.org/mark', 'title': '마크 저커버그'}],
+    }, reader=reader))
+
+    assert state['sourceSections'] == {'s1': sections}
 
 
 def test_read_node_skips_japanese_article_body_from_generic_domain():

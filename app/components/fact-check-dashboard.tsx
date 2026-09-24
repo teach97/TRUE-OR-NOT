@@ -6,10 +6,10 @@ import type { CSSProperties, FormEvent, ReactNode } from 'react';
 import { initialState, transition } from './demo-state';
 import type { Claim } from './demo-state';
 import { MODEL_OPTIONS } from '../lib/fact-check-contract';
-import type { AnswerBlock, FactCheckAnswer, FactCheckResult, FactSource, ModelOption, ModelPreference } from '../lib/fact-check-contract';
+import type { AnswerBlock, FactCheckAnswer, FactCheckResult, FactSource, ModelOption, ModelPreference, ProgressClaim, ProgressSource } from '../lib/fact-check-contract';
 import { sourceDiscoveryLabel } from '../lib/source-discovery';
 import { scoreBand, scoreLabel } from '../lib/fact-score';
-import { stripYoutubeApiDataForExport, youtubeThumbnailUrl } from '../lib/youtube-context';
+import { formatYoutubePublishedAt, formatYoutubeViewCount, stripYoutubeApiDataForExport, youtubeThumbnailUrl } from '../lib/youtube-context';
 import { FactCheckError, readFactCheckStream, safeSourceUrl } from './fact-check-client';
 import { composeAssistantReply, createAnswerCitationDisplayState, presentAnswerCitations } from './fact-check-reply';
 import { DEMO_FOCUS, DEMO_TEXT, demoPreview, documents } from './demo-fixture';
@@ -57,6 +57,43 @@ function hasEnglishText(value: string) {
   return /[A-Za-z]/.test(value);
 }
 
+const YOUTUBE_AVATAR_PALETTES = [
+  {background: '#3b3d40', skin: '#c7c7c7', hair: '#242629', shirt: '#77797d'},
+  {background: '#303236', skin: '#b8b9bb', hair: '#17191b', shirt: '#62656a'},
+  {background: '#45474b', skin: '#d0d0d0', hair: '#303236', shirt: '#85878a'},
+  {background: '#35373a', skin: '#c0c1c2', hair: '#202225', shirt: '#707276'},
+  {background: '#414347', skin: '#d4d4d4', hair: '#292b2e', shirt: '#66696e'},
+  {background: '#2e3033', skin: '#bfc0c1', hair: '#101214', shirt: '#7d7f82'},
+];
+const YOUTUBE_AVATAR_HAIR = [
+  'M10 21c0-8 4-13 10-13s10 5 10 13c-3-3-6-4-10-4s-7 1-10 4Z',
+  'M9 22c-1-9 3-14 11-14s12 5 11 14c-2-2-3-5-4-8-4 4-10 6-18 8Z',
+  'M9 20c0-8 4-12 11-12 8 0 11 5 11 12l-4-2c-2-4-5-6-8-6s-7 2-9 8Z',
+  'M10 21c-1-7 3-13 10-13 8 0 11 5 10 13-3-4-5-6-10-6s-7 2-10 6Z',
+  'M9 22c0-9 4-14 11-14 8 0 12 6 11 14-3-2-4-4-5-8-4 4-10 6-17 8Z',
+  'M10 21c0-8 4-13 10-13 7 0 10 5 10 13-2-2-5-4-10-4s-8 2-10 4Z',
+];
+
+function YoutubeCommentAvatar({sourceId, index}: {sourceId: string; index: number}) {
+  let hash = 2166136261;
+  const seed = `${sourceId}:${index}`;
+  for (let offset = 0; offset < seed.length; offset += 1) hash = Math.imul(hash ^ seed.charCodeAt(offset), 16777619);
+  const variant = (hash >>> 0) % YOUTUBE_AVATAR_PALETTES.length;
+  const palette = YOUTUBE_AVATAR_PALETTES[variant];
+  return <span className="youtube-comment-avatar" aria-hidden="true">
+    <svg viewBox="0 0 40 40" focusable="false">
+      <circle cx="20" cy="20" r="20" fill={palette.background}/>
+      <path d="M3 40c1-8 7-12 17-12s16 4 17 12Z" fill={palette.shirt}/>
+      <ellipse cx="20" cy="21" rx="8.7" ry="10.5" fill={palette.skin}/>
+      <path d={YOUTUBE_AVATAR_HAIR[variant]} fill={palette.hair}/>
+      {variant === 1 || variant === 4 ? <path d="M10 19v11l4 2V20m16-1v12l-4 1V20" fill={palette.hair}/> : null}
+      <circle cx="17" cy="22" r=".8" fill="#333538"/>
+      <circle cx="23" cy="22" r=".8" fill="#333538"/>
+      <path d="M18 26q2 1.5 4 0" fill="none" stroke="#77797b" strokeWidth=".9" strokeLinecap="round"/>
+    </svg>
+  </span>;
+}
+
 function YoutubeCommentContext({source}: {source: FactSource}) {
   if (source.sourceType !== '유튜브') return null;
   const statusText = source.youtubeDataStatus === 'collected'
@@ -66,9 +103,9 @@ function YoutubeCommentContext({source}: {source: FactSource}) {
       : '댓글 조회 불가';
   return <details className="youtube-comment-context">
     <summary><span>공개 댓글 {source.youtubeComments.length}개 · 의견 맥락</span><span>{statusText}</span></summary>
-    <p className="source-caption">최대 10개의 공개 댓글입니다. 대표 의견을 뜻하지 않으며 AI 판정과 인용 근거에 사용하지 않습니다.</p>
+    <p className="source-caption">최대 10개의 공개 댓글입니다. 대표 의견을 뜻하지 않으며 AI 판정과 인용 근거에 사용하지 않습니다. 왼쪽 그림은 실제 작성자 사진이 아닌 임의 생성 이미지입니다.</p>
     {source.youtubeDataStatus === 'collected' && source.youtubeComments.length
-      ? <ol>{source.youtubeComments.map((comment, index) => <li key={`${source.id}-${index}`}>{comment}</li>)}</ol>
+      ? <ol>{source.youtubeComments.map((comment, index) => <li className="youtube-comment-row" key={`${source.id}-${index}`}><YoutubeCommentAvatar sourceId={source.id} index={index}/><span className="youtube-comment-text">{comment}</span></li>)}</ol>
       : <p className="youtube-empty">{source.youtubeDataStatus === 'not_configured'
         ? 'backend/.env에 YOUTUBE_API_KEY를 설정하면 공개 댓글을 조회할 수 있습니다.'
         : source.youtubeDataStatus === 'collected'
@@ -91,12 +128,22 @@ function YoutubeThumbnail({source}: {source: FactSource}) {
     : <div className="youtube-thumbnail-frame">{image}</div>;
 }
 
+function YoutubeVideoMetadata({source}: {source: FactSource}) {
+  const publishedAt = formatYoutubePublishedAt(source.youtubePublishedAt);
+  const viewCount = formatYoutubeViewCount(source.youtubeViewCount);
+  return <div className="youtube-video-metadata" aria-label="유튜브 영상 정보">
+    <span><small>채널</small>{source.youtubeChannelTitle || '확인 불가'}</span>
+    <span><small>게시일</small>{publishedAt || '확인 불가'}</span>
+    <span><small>조회수</small>{viewCount || '확인 불가'}</span>
+  </div>;
+}
+
 function TrustIndex({score, claimCount, sourceCount, evidenceCount, warningCount}: {score: number | null; claimCount: number; sourceCount: number; evidenceCount: number; warningCount: number}) {
   const band = score === null ? 'neutral' : scoreBand(score);
   const ringStyle = score === null ? undefined : ({'--trust-score': `${score}%`} as CSSProperties);
   return <div className={`trust-index ${score === null ? 'is-empty' : ''}`} data-score-band={band}>
     <div className="trust-index-head">
-      <div><span className="metric-label">종합 신뢰지수</span><h3>근거가 확인된 정도</h3></div>
+      <div><span className="metric-label">종합 신뢰지수</span><h3>팩트 점수</h3></div>
       {score !== null && <span className={`score-label score-${band}`}>{scoreLabel(score)}</span>}
     </div>
     <div className="trust-index-main">
@@ -117,8 +164,14 @@ function TrustIndex({score, claimCount, sourceCount, evidenceCount, warningCount
   </div>;
 }
 
-type ChatMessage = {id: string; role: 'assistant' | 'user'; text?: string; answer?: FactCheckAnswer; sources?: FactSource[]; meta?: string; tone?: 'normal' | 'error'};
-const WELCOME_MESSAGE: ChatMessage = {id: 'welcome', role: 'assistant', text: '확인하고 싶은 주장이나 원문을 보내줘. 문장을 나누고, 직접 확인할 수 있는 출처와 인용을 연결해볼게.'};
+type ChatProgress = {
+  status?: string; statusElapsedSeconds?: number;
+  sourcesFound?: ProgressSource[]; sourcesFoundElapsedSeconds?: number;
+  sourcesRead?: ProgressSource[]; sourcesReadElapsedSeconds?: number;
+  claims?: ProgressClaim[]; claimsElapsedSeconds?: number; completed?: boolean; error?: string;
+};
+type ChatMessage = {id: string; role: 'assistant' | 'user'; text?: string; answer?: FactCheckAnswer; sources?: FactSource[]; progress?: ChatProgress; meta?: string; tone?: 'normal' | 'error'};
+const WELCOME_MESSAGE: ChatMessage = {id: 'welcome', role: 'assistant', text: '확인하고 싶은 주장이나 원문을 보내주세요. 문장을 나누고, 직접 확인할 수 있는 출처와 인용을 연결하겠습니다.'};
 
 function Modal({open, title, onClose, children}: {open: boolean; title: string; onClose: () => void; children: ReactNode}) {
   const ref = useRef<HTMLDialogElement>(null);
@@ -174,6 +227,59 @@ function AnswerOverview({answer, sources}: {answer: FactCheckAnswer; sources: Fa
         </>}
   </section>;
 }
+
+function ProgressReply({progress}: {progress: ChatProgress}) {
+  const claims = progress.claims;
+  const sources = progress.sourcesRead ?? [];
+  const sourceNumbers = new Map(sources.map((source, index) => [source.id, index + 1]));
+  const heading = claims !== undefined ? '1차 검증 요약' : '검증 진행 상황';
+  return <section className="progress-reply" data-testid="progress-reply" aria-label="검증 진행 결과">
+    <div className="progress-reply-heading"><span aria-hidden="true">✦</span><h3>{heading}</h3><span className="progress-reply-status">{progress.error ? '중단' : progress.completed ? '완료' : '중간 업데이트'}</span></div>
+    {progress.status && <p className="progress-current-stage" data-testid="progress-stage">
+      <span>{progress.status}</span><time>{progress.statusElapsedSeconds ?? 0}초 경과</time>
+    </p>}
+    {progress.sourcesFound !== undefined && progress.sourcesRead === undefined && <ProgressSourceList title="검색된 출처 후보" sources={progress.sourcesFound} elapsedSeconds={progress.sourcesFoundElapsedSeconds} testId="progress-candidate-source"/>}
+    {progress.sourcesRead !== undefined && <ProgressSourceList title="가져온 원문" sources={progress.sourcesRead} elapsedSeconds={progress.sourcesReadElapsedSeconds} testId="progress-read-source"/>}
+    {claims !== undefined && (claims.length
+      ? <ol className="progress-claim-list">{claims.map(claim => <li className="progress-claim" key={claim.id}>
+          <div className="progress-claim-heading"><strong>{claim.quote}</strong><span>{claim.verdict}</span></div>
+          <p>{claim.summary}</p>
+          {claim.citations.length > 0 && <ul className="progress-citations" aria-label="1차 요약의 확인된 인용">{claim.citations.map((citation, index) => {
+            const source = sources.find(item => item.id === citation.sourceId);
+            const href = source ? safeSourceUrl(source.url) : null;
+            const number = sourceNumbers.get(citation.sourceId) ?? index + 1;
+            return <li key={`${claim.id}-${citation.sourceId}-${index}`}>{source && href
+              ? <a href={href} target="_blank" rel="noopener noreferrer" title={citation.quote} aria-label={`출처 ${number}: ${source.publisher}, ${source.title}`}>
+                  <span>[{number}]</span> {source.title}
+                </a>
+              : <span className="progress-citation-unavailable">인용 출처 확인 필요</span>}</li>;
+          })}</ul>}
+        </li>)}</ol>
+        : <p className="progress-empty">검증 가능한 주장을 찾지 못했어. 결과와 주의사항을 정리하고 있어.</p>)}
+        {claims !== undefined && progress.claimsElapsedSeconds !== undefined && <small className="progress-milestone-time">1차 요약 · {progress.claimsElapsedSeconds}초</small>}
+        {progress.error
+          ? <p className="progress-error" role="alert">{progress.error}<br/>위 내용은 최종 답변이 아닌 1차 확인 결과야.</p>
+          : <small className="progress-disclaimer">{progress.completed ? '검증 진행 기록이야. 최종 답변은 아래에 이어져.' : '최종 인용 답변을 만드는 중이야. 이 1차 요약은 완성된 답변이 아니야.'}</small>}
+        </section>;
+        }
+
+        function ProgressSourceList({title, sources, elapsedSeconds, testId}: {title: string; sources: ProgressSource[]; elapsedSeconds?: number; testId: string}) {
+        return <div className="progress-source-block" data-testid={`${testId}-group`}>
+        <h4>{title}{elapsedSeconds !== undefined && <span className="progress-milestone-time"> · {elapsedSeconds}초</span>}</h4>
+        {sources.length > 0
+        ? <ul className="progress-source-list">{sources.map((source, index) => {
+            const href = safeSourceUrl(source.url);
+            const accessLabel = source.accessStatus === 'candidate' ? '검색 후보' : source.accessStatus === 'verified' ? '원문 확인' : '접근 불가';
+            return <li className="progress-source" key={source.id} data-testid={testId}>
+              <span className="progress-source-index">[{index + 1}]</span>
+              <span className="progress-source-copy">{href
+                ? <a href={href} target="_blank" rel="noopener noreferrer">{source.title}</a>
+                : <strong>{source.title}</strong>}<small>{source.publisher} · {source.sourceType} · {accessLabel}</small></span>
+            </li>;
+          })}</ul>
+        : <p className="progress-empty">이 단계에서 확인된 출처가 없어. 다음 검증 단계를 진행하고 있어.</p>}
+        </div>;
+        }
 
 export default function FactCheckDashboard() {
   const reduce = useReducedMotion();
@@ -238,7 +344,9 @@ export default function FactCheckDashboard() {
   }, []);
 
   function addMessage(message: Omit<ChatMessage, 'id'>) {
-    setMessages(current => [...current, {...message, id: `message-${messageCounter.current++}`}]);
+    const id = `message-${messageCounter.current++}`;
+    setMessages(current => [...current, {...message, id}]);
+    return id;
   }
 
   function stop() {
@@ -290,6 +398,22 @@ export default function FactCheckDashboard() {
     const controller = new AbortController();
     request.current = controller;
     const current = generation.current;
+    const startedAt = performance.now();
+    const elapsedSeconds = () => Math.floor((performance.now() - startedAt) / 1000);
+    let progressMessageId: string | null = null;
+    const updateProgressMessage = (patch: Partial<ChatProgress>) => {
+      if (generation.current !== current) return;
+      if (progressMessageId === null) {
+        progressMessageId = `message-${messageCounter.current++}`;
+        setMessages(messages => [...messages, {
+          id: progressMessageId!, role: 'assistant', progress: patch,
+        }]);
+        return;
+      }
+      setMessages(messages => messages.map(message => message.id === progressMessageId
+        ? {...message, progress: {...message.progress, ...patch}}
+        : message));
+    };
     const submitted = {text: draft, focus, consent: true as const, modelPreference};
     addMessage({role: 'user', text: draft, meta: focus ? `확인 요청: ${focus}` : undefined});
     setLiveResult(null);
@@ -298,7 +422,29 @@ export default function FactCheckDashboard() {
     setNotice('검증 요청을 서버로 전송하고 있습니다.');
     try {
       const response = await fetch('/api/fact-check', {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify(submitted), signal: controller.signal});
-      const result = await readFactCheckStream(response, {signal: controller.signal, onStage: stage => {if (generation.current === current) setNotice(stage.message);}});
+      const result = await readFactCheckStream(response, {
+        signal: controller.signal,
+        onStage: stage => {
+          if (generation.current !== current) return;
+          updateProgressMessage({status: stage.message, statusElapsedSeconds: elapsedSeconds()});
+          setNotice(stage.message);
+        },
+        onSources: event => {
+          if (generation.current !== current) return;
+          const elapsed = elapsedSeconds();
+          updateProgressMessage(event.phase === 'found'
+            ? {sourcesFound: event.sources, sourcesFoundElapsedSeconds: elapsed}
+            : {sourcesRead: event.sources, sourcesReadElapsedSeconds: elapsed});
+          setNotice(event.phase === 'found'
+            ? '검색 결과에서 출처 후보를 찾았어. 원문을 읽고 있어.'
+            : '출처 원문을 가져왔어. 주장과 인용을 검증하고 있어.');
+        },
+        onPreview: event => {
+          if (generation.current !== current) return;
+          updateProgressMessage({claims: event.claims, claimsElapsedSeconds: elapsedSeconds()});
+          setNotice('1차 검증을 마쳤어. 최종 답변과 인용을 정리하고 있어.');
+        },
+      });
       if (generation.current !== current || controller.signal.aborted) return;
       if (result.text !== submitted.text || result.focus !== submitted.focus) throw new Error('제출한 원문과 검증 결과가 일치하지 않습니다. 다시 시도해 주세요.');
       setLiveResult(result);
@@ -306,14 +452,27 @@ export default function FactCheckDashboard() {
       setMobileTab('results');
       setNotice(result.claims.length ? '검증이 완료되었습니다. 아래에서 출처와 남은 불확실성을 확인해 주세요.' : '검증 가능한 주장을 찾지 못했습니다. 결과의 경고를 확인해 주세요.');
       const reply = composeAssistantReply(result);
-      addMessage({role: 'assistant', ...reply});
+      const finalMessage: ChatMessage = {id: `message-${messageCounter.current++}`, role: 'assistant', ...reply};
+      if (progressMessageId) {
+        setMessages(messages => [...messages.map(message => message.id === progressMessageId && message.progress
+          ? {...message, progress: {...message.progress, status: '검증 완료', statusElapsedSeconds: elapsedSeconds(), completed: true}}
+          : message), finalMessage]);
+      } else {
+        setMessages(messages => [...messages, finalMessage]);
+      }
     } catch (error) {
       if (generation.current !== current || controller.signal.aborted) return;
       dispatch({type: 'cancel'});
       const message = error instanceof FactCheckError && /CONFIG|KEY_MISSING/i.test(error.code) ? configurationHelp : error instanceof Error ? `검증 실패: ${error.message} 다시 시도하실 수 있습니다.` : '검증 요청에 실패했습니다. 네트워크를 확인하고 다시 시도해 주세요.';
       if (error instanceof FactCheckError && /CONFIG|KEY_MISSING/i.test(error.code)) setConfigured(false);
       setNotice(message);
-      addMessage({role: 'assistant', text: message, tone: 'error'});
+      if (progressMessageId) {
+        setMessages(messages => messages.map(item => item.id === progressMessageId && item.progress
+          ? {...item, progress: {...item.progress, error: message}}
+          : item));
+      } else {
+        addMessage({role: 'assistant', text: message, tone: 'error'});
+      }
     } finally {
       if (generation.current === current) request.current = null;
     }
@@ -349,8 +508,8 @@ export default function FactCheckDashboard() {
     <FloatingLinesBackground />
     <a className="skip-link" href="#workspace-main">본문으로 건너뛰기</a>
     <aside className="sidebar">
-      <a className="brand" href="#top" aria-label="True or Not 홈"><span className="brand-symbol"><Icon name="lens" size={25}/></span><span><ScrambleText>True or Not</ScrambleText><small>TRUE OR NOT</small></span></a>
-      <div className="workspace-label"><span className="workspace-avatar">F</span><div>나의 워크스페이스<small>대화형 팩트체크</small></div></div>
+      <a className="brand" href="#top" aria-label="True or Not 홈"><span className="brand-symbol"><Icon name="lens" size={25}/></span><span><ScrambleText>True or Not</ScrambleText><small>팩트체크 에이전트</small></span></a>
+      <div className="workspace-label"><span className="workspace-avatar">F</span><div>나의 워크스페이스<small>프로필</small></div></div>
       <p className="nav-caption">워크스페이스</p>
       <LineSidebar
         className="workspace-nav"
@@ -370,7 +529,7 @@ export default function FactCheckDashboard() {
       <div className="sidebar-bottom"><div className="principle-card"><Icon name="shield"/><strong>결론보다, 근거를 먼저.</strong><p>확인된 내용과 아직 모르는 내용을 함께 살펴보세요.</p><button onClick={() => setDialog('guide')}>검증 원칙 보기 <Icon name="arrow" size={15}/></button></div><div className="local-status"><span/>{serviceLabel}</div><p className="sidebar-foot">TRUE OR NOT / EVIDENCE WORKSPACE</p></div>
     </aside>
     <div className="main-shell">
-      <header className="topbar"><div className="breadcrumb"><span className="mobile-brand">True or Not</span><strong>대화형 팩트체크</strong></div><div className="topbar-actions"><button className="text-button" aria-label="사용 가이드" onClick={() => setDialog('guide')}><Icon name="book"/><span>사용 가이드</span></button><span className="profile-mark" aria-label="로컬 워크스페이스">F</span></div></header>
+      <header className="topbar"><div className="breadcrumb"><span className="mobile-brand">True or Not</span><strong></strong></div><div className="topbar-actions"><button className="text-button" aria-label="사용 가이드" onClick={() => setDialog('guide')}><Icon name="book"/><span>사용 가이드</span></button><span className="profile-mark" aria-label="로컬 워크스페이스">F</span></div></header>
       <main id="workspace-main" className="page-content">
         <section className="composer panel-host chat-hero" aria-labelledby="chat-heading">
           <div className="chat-intro chat-intro--wordmark">
@@ -400,10 +559,10 @@ export default function FactCheckDashboard() {
             />
           </div>
           <div className="chat-thread" aria-live="polite">
-            {messages.map(message => <motion.div key={message.id} className={`chat-message ${message.role === 'user' ? 'is-user' : 'is-assistant'} ${message.answer ? 'has-answer' : ''} ${message.tone === 'error' ? 'is-error' : ''}`} initial={reduce ? false : {opacity: 0, y: 10}} animate={{opacity: 1, y: 0}} transition={{duration: reduce ? 0 : .22}}>
+            {messages.map(message => <motion.div key={message.id} className={`chat-message ${message.role === 'user' ? 'is-user' : 'is-assistant'} ${message.answer ? 'has-answer' : ''} ${message.progress ? 'has-progress' : ''} ${message.tone === 'error' ? 'is-error' : ''}`} initial={reduce ? false : {opacity: 0, y: 10}} animate={{opacity: 1, y: 0}} transition={{duration: reduce ? 0 : .22}}>
               {message.role === 'assistant' && <span className="chat-avatar"><Icon name="lens" size={16}/></span>}
               <div className={`chat-bubble ${message.answer ? 'chat-bubble--answer' : ''}`}>
-                {message.answer ? <AnswerOverview answer={message.answer} sources={message.sources ?? []} messageId={message.id}/> : message.text ? <p>{message.text}</p> : null}
+                {message.answer ? <AnswerOverview answer={message.answer} sources={message.sources ?? []} messageId={message.id}/> : message.progress ? <ProgressReply progress={message.progress}/> : message.text ? <p>{message.text}</p> : null}
                 {message.meta && <small>{message.meta}</small>}
               </div>
             </motion.div>)}
@@ -430,13 +589,13 @@ export default function FactCheckDashboard() {
                 </div>
               </div>
             </div>
-            <div className="chat-footer"><div>{!sample && <><label className="consent-control"><input type="checkbox" checked={consent} onChange={event => setConsent(event.target.checked)} disabled={busy}/><span>원문·확인 요청의 외부 전송과 검색, YouTube Data API의 영상 제목·공개 댓글(최대 10개) 조회에 동의합니다. 댓글은 판정 근거로 사용하지 않습니다.</span></label><div className="consent-links"><a href="/privacy">개인정보 처리방침</a><a href="/terms">이용약관</a><a href="https://www.youtube.com/t/terms" target="_blank" rel="noopener noreferrer">YouTube 약관</a><a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">Google 개인정보</a></div></>}{sample && <span className="sample-state"><Icon name="shield" size={14}/>합성 예시는 외부로 전송하지 않습니다.</span>}</div><button type="button" className="sample-chip" onClick={loadSample}>예시로 시작하기 <Icon name="arrow" size={14}/></button></div>
+            <div className="chat-footer"><div>{!sample && <><label className="consent-control"><input type="checkbox" checked={consent} onChange={event => setConsent(event.target.checked)} disabled={busy}/><span>원문·확인 요청의 외부 전송과 검색, YouTube Data API의 영상 제목·채널명·게시일·조회수 및 공개 댓글(최대 10개) 조회에 동의합니다. 댓글은 판정 근거로 사용하지 않습니다.</span></label><div className="consent-links"><a href="/privacy">개인정보 처리방침</a><a href="/terms">이용약관</a><a href="https://www.youtube.com/t/terms" target="_blank" rel="noopener noreferrer">YouTube 약관</a><a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">Google 개인정보</a></div></>}{sample && <span className="sample-state"><Icon name="shield" size={14}/>합성 예시는 외부로 전송하지 않습니다.</span>}</div><button type="button" className="sample-chip" onClick={loadSample}>예시로 시작하기 <Icon name="arrow" size={14}/></button></div>
           </form>
           <div className={`chat-status ${busy ? 'is-busy' : ''}`} role="status" aria-live="polite">{busy ? notice || '검증을 진행하고 있습니다.' : notice || (configured === false ? configurationHelp : '원문을 입력하거나 예시로 시작해 근거를 확인해 보세요.')}</div>
         </section>
 
         <section id="review" className="review-section" aria-labelledby="review-heading">
-          <div className="review-heading dashboard-heading"><div><span className="section-kicker">검증 대시보드</span><h2 id="review-heading">판정은 아래에서 근거를 만납니다.</h2><p>주장별 신뢰지수, 확인된 인용, 출처의 관계를 한 흐름으로 살펴보세요.</p></div><button className="secondary-button export-button" disabled={!snapshot || busy} onClick={download}><Icon name="download" size={16}/><span>{snapshot?.demo ? '예시 내보내기' : '결과 내보내기'}</span></button></div>
+          <div className="review-heading dashboard-heading"><div><span className="section-kicker">검증 대시보드</span><h2 id="review-heading">근거와 함께 확인하세요.</h2><p>주장별 신뢰지수, 확인된 인용, 출처의 관계를 한 흐름으로 살펴보세요.</p></div><button className="secondary-button export-button" disabled={!snapshot || busy} onClick={download}><Icon name="download" size={16}/><span>{snapshot?.demo ? '예시 내보내기' : '결과 내보내기'}</span></button></div>
           {snapshot ? <>
             <div className="dashboard-meta"><span className="document-title"><Icon name={snapshot.demo ? 'book' : 'file'} size={16}/>{snapshot.demo ? '합성 예시 · 외부 전송 없음' : '직접 입력한 원문 · 실제 검증'}</span><div><span>{snapshot.claims.length}개 주장</span><span>{sourceCount}개 출처</span><span>{snapshot.demo ? '시연용 데이터' : liveResult?.checkedAt || '검증 시점 기록됨'}</span></div></div>
             <div className="dashboard-top-grid">
@@ -449,10 +608,38 @@ export default function FactCheckDashboard() {
               <Panel className="evidence-panel"><div className="panel-top"><h3><Icon name="lens" size={18}/>선택한 주장과 근거</h3><span>{snapshot.demo ? '예시 비교' : '수집된 원문 비교'}</span></div><AnimatePresence mode="wait" initial={false}><motion.div className="detail-content" key={selected?.id || 'empty'} initial={reduce ? false : {opacity: 0, y: 5}} animate={{opacity: 1, y: 0}} exit={{opacity: 0}} transition={{duration: reduce ? 0 : 0.18}}>{selected ? <>
                 <div className="result-overview"><span className="article-kicker">선택한 주장</span><h3>{selected.quote}</h3><FactScore claim={selected}/><Badge claim={selected}/><p>{selected.summary}</p></div>
                 <div className="source-content"><div className="source-heading"><h4>근거 출처</h4><span>{snapshot.demo ? `${sourceDocs.length}개 연결` : `${selectedEvidence.length}개 인용 · ${liveResult?.sources.length ?? 0}개 검색`}</span></div>
-                  {snapshot.demo ? sourceDocs.length ? <><div className="comparison-note"><span className="group-symbol">A</span><p><strong>같은 원자료를 공유합니다.</strong><br/>출처 2개가 독립적인 근거 2개를 뜻하지 않습니다.</p></div>{sourceDocs.map((source, index) => <button className="source-card" key={source.id} onClick={() => setDialog(source.id)}><div className="source-card-top"><span className="source-index">{String(index + 1).padStart(2, '0')}</span><span className="source-kind">{source.relation} · 예시</span><Icon name="arrow" size={16}/></div><strong>{source.title}</strong><span className="source-publisher">{source.publisher} · {source.date}</span><blockquote>“{selected.id === 'claim-1' ? source.id === 'doc-1' ? '가을빛 축제는 10월 12일부터 14일까지 달빛공원에서 진행합니다.' : '행사는 10월 12일부터 14일까지 열립니다.' : source.id === 'doc-1' ? '공예 체험은 사전 예약이 필요하며 재료비 5,000원이 있습니다.' : '공예 체험은 별도 예약과 재료비가 필요합니다.'}”</blockquote><span className="source-footer">원자료 그룹 A <span>전문 보기</span></span></button>)}<p className="evidence-caution">인용은 시연용 문서 전문에서 확인해 주세요. 실제 검색 결과가 아닙니다.</p></> : <div className="empty-evidence"><Icon name="file" size={27}/><h4>비교할 근거가 없습니다</h4><p>미래 전망을 현재 사실로 확정하지 않습니다. 예시 문서에도 방문객 추정 근거는 없습니다.</p></div> : selectedEvidence.length ? <>{selectedEvidence.map((evidence, index) => {const source = liveResult?.sources.find(item => item.id === evidence.sourceId); const href = source && safeSourceUrl(source.url); return <article className="source-card" key={evidence.id}><div className="source-card-top"><span className="source-index">{String(index + 1).padStart(2, '0')}</span><span className="source-kind">{source?.sourceType || '출처'} · {evidence.relation === 'supports' ? '지지 근거' : evidence.relation === 'contradicts' ? '반박 근거' : '맥락 근거'}</span><span className="source-verified">{evidence.quoteVerified ? '인용 확인' : '확인 필요'}</span></div>{href ? <a className="source-title-link" href={href} target="_blank" rel="noopener noreferrer">{source?.title || '출처 열기'} <Icon name="arrow" size={14}/></a> : <strong>{source?.title || '출처 확인 불가'}</strong>}<span className="source-publisher">{source?.publisher || '발행 기관 미확인'} · {source?.publishedAt || '발행일 미확인'}</span><blockquote>“{evidence.quote}”</blockquote>{hasEnglishText(evidence.quote) && evidence.quoteTranslation ? <div className="source-translation"><span>한국어 번역</span><p>{evidence.quoteTranslation}</p></div> : null}<p className="source-caption">원문 인용 일치 확인 · 출처 독립성은 별도 확인이 필요합니다.</p></article>;})}</> : <div className="empty-evidence"><Icon name="file" size={27}/><h4>비교할 근거가 없습니다</h4><p>근거 부족은 거짓을 뜻하지 않습니다. 확인 가능한 원문이 없다는 의미입니다.</p></div>}
+                  {snapshot.demo
+                    ? sourceDocs.length
+                      ? <>
+                          <div className="comparison-note"><span className="group-symbol">A</span><p><strong>같은 원자료를 공유합니다.</strong><br/>출처 2개가 독립적인 근거 2개를 뜻하지 않습니다.</p></div>
+                          {sourceDocs.map((source, index) => <button className="source-card" key={source.id} onClick={() => setDialog(source.id)}><div className="source-card-top"><span className="source-index">{String(index + 1).padStart(2, '0')}</span><span className="source-kind">{source.relation} · 예시</span><Icon name="arrow" size={16}/></div><strong>{source.title}</strong><span className="source-publisher">{source.publisher} · {source.date}</span><blockquote>“{selected.id === 'claim-1' ? source.id === 'doc-1' ? '가을빛 축제는 10월 12일부터 14일까지 달빛공원에서 진행합니다.' : '행사는 10월 12일부터 14일까지 열립니다.' : source.id === 'doc-1' ? '공예 체험은 사전 예약이 필요하며 재료비 5,000원이 있습니다.' : '공예 체험은 별도 예약과 재료비가 필요합니다.'}”</blockquote><span className="source-footer">원자료 그룹 A <span>전문 보기</span></span></button>)}
+                          <p className="evidence-caution">인용은 시연용 문서 전문에서 확인해 주세요. 실제 검색 결과가 아닙니다.</p>
+                        </>
+                      : <div className="empty-evidence"><Icon name="file" size={27}/><h4>비교할 근거가 없습니다</h4><p>미래 전망을 현재 사실로 확정하지 않습니다. 예시 문서에도 방문객 추정 근거는 없습니다.</p></div>
+                    : selectedEvidence.length
+                      ? <>{selectedEvidence.map((evidence, index) => {
+                          const source = liveResult?.sources.find(item => item.id === evidence.sourceId);
+                          const href = source && safeSourceUrl(source.url);
+                          return <article className="source-card" key={evidence.id}>
+                            <div className="source-card-top"><span className="source-index">{String(index + 1).padStart(2, '0')}</span><span className="source-kind">{source?.sourceType || '출처'} · {evidence.relation === 'supports' ? '지지 근거' : evidence.relation === 'contradicts' ? '반박 근거' : '맥락 근거'}</span><span className="source-verified">{evidence.quoteVerified ? '인용 확인' : '확인 필요'}</span></div>
+                            {href ? <a className="source-title-link" href={href} target="_blank" rel="noopener noreferrer">{source?.title || '출처 열기'} <Icon name="arrow" size={14}/></a> : <strong>{source?.title || '출처 확인 불가'}</strong>}
+                            <span className="source-publisher">{source?.publisher || '발행 기관 미확인'} · {source?.publishedAt || '발행일 미확인'}</span>
+                            <blockquote>“{evidence.quote}”</blockquote>
+                            {evidence.sectionTitle && evidence.sectionText ? <details className="source-section-details">
+                              <summary><span>‘{evidence.sectionTitle}’</span> 목차 내용 펼치기</summary>
+                              <div className="source-section-details-body">
+                                <p>{evidence.sectionText}</p>
+                                {evidence.sectionTruncated && <small>목차 본문이 길어 앞부분만 표시했습니다.</small>}
+                              </div>
+                            </details> : null}
+                            {hasEnglishText(evidence.quote) && evidence.quoteTranslation ? <div className="source-translation"><span>한국어 번역</span><p>{evidence.quoteTranslation}</p></div> : null}
+                            <p className="source-caption">원문 인용 일치 확인 · 출처 독립성은 별도 확인이 필요합니다.</p>
+                          </article>;
+                        })}</>
+                      : <div className="empty-evidence"><Icon name="file" size={27}/><h4>비교할 근거가 없습니다</h4><p>근거 부족은 거짓을 뜻하지 않습니다. 확인 가능한 원문이 없다는 의미입니다.</p></div>}
                 </div>
                 {!snapshot.demo && !selectedEvidence.length && otherSources.length ? <div className="source-candidate-list"><p className="evidence-caution">출처별 검색 경로와 순위를 확인해. Google 자연검색 순위는 그렇게 표시된 출처에만 해당하고, 아직 선택한 주장과 직접 대조된 인용은 아니야.</p>{otherSources.map((source, index) => {const href = safeSourceUrl(source.url); return <article className="source-card" key={source.id}><div className="source-card-top"><span className="source-index">{String(index + 1).padStart(2, '0')}</span><span className="source-kind">{source.sourceType || '검색 출처'}</span><span className="source-verified">{source.accessStatus === 'verified' ? '원문 확인' : '접근 불가'}</span></div>{href ? <a className="source-title-link" href={href} target="_blank" rel="noopener noreferrer">{source.title} <Icon name="arrow" size={14}/></a> : <strong>{source.title}</strong>}<span className="source-publisher">{source.publisher} · {source.publishedAt || '발행일 미확인'}</span><p className="source-caption">{sourceDiscoveryLabel(source)} · 원문 인용이 연결되기 전에는 판정 근거로 사용하지 않습니다.</p></article>;})}</div> : null}
-                {!snapshot.demo && youtubeSources.length > 0 ? <section className="youtube-context-list" aria-label="유튜브 영상 제목과 공개 댓글"><div className="source-heading"><h4>유튜브 영상 제목·공개 댓글</h4><span>참고 맥락 · 판정 근거 아님</span></div>{youtubeSources.map(source => {const href = safeSourceUrl(source.url); return <article className="youtube-context-card" key={source.id}><div className="youtube-context-header"><YoutubeThumbnail source={source}/><div className="youtube-context-copy">{href ? <a className="source-title-link" href={href} target="_blank" rel="noopener noreferrer">{source.youtubeTitle || source.title} <Icon name="arrow" size={14}/></a> : <strong>{source.youtubeTitle || source.title}</strong>}</div></div><YoutubeCommentContext source={source}/></article>;})}</section> : null}
+                {!snapshot.demo && youtubeSources.length > 0 ? <section className="youtube-context-list" aria-label="유튜브 영상 정보와 공개 댓글"><div className="source-heading"><h4>유튜브 영상 정보·공개 댓글</h4><span>참고 맥락 · 판정 근거 아님</span></div>{youtubeSources.map(source => {const href = safeSourceUrl(source.url); return <article className="youtube-context-card" key={source.id}><div className="youtube-context-header"><YoutubeThumbnail source={source}/><div className="youtube-context-copy">{href ? <a className="source-title-link" href={href} target="_blank" rel="noopener noreferrer">{source.youtubeTitle || source.title} <Icon name="arrow" size={14}/></a> : <strong>{source.youtubeTitle || source.title}</strong>}<YoutubeVideoMetadata source={source}/></div></div><YoutubeCommentContext source={source}/></article>;})}</section> : null}
                 {!snapshot.demo && selectedLiveClaim && <div className="detail-blocks"><div><h4>확인된 내용</h4>{selectedLiveClaim.confirmed.length ? <ul>{selectedLiveClaim.confirmed.map((text, index) => <li key={index}>{text}</li>)}</ul> : <p>직접 확인된 내용이 없습니다.</p>}</div><div><h4>남은 불확실성</h4>{selectedLiveClaim.unresolved.length ? <ul>{selectedLiveClaim.unresolved.map((text, index) => <li key={index}>{text}</li>)}</ul> : <p>현재 기록된 불확실성이 없습니다.</p>}</div>{selectedLiveClaim.warnings.length > 0 && <div><h4>주장별 주의사항</h4><ul>{selectedLiveClaim.warnings.map((text, index) => <li key={index}>{text}</li>)}</ul></div>}</div>}
               </> : <div className="empty-evidence"><Icon name="lens" size={27}/><h4>주장을 선택해 주세요</h4><p>위의 주장 카드를 선택하면 연결된 출처와 인용이 표시됩니다.</p></div>}</motion.div></AnimatePresence></Panel>
               <Panel className="source-index-panel"><div className="panel-top"><h3><Icon name="book" size={17}/>검토한 출처</h3><span>{sourceCount}개 수집</span></div><div className="source-index-grid">{snapshot.demo ? documents.map((source, index) => <button className="source-index-card" key={source.id} onClick={() => setDialog(source.id)}><span className="source-index-number">{String(index + 1).padStart(2, '0')}</span><span><strong>{source.title}</strong><small>{source.publisher}</small></span><Icon name="arrow" size={15}/></button>) : liveResult?.sources.map((source, index) => {const href = safeSourceUrl(source.url); const sourceLabel = source.sourceType === '유튜브' ? source.youtubeDataStatus === 'collected' ? `공개 댓글 ${source.youtubeComments.length}개` : source.youtubeDataStatus === 'not_configured' ? '댓글 API 미설정' : '댓글 조회 불가' : source.accessStatus === 'verified' ? '원문 확인' : '접근 불가'; const content = <><span className="source-index-number">{String(index + 1).padStart(2, '0')}</span><span><strong>{source.youtubeTitle || source.title}</strong><small>{source.sourceType} · {source.publisher} · {sourceDiscoveryLabel(source)} · {sourceLabel}</small></span><Icon name="arrow" size={15}/></>; return href ? <a className="source-index-card" href={href} target="_blank" rel="noopener noreferrer" key={source.id}>{content}</a> : <div className="source-index-card" key={source.id}>{content}</div>;})}{!sourceCount && <div className="source-index-empty">아직 수집된 출처가 없습니다.</div>}</div></Panel>

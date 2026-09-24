@@ -182,7 +182,14 @@ def test_runtime_read_stage_uses_youtube_adapter_without_adding_comments_to_sour
 
     def handler(request):
         if request.url.path.endswith("/videos"):
-            return httpx.Response(200, json={"items": [{"snippet": {"title": "실제 영상 제목"}}]})
+            return httpx.Response(200, json={"items": [{
+                "snippet": {
+                    "title": "실제 영상 제목",
+                    "channelTitle": "실제 채널",
+                    "publishedAt": "2026-09-20T12:30:00Z",
+                },
+                "statistics": {"viewCount": "1234567"},
+            }]})
         return httpx.Response(200, json={"items": [{"snippet": {
             "topLevelComment": {"snippet": {"textDisplay": "댓글 맥락"}}
         }}]})
@@ -207,5 +214,8 @@ def test_runtime_read_stage_uses_youtube_adapter_without_adding_comments_to_sour
     }]}))
 
     assert state["sources"][0]["youtubeTitle"] == "실제 영상 제목"
+    assert state["sources"][0]["youtubeChannelTitle"] == "실제 채널"
+    assert state["sources"][0]["youtubePublishedAt"] == "2026-09-20T12:30:00Z"
+    assert state["sources"][0]["youtubeViewCount"] == "1234567"
     assert state["sources"][0]["youtubeComments"] == ["댓글 맥락"]
     assert state["sourceTexts"] == {}

@@ -70,6 +70,24 @@ def test_final_contract_accepts_frontend_shape_and_wrapper():
     assert parsed.model_dump(mode="json")["result"]["sources"][0]["publishedAt"] is None
 
 
+def test_evidence_may_expose_only_a_bounded_matching_article_section():
+    payload = result_payload()
+    payload["evidence"][0].update({
+        "sectionTitle": "4. 텔러린 앱",
+        "sectionText": "텔러린 앱은 여러 기능을 통합해 제공하는 서비스입니다.",
+        "sectionTruncated": False,
+    })
+
+    evidence = FactCheckResult.model_validate(payload).evidence[0]
+    assert evidence.sectionTitle == "4. 텔러린 앱"
+    assert evidence.sectionText == "텔러린 앱은 여러 기능을 통합해 제공하는 서비스입니다."
+    assert evidence.sectionTruncated is False
+
+    payload["evidence"][0]["sectionText"] = "가" * 8_001
+    with pytest.raises(ValidationError):
+        FactCheckResult.model_validate(payload)
+
+
 def test_source_discovery_order_is_explicitly_not_a_google_rank():
     payload = result_payload()
     payload["sources"][0].update({
@@ -96,6 +114,29 @@ def test_source_contract_accepts_google_organic_rank_from_serpapi():
     source = FactCheckResult.model_validate(payload).sources[0]
     assert source.searchProvider == "serpapi_google"
     assert source.candidateOrder == 1
+
+
+def test_source_contract_accepts_bounded_youtube_video_metadata():
+    payload = result_payload()
+    payload["sources"][0].update({
+        "youtubeChannelTitle": "AI 연구 채널",
+        "youtubePublishedAt": "2026-09-20T12:30:00Z",
+        "youtubeViewCount": "1234567",
+    })
+
+    source = FactCheckResult.model_validate(payload).sources[0]
+    assert source.youtubeChannelTitle == "AI 연구 채널"
+    assert source.youtubePublishedAt == "2026-09-20T12:30:00Z"
+    assert source.youtubeViewCount == "1234567"
+
+    payload["sources"][0]["youtubeViewCount"] = "12 views"
+    with pytest.raises(ValidationError):
+        FactCheckResult.model_validate(payload)
+
+    payload["sources"][0]["youtubeViewCount"] = "123"
+    payload["sources"][0]["youtubePublishedAt"] = "not-a-date"
+    with pytest.raises(ValidationError):
+        FactCheckResult.model_validate(payload)
 
 
 def test_result_serializes_safe_insufficient_answer_by_default():

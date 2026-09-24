@@ -509,6 +509,9 @@ def test_result_exposes_youtube_comments_only_as_context_not_verified_content():
                 "url": "https://www.youtube.com/watch?v=aB_12345678",
                 "title": "Search title",
                 "youtubeTitle": "API video title",
+                "youtubeChannelTitle": "API channel",
+                "youtubePublishedAt": "2026-09-20T12:30:00Z",
+                "youtubeViewCount": "1234567",
                 "youtubeComments": ["Raw public comment"],
                 "youtubeDataStatus": "collected",
                 "publisher": "www.youtube.com",
@@ -531,6 +534,9 @@ def test_result_exposes_youtube_comments_only_as_context_not_verified_content():
 
     parsed = FactCheckResponse.model_validate({"result": result.model_dump(mode="json")}).result
     assert parsed.sources[0].youtubeTitle == "API video title"
+    assert parsed.sources[0].youtubeChannelTitle == "API channel"
+    assert parsed.sources[0].youtubePublishedAt == "2026-09-20T12:30:00Z"
+    assert parsed.sources[0].youtubeViewCount == "1234567"
     assert parsed.sources[0].youtubeComments == ["Raw public comment"]
     assert parsed.sources[0].accessStatus == "unavailable"
     assert any("유튜브 공개 댓글" in warning for warning in parsed.warnings)

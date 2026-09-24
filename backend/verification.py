@@ -20,6 +20,8 @@ from scoring import normalize_fact_score, score_band, score_label
 
 _MAX_EVIDENCE_QUOTE = 2_000
 _MAX_MODEL_SOURCE_TEXT = 6_000
+_MAX_SECTION_TITLE = 300
+_MAX_SECTION_TEXT = 8_000
 _CHECKABLE_KINDS = {"fact", "unclear"}
 
 VerdictCode = Literal[
@@ -70,7 +72,7 @@ class Judgment(BaseModel):
 
     claimId: str = Field(min_length=1, max_length=100)
     verdictCode: VerdictCode
-    factScore: int = Field(default=50, ge=0, le=100)
+    factScore: int = Field(ge=0, le=100)
     summary: JudgmentText
     confirmed: list[JudgmentText] = Field(max_length=5)
     unresolved: list[JudgmentText] = Field(max_length=5)
@@ -195,7 +197,41 @@ def _validate_evidence(
     return valid, rejected, condition_mismatch
 
 
-def _evidence_dict(item: _ValidatedEvidence, claim_id: str, evidence_id: str) -> dict[str, Any]:
+def _section_for_quote(quote: str, sections: list[dict[str, Any]]) -> dict[str, Any] | None:
+    normalized_quote = _normalize_text(quote)
+    matches = []
+    for section in sections:
+        if not isinstance(section, dict):
+            continue
+        level = section.get("level")
+        if not isinstance(level, int) or isinstance(level, bool) or level < 2:
+            continue
+        title = section.get("title")
+        text = section.get("text")
+        if not isinstance(title, str) or not isinstance(text, str) or not text.strip():
+            continue
+        normalized_title = _normalize_text(title)
+        normalized_text = _normalize_text(text)
+        if normalized_quote in normalized_text or normalized_quote in normalized_title:
+            matches.append((len(normalized_text), -level, section, normalized_title, normalized_text))
+
+    if not matches:
+        return None
+
+    _, _, section, title, text = min(matches, key=lambda match: (match[0], match[1]))
+    return {
+        "sectionTitle": title[:_MAX_SECTION_TITLE],
+        "sectionText": text[:_MAX_SECTION_TEXT],
+        "sectionTruncated": bool(section.get("truncated")) or len(text) > _MAX_SECTION_TEXT,
+    }
+
+
+def _evidence_dict(
+    item: _ValidatedEvidence,
+    claim_id: str,
+    evidence_id: str,
+    source_sections: dict[str, list[dict[str, Any]]],
+) -> dict[str, Any]:
     evidence = {
         "id": evidence_id,
         "claimId": claim_id,
@@ -206,6 +242,9 @@ def _evidence_dict(item: _ValidatedEvidence, claim_id: str, evidence_id: str) ->
     }
     if item.quote_translation:
         evidence["quoteTranslation"] = item.quote_translation
+    section = _section_for_quote(item.quote, source_sections.get(item.source_id, []))
+    if section:
+        evidence.update(section)
     return evidence
 
 
@@ -279,6 +318,8 @@ def ground_judgments(
     judgments: list[dict[str, Any]] | list[Judgment],
     sources: list[dict[str, Any]],
     source_texts: dict[str, str],
+    *,
+    source_sections: dict[str, list[dict[str, Any]]] | None = None,
 ) -> dict[str, list[dict[str, Any]]]:
     """Validate model judgments against collected source text.
 
@@ -292,6 +333,13 @@ def ground_judgments(
     if not isinstance(source_texts, dict) or any(
         not isinstance(key, str) or not isinstance(value, str)
         for key, value in source_texts.items()
+    ):
+        raise ValueError("INVALID_STATE")
+    if source_sections is None:
+        source_sections = {}
+    if not isinstance(source_sections, dict) or any(
+        not isinstance(key, str) or not isinstance(value, list)
+        for key, value in source_sections.items()
     ):
         raise ValueError("INVALID_STATE")
 
@@ -353,7 +401,7 @@ def ground_judgments(
         for item in valid:
             evidence_id = f"e{next_evidence_id}"
             next_evidence_id += 1
-            evidence.append(_evidence_dict(item, claim_id, evidence_id))
+            evidence.append(_evidence_dict(item, claim_id, evidence_id, source_sections))
             result["evidenceIds"].append(evidence_id)
         final_claims.append(result)
 
@@ -397,7 +445,13 @@ async def verify_claims(
     ]
 
     if not checkable_claims or not verified_sources:
-        return ground_judgments(claims, _empty_judgments(checkable_claims), sources, source_texts)
+        return ground_judgments(
+            claims,
+            _empty_judgments(checkable_claims),
+            sources,
+            source_texts,
+            source_sections=state.get("sourceSections", {}),
+        )
     active = provider or openai_provider(api_key)
     if not active.api_key.strip():
         raise ValueError("NOT_CONFIGURED")
@@ -433,8 +487,14 @@ async def verify_claims(
                 "A translation is presentation only and must not add facts or be used as evidence. "
                 "Do not defer to the user with generic wording such as 'check the sources' or 'verify it yourself'. "
                 "conflicting_sources requires same-condition supports and contradicts from different sources. "
-                "Return factScore as an integer from 0 to 100. Use 80-100 for verified, 60-79 for mostly true, "
-                "40-59 for neutral or unverified, 20-39 for mostly false, and 0-19 for false. "
+                "Return factScore as an integer from 0 to 100 reflecting how strongly the verified evidence "
+                "establishes the claim as stated; the server preserves this score unchanged, so reason carefully. "
+                "Weigh both direction and strength: direct support from multiple independent sources scores high, "
+                "a single thin source lands in the 60s, and no usable support scores low even when nothing "
+                "directly disproves the claim. For extraordinary claims about well-covered subjects where a "
+                "competent search finds no credible support, score 0-20. Keep the score coherent with "
+                "verdictCode: mostly_supported pairs with 80-100, partially_supported with 60-79, "
+                "contradicted with 0-39. "
                 "Opinions and predictions are handled outside this request. Do not invent dates, sources, or certainty."
             ),
             input_data={
@@ -449,4 +509,10 @@ async def verify_claims(
     except (ProviderCallError, httpx.HTTPError, ValueError, TypeError, KeyError, ValidationError):
         raise ValueError("VERIFICATION_FAILED") from None
 
-    return ground_judgments(claims, parsed.claims, sources, source_texts)
+    return ground_judgments(
+        claims,
+        parsed.claims,
+        sources,
+        source_texts,
+        source_sections=state.get("sourceSections", {}),
+    )

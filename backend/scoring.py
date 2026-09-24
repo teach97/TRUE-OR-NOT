@@ -32,21 +32,14 @@ def score_label(score: int) -> str:
 
 
 def normalize_fact_score(verdict_code: str, requested_score: int) -> int:
-    """Keep model scores inside the certainty supported by grounded evidence.
+    """Preserve the model's reasoned score, clamped only to the 0-100 range.
 
-    A supporting or contradicting citation can still be incomplete, so the
-    model controls nuance only inside the verdict's safe range. Context gaps,
-    conflicts, and missing evidence stay neutral instead of pretending to be
-    true or false.
+    The verdict no longer reshapes the score: the LLM judges certainty from
+    the evidence and the server keeps its judgment verbatim. Band and label
+    are derived from the preserved score for display. The verdict argument
+    stays for call-site compatibility.
     """
-    score = max(0, min(100, int(requested_score)))
-    if verdict_code == "mostly_supported":
-        return max(80, score)
-    if verdict_code == "partially_supported":
-        return min(79, max(60, score))
-    if verdict_code == "contradicted":
-        return min(39, score)
-    return 50
+    return max(0, min(100, int(requested_score)))
 
 
 def default_fact_score(verdict_code: str) -> int:

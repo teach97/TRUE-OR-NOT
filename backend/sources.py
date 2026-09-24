@@ -14,6 +14,19 @@ from aiohttp.abc import AbstractResolver
 
 _JAPANESE_SCRIPT = re.compile(r'[\u3040-\u30ff]')
 _KOREAN_SCRIPT = re.compile(r'[\uac00-\ud7a3]')
+_MAX_SECTIONS_PER_PAGE = 80
+_MAX_SECTION_TEXT = 12_000
+_DOORWAY_MARKERS = (
+    'the document has moved',
+    'document has been moved',
+    'page has moved',
+    'you are being redirected',
+    'if you are not redirected',
+    'click here to continue',
+    'redirecting you',
+    'will be redirected shortly',
+)
+_MAX_DOORWAY_TEXT = 300
 
 
 def _is_japanese_page_text(text):
@@ -56,6 +69,12 @@ class _TextParser(HTMLParser):
         'area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'link',
         'meta', 'param', 'source', 'track', 'wbr',
     }
+    _BLOCK_TAGS = {
+        'address', 'article', 'aside', 'blockquote', 'details', 'dialog', 'div',
+        'dl', 'dd', 'dt', 'fieldset', 'figcaption', 'figure', 'footer', 'form',
+        'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'header', 'hgroup', 'hr', 'li',
+        'main', 'nav', 'ol', 'p', 'pre', 'section', 'table', 'tr', 'ul',
+    }
     _CONTENT_HINTS = {
         'article-body', 'articlebody', 'article-content', 'articlecontent',
         'story-body', 'storybody', 'story-content', 'storycontent',
@@ -68,14 +87,19 @@ class _TextParser(HTMLParser):
         'nav', 'navigation', 'navbar', 'menu', 'sidebar', 'toolbar', 'player',
         'playlist', 'related', 'recommend', 'recommended', 'cookie', 'consent',
         'advert', 'advertisement', 'ad-container', 'promo', 'promotion',
-        'share-tool', 'share-tools',
+        'share-tool', 'share-tools', 'toc', 'table-of-contents', 'tableofcontents',
+        'wiki-toc', 'contents-nav', 'contents-list',
     }
 
     def __init__(self):
         super().__init__(convert_charrefs=True)
         self.stack = []
+        self.refresh_target = None
         self.fallback_parts = []
         self.content_parts = []
+        self.section_records = []
+        self.active_sections = []
+        self.current_heading = None
 
     @staticmethod
     def _normalized_token(value):
@@ -122,17 +146,65 @@ class _TextParser(HTMLParser):
                     return True
         return False
 
+    def _append_section_text(self, value, sections=None):
+        targets = self.active_sections if sections is None else sections
+        for section in targets:
+            remaining = _MAX_SECTION_TEXT - section['_size']
+            if remaining > 0:
+                piece = value[:remaining]
+                section['parts'].append(piece)
+                section['_size'] += len(piece)
+            if len(value) > max(remaining, 0):
+                section['truncated'] = True
+
     def handle_starttag(self, tag, attrs):
         attributes = {name.lower(): value or '' for name, value in attrs}
+        if tag == 'meta' and self.refresh_target is None:
+            if attributes.get('http-equiv', '').strip().lower() == 'refresh':
+                match = re.search(r'url\s*=\s*(.+)', attributes.get('content', ''), re.IGNORECASE)
+                if match:
+                    target = match.group(1).strip().strip('\'"').strip()
+                    if target:
+                        self.refresh_target = target
         parent = self.stack[-1] if self.stack else {'excluded': False, 'content': False}
         excluded = parent['excluded'] or self._is_ui(tag, attributes)
         content = not excluded and (parent['content'] or self._is_content_root(tag, attributes))
+        heading_match = re.fullmatch(r'h([2-6])', tag)
+        heading_section = None
         if not excluded:
             self.fallback_parts.append(' ')
             if content:
                 self.content_parts.append(' ')
+            if self.current_heading is None:
+                self._append_section_text(' ')
+            if tag == 'br' or tag in self._BLOCK_TAGS:
+                self.fallback_parts.append('\n')
+                if content:
+                    self.content_parts.append('\n')
+                if self.current_heading is None:
+                    self._append_section_text('\n')
+        if not excluded and heading_match:
+            level = int(heading_match.group(1))
+            while self.active_sections and self.active_sections[-1]['level'] >= level:
+                self.active_sections.pop()
+            if len(self.section_records) < _MAX_SECTIONS_PER_PAGE:
+                heading_section = {
+                    'level': level,
+                    'title_parts': [],
+                    'parts': [],
+                    '_size': 0,
+                    'truncated': False,
+                }
+                self.section_records.append(heading_section)
+                self.active_sections.append(heading_section)
+            self.current_heading = heading_section
         if tag not in self._VOID_TAGS:
-            self.stack.append({'tag': tag, 'excluded': excluded, 'content': content})
+            self.stack.append({
+                'tag': tag,
+                'excluded': excluded,
+                'content': content,
+                'heading_section': heading_section,
+            })
 
     def handle_endtag(self, tag):
         match = next((i for i in range(len(self.stack) - 1, -1, -1)
@@ -144,6 +216,22 @@ class _TextParser(HTMLParser):
             self.fallback_parts.append(' ')
             if frame['content']:
                 self.content_parts.append(' ')
+            if tag in self._BLOCK_TAGS:
+                self.fallback_parts.append('\n')
+                if frame['content']:
+                    self.content_parts.append('\n')
+            if frame['heading_section'] is not None:
+                section = frame['heading_section']
+                section['title'] = self._normalize(section.pop('title_parts'))[:300]
+                if self.current_heading is section:
+                    self.current_heading = None
+                self._append_section_text(' ')
+                if tag in self._BLOCK_TAGS:
+                    self._append_section_text('\n')
+            elif self.current_heading is None:
+                self._append_section_text(' ')
+                if tag in self._BLOCK_TAGS:
+                    self._append_section_text('\n')
         del self.stack[match:]
 
     def handle_data(self, data):
@@ -152,14 +240,46 @@ class _TextParser(HTMLParser):
         self.fallback_parts.append(data)
         if self.stack and self.stack[-1]['content']:
             self.content_parts.append(data)
+        if self.current_heading is not None:
+            self.current_heading['title_parts'].append(data)
+            self._append_section_text(data, self.active_sections[:-1])
+        else:
+            self._append_section_text(data)
 
     @staticmethod
     def _normalize(parts):
-        return ' '.join(' '.join(parts).split())
+        text = ''.join(parts).replace('\r\n', '\n').replace('\r', '\n')
+        lines = [' '.join(line.split()) for line in text.split('\n')]
+        collapsed = []
+        blank = False
+        for line in lines:
+            if line:
+                collapsed.append(line)
+                blank = False
+            elif collapsed and not blank:
+                collapsed.append('')
+                blank = True
+        while collapsed and not collapsed[-1]:
+            collapsed.pop()
+        return '\n'.join(collapsed)
 
     def text(self):
         content = self._normalize(self.content_parts)
         return content or self._normalize(self.fallback_parts)
+
+    def sections(self):
+        sections = []
+        for section in self.section_records:
+            title = section.get('title') or self._normalize(section['title_parts'])[:300]
+            text = self._normalize(section['parts'])
+            if title and text:
+                sections.append({
+                    'level': section['level'],
+                    'title': title,
+                    'text': text,
+                    'truncated': section['truncated'],
+                })
+        return sections
 
 
 class _TitleParser(HTMLParser):
@@ -187,6 +307,12 @@ def html_text(raw):
     return parser.text()
 
 
+def html_sections(raw):
+    parser = _TextParser()
+    parser.feed(raw)
+    return parser.sections()
+
+
 def html_title(raw):
     parser = _TitleParser()
     parser.feed(raw)
@@ -196,12 +322,13 @@ def html_title(raw):
 class SourceReadResult:
     """Reader result with optional metadata and backwards-compatible unpacking."""
 
-    __slots__ = ('text', 'url', 'title')
+    __slots__ = ('text', 'url', 'title', 'sections')
 
-    def __init__(self, text, url, title=''):
+    def __init__(self, text, url, title='', sections=None):
         self.text = text
         self.url = url
         self.title = title
+        self.sections = sections or []
 
     def __iter__(self):
         # Existing test and custom readers unpack only (text, url).
@@ -245,11 +372,27 @@ async def _read_url(session, raw, *, include_title=False):
                 body.extend(chunk)
             decoded = body.decode('utf-8', errors='replace')
             title = html_title(decoded) if media == 'text/html' else ''
-            text = html_text(decoded) if media == 'text/html' else ' '.join(decoded.split())
+            if media == 'text/html':
+                parser = _TextParser()
+                parser.feed(decoded)
+                if parser.refresh_target:
+                    target = urljoin(current, parser.refresh_target)
+                    same_host = (urlsplit(target).hostname or '').lower() == (urlsplit(current).hostname or '').lower()
+                    if not same_host:
+                        raise ValueError('SOURCE_UNAVAILABLE')
+                    current = target
+                    continue
+                text = parser.text()
+                sections = parser.sections()
+            else:
+                text = _TextParser._normalize([decoded])
+                sections = []
             if not text:
                 raise ValueError('SOURCE_EMPTY')
+            if len(text) < _MAX_DOORWAY_TEXT and any(marker in text.lower() for marker in _DOORWAY_MARKERS):
+                raise ValueError('SOURCE_UNAVAILABLE')
             if include_title:
-                return SourceReadResult(text[:18000], current, title)
+                return SourceReadResult(text[:18000], current, title, sections)
             return text[:18000], current
     raise ValueError('SOURCE_REDIRECT_LIMIT')
 
@@ -275,13 +418,16 @@ def _generic_title(title, raw_url):
 
 
 async def read_sources(state, *, reader=fetch_public_text, youtube_reader=None):
-    sources, texts = [], {}
+    sources, texts, source_sections = [], {}, {}
     for source in state['sources'][:6]:
         item = {
             **source,
             'accessStatus':'unavailable',
             'retrievedAt':datetime.now(timezone.utc).isoformat(),
             'youtubeTitle':None,
+            'youtubeChannelTitle':None,
+            'youtubePublishedAt':None,
+            'youtubeViewCount':None,
             'youtubeComments':[],
             'youtubeDataStatus':'not_applicable',
         }
@@ -291,10 +437,24 @@ async def read_sources(state, *, reader=fetch_public_text, youtube_reader=None):
                 try:
                     data = await youtube_reader(source['url'])
                     title = data.get('title') if isinstance(data, dict) else None
+                    channel_title = data.get('channelTitle') if isinstance(data, dict) else None
+                    published_at = data.get('publishedAt') if isinstance(data, dict) else None
+                    view_count = data.get('viewCount') if isinstance(data, dict) else None
                     comments = data.get('comments') if isinstance(data, dict) else None
                     status = data.get('status') if isinstance(data, dict) else None
                     if isinstance(title, str) and title.strip():
-                        item['youtubeTitle'] = title
+                        item['youtubeTitle'] = title.strip()[:300]
+                    if isinstance(channel_title, str) and channel_title.strip() and len(channel_title) <= 300:
+                        item['youtubeChannelTitle'] = channel_title.strip()
+                    if isinstance(published_at, str) and len(published_at) <= 50:
+                        try:
+                            parsed_published_at = datetime.fromisoformat(published_at.replace('Z', '+00:00'))
+                        except ValueError:
+                            parsed_published_at = None
+                        if parsed_published_at is not None and parsed_published_at.tzinfo is not None:
+                            item['youtubePublishedAt'] = published_at
+                    if isinstance(view_count, str) and re.fullmatch(r'\d{1,30}', view_count):
+                        item['youtubeViewCount'] = view_count
                     if isinstance(comments, list):
                         item['youtubeComments'] = [
                             comment for comment in comments[:10]
@@ -311,9 +471,11 @@ async def read_sources(state, *, reader=fetch_public_text, youtube_reader=None):
             result = await reader(source['url'])
             if isinstance(result, SourceReadResult):
                 text, final_url, page_title = result.text, result.url, result.title
+                sections = result.sections
             else:
                 text, final_url = result
                 page_title = ''
+                sections = []
             if not text.strip():
                 raise ValueError('SOURCE_EMPTY')
             if _is_japanese_page_text(text):
@@ -322,13 +484,15 @@ async def read_sources(state, *, reader=fetch_public_text, youtube_reader=None):
                 item['title'] = page_title
             item.update(accessStatus='verified', resolvedUrl=final_url)
             texts[source['id']] = text
+            if isinstance(sections, list) and sections:
+                source_sections[source['id']] = sections
         except (ValueError, OSError, aiohttp.ClientError, TimeoutError):
             pass
         sources.append(item)
 
     # Redirect aliases often point at the same article. Keep the first
     # (highest-ranked) source and its text so one page cannot count twice.
-    unique_sources, unique_texts, seen_pages = [], {}, set()
+    unique_sources, unique_texts, unique_sections, seen_pages = [], {}, {}, set()
     for source in sources:
         identity = _source_identity(source.get('resolvedUrl') or source['url'])
         if identity in seen_pages:
@@ -338,5 +502,11 @@ async def read_sources(state, *, reader=fetch_public_text, youtube_reader=None):
         source_id = source.get('id')
         if source_id in texts:
             unique_texts[source_id] = texts[source_id]
-    return {'sources':unique_sources, 'sourceTexts':unique_texts}
+        if source_id in source_sections:
+            unique_sections[source_id] = source_sections[source_id]
+    return {
+        'sources': unique_sources,
+        'sourceTexts': unique_texts,
+        'sourceSections': unique_sections,
+    }
 

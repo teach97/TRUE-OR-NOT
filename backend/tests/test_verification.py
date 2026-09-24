@@ -46,6 +46,7 @@ def test_ground_judgments_accepts_a_verified_contiguous_quote():
             {
                 "claimId": "c1",
                 "verdictCode": "mostly_supported",
+                "factScore": 85,
                 "summary": "The source directly reports the record level.",
                 "confirmed": ["The source reports record levels."],
                 "unresolved": [],
@@ -77,6 +78,39 @@ def test_ground_judgments_accepts_a_verified_contiguous_quote():
     ]
 
 
+def test_ground_judgments_attaches_only_the_matching_section_not_the_whole_page():
+    quote = '텔러린 앱은 여러 기능을 통합해 제공하는 서비스입니다.'
+    section_text = quote + ' 사용자는 앱에서 메시지와 일정을 관리할 수 있습니다.'
+    result = ground_judgments(
+        [claim('c1', '텔러린 앱은 메시지와 일정을 제공한다.', 'fact')],
+        [{
+            'claimId': 'c1',
+            'verdictCode': 'mostly_supported',
+            'factScore': 85,
+            'summary': '출처가 앱 기능을 설명합니다.',
+            'confirmed': [],
+            'unresolved': [],
+            'evidence': [{
+                'sourceId': 's1',
+                'quote': quote,
+                'relation': 'supports',
+                'comparison': 'same',
+            }],
+        }],
+        [{'id': 's1', 'url': 'https://example.org/mark', 'accessStatus': 'verified'}],
+        {'s1': '4. 텔러린 앱 ' + section_text + ' 5. 자선 활동 별도 단락.'},
+        source_sections={'s1': [
+            {'level': 2, 'title': '4. 텔러린 앱', 'text': section_text, 'truncated': False},
+            {'level': 2, 'title': '5. 자선 활동', 'text': '별도 단락.', 'truncated': False},
+        ]},
+    )
+
+    assert result['evidence'][0]['sectionTitle'] == '4. 텔러린 앱'
+    assert result['evidence'][0]['sectionText'] == section_text
+    assert '5. 자선 활동' not in result['evidence'][0]['sectionText']
+    assert result['evidence'][0]['sectionTruncated'] is False
+
+
 def test_ground_judgments_keeps_korean_translation_for_english_quote():
     quote = "A research prototype for a universal AI assistant."
     translation = "범용 AI 비서를 위한 연구용 프로토타입."
@@ -85,6 +119,7 @@ def test_ground_judgments_keeps_korean_translation_for_english_quote():
         [{
             "claimId": "c1",
             "verdictCode": "mostly_supported",
+            "factScore": 85,
             "summary": "출처가 해당 설명을 직접 제시합니다.",
             "confirmed": [],
             "unresolved": [],
@@ -111,6 +146,7 @@ def test_ground_judgments_accepts_a_verified_quote_for_an_unclear_checkable_clai
             {
                 "claimId": "c1",
                 "verdictCode": "contradicted",
+                "factScore": 10,
                 "summary": "The source does not support calling Astra AGI.",
                 "confirmed": ["The source says Astra is not AGI yet."],
                 "unresolved": [],
@@ -139,6 +175,7 @@ def test_invalid_quote_is_removed_and_downgrades_the_judgment():
             {
                 "claimId": "c1",
                 "verdictCode": "mostly_supported",
+                "factScore": 85,
                 "summary": "The source confirms the claim.",
                 "confirmed": ["The claim is confirmed."],
                 "unresolved": [],
@@ -170,6 +207,7 @@ def test_valid_evidence_keeps_a_nuanced_summary_when_another_quote_is_rejected()
         [{
             "claimId": "c1",
             "verdictCode": "mostly_supported",
+            "factScore": 85,
             "summary": "현재 확인된 자료만으로는 아스트라를 AGI라고 단정하기 어렵다는 쪽에 무게가 실립니다.",
             "confirmed": [],
             "unresolved": ["AGI의 기준과 아스트라의 실제 평가 범위가 더 필요합니다."],
@@ -204,6 +242,7 @@ def test_search_summary_is_not_used_when_source_text_is_missing():
             {
                 "claimId": "c1",
                 "verdictCode": "mostly_supported",
+                "factScore": 85,
                 "summary": "The search result says this is true.",
                 "confirmed": [],
                 "unresolved": [],
@@ -245,6 +284,7 @@ def test_player_controls_cannot_be_grounded_as_source_evidence():
         [{
             "claimId": "c1",
             "verdictCode": "mostly_supported",
+            "factScore": 85,
             "summary": "The source confirms the timeline.",
             "confirmed": ["The source confirms the timeline."],
             "unresolved": [],
@@ -271,6 +311,7 @@ def test_date_or_context_mismatch_cannot_support_a_claim():
             {
                 "claimId": "c1",
                 "verdictCode": "mostly_supported",
+                "factScore": 85,
                 "summary": "The source supports the claim.",
                 "confirmed": [],
                 "unresolved": [],
@@ -301,6 +342,7 @@ def test_context_mismatch_is_reported_as_missing_context():
             {
                 "claimId": "c1",
                 "verdictCode": "missing_context",
+                "factScore": 50,
                 "summary": "The geographic scope is narrower than the claim.",
                 "confirmed": [],
                 "unresolved": ["The survey did not cover rural households."],
@@ -332,6 +374,7 @@ def test_same_condition_support_and_contradiction_are_conflicting_sources():
             {
                 "claimId": "c1",
                 "verdictCode": "mostly_supported",
+                "factScore": 85,
                 "summary": "Only one source supports the claim.",
                 "confirmed": [],
                 "unresolved": [],
@@ -371,6 +414,7 @@ def test_unknown_claim_id_is_rejected_as_invalid_model_output():
                 {
                     "claimId": "c2",
                     "verdictCode": "insufficient_evidence",
+                    "factScore": 50,
                     "summary": "No direct source was found.",
                     "confirmed": [],
                     "unresolved": [],
@@ -394,6 +438,7 @@ def test_unknown_source_id_is_not_exposed_as_evidence():
             {
                 "claimId": "c1",
                 "verdictCode": "mostly_supported",
+                "factScore": 85,
                 "summary": "The source confirms the claim.",
                 "confirmed": [],
                 "unresolved": [],
@@ -473,6 +518,7 @@ def test_verify_claims_sends_only_verified_source_text():
                                             {
                                                 "claimId": "c1",
                                                 "verdictCode": "mostly_supported",
+                                                "factScore": 85,
                                                 "summary": "The verified source reports the level.",
                                                 "confirmed": ["The source reports record levels."],
                                                 "unresolved": [],
@@ -526,6 +572,7 @@ def test_verify_claims_bounds_source_text_sent_to_model():
                     "text": json.dumps({"claims": [{
                         "claimId": "c1",
                         "verdictCode": "insufficient_evidence",
+                        "factScore": 50,
                         "summary": "The bounded source excerpt is not sufficient.",
                         "confirmed": [],
                         "unresolved": ["The complete source was not supplied to the model."],
@@ -576,6 +623,7 @@ def test_verify_claims_supports_gemini_interactions_structured_output():
                     "text": json.dumps({"claims": [{
                         "claimId": "c1",
                         "verdictCode": "mostly_supported",
+                        "factScore": 85,
                         "summary": "The source reports the record level.",
                         "confirmed": ["The source reports record levels."],
                         "unresolved": [],

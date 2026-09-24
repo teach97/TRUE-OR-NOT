@@ -1,8 +1,13 @@
-import type { AgentEvent, AnswerBlock, FactCheckAnswer, FactCheckResult, FactSource } from '../lib/fact-check-contract';
+import type { AgentEvent, AnswerBlock, FactCheckAnswer, FactCheckResult, FactSource, ProgressClaim, ProgressSource } from '../lib/fact-check-contract';
 // @ts-ignore -- explicit extension is required by the Node 24 native test runner.
 import { FACT_SCORE_BANDS, scoreBand, scoreLabel } from '../lib/fact-score.ts';
 
-type Options = {signal?: AbortSignal; onStage?: (event: Extract<AgentEvent, {type: 'stage'}>) => void};
+type Options = {
+  signal?: AbortSignal;
+  onStage?: (event: Extract<AgentEvent, {type: 'stage'}>) => void;
+  onSources?: (event: Extract<AgentEvent, {type: 'sources'}>) => void;
+  onPreview?: (event: Extract<AgentEvent, {type: 'preview'}>) => void;
+};
 export class FactCheckError extends Error {
   code: string;
   constructor(code: string, message: string) {super(message); this.name = 'FactCheckError'; this.code = code;}
@@ -41,15 +46,86 @@ function validAnswer(value: unknown, sources: FactSource[]): value is FactCheckA
     && Array.isArray(section.items) && section.items.length >= 1 && section.items.length <= 3
     && section.items.every(item => validBlock(item, citationsRequired)));
 }
+function validYoutubeMetadata(source: FactSource): boolean {
+  // Optional keys may be absent when an older backend serves the stream; treat missing as null.
+  const publishedAt = source.youtubePublishedAt;
+  const validDate = publishedAt == null || (typeof publishedAt === 'string' && publishedAt.length <= 50
+    && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/.test(publishedAt)
+    && Number.isFinite(Date.parse(publishedAt)));
+  return (source.youtubeChannelTitle == null || (typeof source.youtubeChannelTitle === 'string' && source.youtubeChannelTitle.length <= 300))
+    && validDate
+    && (source.youtubeViewCount == null || (typeof source.youtubeViewCount === 'string' && /^\d{1,30}$/.test(source.youtubeViewCount)))
+    && (source.sourceType === '유튜브' || (source.youtubeChannelTitle == null && source.youtubePublishedAt == null && source.youtubeViewCount == null));
+}
+function validEvidenceSection(value: unknown): boolean {
+  if (!value || typeof value !== 'object') return false;
+  const evidence = value as Record<string, unknown>;
+  const title = evidence.sectionTitle;
+  const text = evidence.sectionText;
+  const truncated = evidence.sectionTruncated;
+  const hasTitle = typeof title === 'string';
+  const hasText = typeof text === 'string';
+  return (title == null || (hasTitle && title.length >= 1 && title.length <= 300))
+    && (text == null || (hasText && text.length >= 1 && text.length <= 8000))
+    && (truncated === undefined || typeof truncated === 'boolean')
+    && hasTitle === hasText
+    && (truncated !== true || hasText);
+}
 function validResult(value: unknown): value is FactCheckResult {
   if (!value || typeof value !== 'object') return false;
   const r = value as FactCheckResult;
   return r.demo === false && typeof r.text === 'string' && typeof r.focus === 'string' && typeof r.checkedAt === 'string' && typeof r.model === 'string' && (r.reasoning === 'max' || r.reasoning === 'high')
     && Array.isArray(r.claims) && r.claims.length <= 3 && r.claims.every(c => typeof c.id === 'string' && typeof c.quote === 'string' && Number.isInteger(c.start) && Number.isInteger(c.end) && c.start >= 0 && c.end > c.start && r.text.slice(c.start, c.end) === c.quote && Number.isInteger(c.factScore) && c.factScore >= 0 && c.factScore <= 100 && FACT_SCORE_BANDS.includes(c.scoreBand) && c.scoreBand === scoreBand(c.factScore) && c.scoreLabel === scoreLabel(c.factScore) && typeof c.summary === 'string' && typeof c.tone === 'string' && typeof c.verdict === 'string' && [c.confirmed,c.unresolved,c.warnings,c.evidenceIds].every(a=>Array.isArray(a)&&a.every(s=>typeof s==='string')))
-    && Array.isArray(r.sources) && r.sources.every(s => ['id','url','title','publisher','retrievedAt','sourceType'].every(k=>typeof s[k as keyof typeof s]==='string') && ['verified','unavailable'].includes(s.accessStatus) && (s.publishedAt === null || typeof s.publishedAt === 'string') && (s.originGroupId === null || typeof s.originGroupId === 'string') && (s.youtubeTitle === null || (typeof s.youtubeTitle === 'string' && s.youtubeTitle.length <= 300)) && Array.isArray(s.youtubeComments) && s.youtubeComments.length <= 10 && s.youtubeComments.every(comment => typeof comment === 'string' && comment.length <= 10000) && ['not_applicable','not_configured','collected','unavailable'].includes(s.youtubeDataStatus) && (s.sourceType === '유튜브' ? s.youtubeDataStatus !== 'not_applicable' : s.youtubeDataStatus === 'not_applicable'))
+    && Array.isArray(r.sources) && r.sources.every(s => ['id','url','title','publisher','retrievedAt','sourceType'].every(k=>typeof s[k as keyof typeof s]==='string') && ['verified','unavailable'].includes(s.accessStatus) && (s.publishedAt == null || typeof s.publishedAt === 'string') && (s.originGroupId == null || typeof s.originGroupId === 'string') && (s.youtubeTitle == null || (typeof s.youtubeTitle === 'string' && s.youtubeTitle.length <= 300)) && Array.isArray(s.youtubeComments) && s.youtubeComments.length <= 10 && s.youtubeComments.every(comment => typeof comment === 'string' && comment.length <= 10000) && ['not_applicable','not_configured','collected','unavailable'].includes(s.youtubeDataStatus) && (s.sourceType === '유튜브' ? s.youtubeDataStatus !== 'not_applicable' : s.youtubeDataStatus === 'not_applicable'))
     && r.sources.every(validSourceMetadata)
-    && Array.isArray(r.evidence) && r.evidence.every(e=>['id','claimId','sourceId','quote'].every(k=>typeof e[k as keyof typeof e]==='string') && (e.quoteTranslation === undefined || e.quoteTranslation === null || typeof e.quoteTranslation === 'string') && typeof e.quoteVerified === 'boolean')
+    && r.sources.every(validYoutubeMetadata)
+    && Array.isArray(r.evidence) && r.evidence.every(e=>['id','claimId','sourceId','quote'].every(k=>typeof e[k as keyof typeof e]==='string') && (e.quoteTranslation === undefined || e.quoteTranslation === null || typeof e.quoteTranslation === 'string') && typeof e.quoteVerified === 'boolean' && validEvidenceSection(e))
     && Array.isArray(r.warnings) && r.warnings.every(w=>typeof w==='string') && validAnswer(r.answer,r.sources);
+}
+function validProgressSource(value: unknown): value is ProgressSource {
+  if (!value || typeof value !== 'object') return false;
+  const source = value as Record<string, unknown>;
+  return typeof source.id === 'string' && source.id.length >= 1 && source.id.length <= 100
+    && typeof source.url === 'string' && source.url.length <= 2048 && safeSourceUrl(source.url) !== null
+    && typeof source.title === 'string' && source.title.length >= 1 && source.title.length <= 300
+    && typeof source.publisher === 'string' && source.publisher.length >= 1 && source.publisher.length <= 300
+    && ['candidate','verified','unavailable'].includes(String(source.accessStatus))
+    && typeof source.sourceType === 'string' && source.sourceType.length >= 1 && source.sourceType.length <= 100;
+}
+function validProgressSources(value: unknown): value is ProgressSource[] {
+  if (!Array.isArray(value) || value.length > 6) return false;
+  const ids = new Set<string>();
+  return (value as unknown[]).every(item => {
+    if (!validProgressSource(item) || ids.has(item.id)) return false;
+    ids.add(item.id);
+    return true;
+  });
+}
+function validProgressCitation(value: unknown, sources: ProgressSource[]): boolean {
+  if (!value || typeof value !== 'object') return false;
+  const citation = value as Record<string, unknown>;
+  return typeof citation.sourceId === 'string' && citation.sourceId.length >= 1 && citation.sourceId.length <= 100
+    && typeof citation.quote === 'string' && citation.quote.length >= 1 && citation.quote.length <= 2000
+    && sources.some(source => source.id === citation.sourceId && source.accessStatus === 'verified' && source.sourceType !== '유튜브');
+}
+function validProgressClaim(value: unknown, sources: ProgressSource[]): value is ProgressClaim {
+  if (!value || typeof value !== 'object') return false;
+  const claim = value as Record<string, unknown>;
+  return typeof claim.id === 'string' && claim.id.length >= 1 && claim.id.length <= 100
+    && typeof claim.quote === 'string' && claim.quote.length >= 1 && claim.quote.length <= 12000
+    && typeof claim.summary === 'string' && claim.summary.length >= 1 && claim.summary.length <= 2000
+    && typeof claim.verdict === 'string' && claim.verdict.length >= 1 && claim.verdict.length <= 100
+    && Array.isArray(claim.citations) && claim.citations.length <= 3
+    && (claim.citations as unknown[]).every(citation => validProgressCitation(citation, sources));
+}
+function validProgressClaims(value: unknown, sources: ProgressSource[]): value is ProgressClaim[] {
+  if (!Array.isArray(value) || value.length > 3) return false;
+  const ids = new Set<string>();
+  return (value as unknown[]).every(item => {
+    if (!validProgressClaim(item, sources) || ids.has(item.id)) return false;
+    ids.add(item.id);
+    return true;
+  });
 }
 export async function readFactCheckStream(response: Response, options: Options = {}): Promise<FactCheckResult> {
   options.signal?.throwIfAborted();
@@ -64,13 +140,26 @@ export async function readFactCheckStream(response: Response, options: Options =
   const decoder = new TextDecoder();
   let buffer = '';
   let result: FactCheckResult | undefined;
+  let progressSources: ProgressSource[] = [];
   function line(value: string) {
     if (!value.trim()) return;
     let event: AgentEvent;
     try {event = JSON.parse(value);} catch {throw new FactCheckError('PROTOCOL', '검증 스트림을 읽을 수 없습니다.');}
-    if (!event || !['stage','result','error'].includes(event.type)) throw new FactCheckError('PROTOCOL', '알 수 없는 스트림 이벤트입니다.');
+    if (!event || !['stage','sources','preview','result','error'].includes(event.type)) throw new FactCheckError('PROTOCOL', '알 수 없는 스트림 이벤트입니다.');
     if (event.type === 'error') throw new FactCheckError(event.code, event.message || '검증 요청에 실패했습니다.');
-    if (event.type === 'stage') {if(typeof event.message !== 'string') throw new FactCheckError('PROTOCOL','잘못된 스트림 단계입니다.'); options.onStage?.(event);}
+    if (event.type === 'stage') {
+      if (!['extracting','searching','reading','verifying','synthesizing'].includes(event.stage) || typeof event.message !== 'string') throw new FactCheckError('PROTOCOL','잘못된 스트림 단계입니다.');
+      options.onStage?.(event);
+    }
+    if (event.type === 'sources') {
+      if (!['found','read'].includes(event.phase) || !validProgressSources(event.sources)) throw new FactCheckError('PROTOCOL','잘못된 진행 출처입니다.');
+      progressSources = event.sources;
+      options.onSources?.(event);
+    }
+    if (event.type === 'preview') {
+      if (!validProgressClaims(event.claims, progressSources)) throw new FactCheckError('PROTOCOL','진행 요약의 출처 연결이 올바르지 않습니다.');
+      options.onPreview?.(event);
+    }
     if (event.type === 'result') {if (!validResult(event.result)) throw new FactCheckError('PROTOCOL', '검증 결과 형식이 올바르지 않습니다.'); result = event.result;}
   }
   try {

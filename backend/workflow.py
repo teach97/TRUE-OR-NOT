@@ -19,6 +19,7 @@ class FactCheckState(TypedDict, total=False):
     searchNotice: str
     sources: list[dict[str, Any]]
     sourceTexts: dict[str, str]
+    sourceSections: dict[str, list[dict[str, Any]]]
     evidence: list[dict[str, Any]]
     result: dict[str, Any]
     answer: dict[str, Any]

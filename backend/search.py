@@ -189,6 +189,26 @@ def is_japanese_candidate(candidate: dict) -> bool:
     return bool(_JAPANESE_TEXT.search(text))
 
 
+_UNRELIABLE_HOSTS = {
+    "kin.naver.com",
+}
+_UNRELIABLE_HOST_FRAGMENTS = {
+    # User-reported ad doorway; full domain is truncated in the UI.
+    "sziaelet",
+}
+
+
+def is_unreliable_candidate(candidate: dict) -> bool:
+    """Exclude hosts judged too unreliable to cite (Naver Knowledge iN, ad doorways)."""
+    normalized_url = candidate_url(candidate.get("url"))
+    if not normalized_url:
+        return False
+    host = _normalized_host(normalized_url)
+    if any(host == blocked or host.endswith("." + blocked) for blocked in _UNRELIABLE_HOSTS):
+        return True
+    return any(fragment in host for fragment in _UNRELIABLE_HOST_FRAGMENTS)
+
+
 def _select_diverse_sources(candidates: list[dict], limit: int = 6) -> list[dict]:
     """Preserve provider order with a strict site cap, not a Google rank claim."""
     selected: list[dict] = []
@@ -224,7 +244,7 @@ def _project_candidates(candidates: list[dict]) -> list[dict]:
     """Preserve the provider's candidate order and its origin, not a SERP rank."""
     found: dict[str, dict] = {}
     for position, candidate in enumerate(candidates, 1):
-        if not isinstance(candidate, dict) or is_japanese_candidate(candidate):
+        if not isinstance(candidate, dict) or is_japanese_candidate(candidate) or is_unreliable_candidate(candidate):
             continue
         url = candidate_url(candidate.get("url"))
         if url is None:
@@ -306,6 +326,7 @@ async def search_sources(
                 "For Korean questions prefer relevant Korean news and blogs, then international primary sources and reporting. "
                 "Do not add a foreign-language page solely for diversity or return copies from one publisher. "
                 "Include Reddit, DCInside, and YouTube only when directly relevant as labeled context candidates. "
+                "Exclude Naver Knowledge iN (kin.naver.com) answers entirely; they are never cited. "
                 "Do not judge truth or treat snippets as verified evidence."
             ),
             input_data={

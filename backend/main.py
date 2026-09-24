@@ -1,4 +1,6 @@
 """Local True or Not API backed by the assembled LangGraph workflow."""
+import subprocess
+from pathlib import Path
 from typing import Literal
 
 from fastapi import Depends, FastAPI, Response
@@ -16,15 +18,41 @@ from schemas import FactCheckRequest
 app = FastAPI(title="True or Not Backend", version="0.1.0")
 
 
+def _code_revision() -> str:
+    """Identify the running tree so a stale deployment is visible via /health."""
+    try:
+        root = Path(__file__).resolve().parent.parent
+        head = subprocess.run(
+            ["git", "rev-parse", "--short", "HEAD"],
+            cwd=root, capture_output=True, text=True, timeout=5,
+        )
+        revision = head.stdout.strip()
+        if head.returncode != 0 or not revision:
+            return "unknown"
+        dirty = subprocess.run(
+            ["git", "status", "--porcelain"],
+            cwd=root, capture_output=True, text=True, timeout=5,
+        )
+        if dirty.returncode == 0 and dirty.stdout.strip():
+            revision += "-dirty"
+        return revision
+    except Exception:
+        return "unknown"
+
+
+_CODE_REVISION = _code_revision()
+
+
 class HealthStatus(BaseModel):
     status: Literal["ok"] = "ok"
     service: Literal["factlens-backend"] = "factlens-backend"
+    revision: str = "unknown"
 
 
 @app.get("/health", response_model=HealthStatus)
 async def health():
     """Report process liveness, not provider readiness."""
-    return HealthStatus()
+    return HealthStatus(revision=_CODE_REVISION)
 
 
 @app.get("/api/fact-check", response_model=AgentStatus)

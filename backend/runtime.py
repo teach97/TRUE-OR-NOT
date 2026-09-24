@@ -12,7 +12,12 @@ from langgraph.graph import END, START, StateGraph
 from pydantic import BaseModel, SecretStr
 
 from answer_synthesis import eligible_sources, insufficient_answer, synthesize_answer
-from contracts import FactCheckResult
+from contracts import (
+    FactCheckProgressCitation,
+    FactCheckProgressClaim,
+    FactCheckProgressSource,
+    FactCheckResult,
+)
 from extraction import extract_claims
 from google_serp import FreeSearchUnavailable, search_google_free
 from providers import ProviderCallError, providers_for_preference, run_with_fallback
@@ -244,6 +249,9 @@ def _normalize_source(raw: dict, checked_at: str) -> dict:
         "searchQuery": raw.get("searchQuery"),
         "candidateOrder": raw.get("candidateOrder"),
         "youtubeTitle": raw.get("youtubeTitle"),
+        "youtubeChannelTitle": raw.get("youtubeChannelTitle"),
+        "youtubePublishedAt": raw.get("youtubePublishedAt"),
+        "youtubeViewCount": raw.get("youtubeViewCount"),
         "youtubeComments": raw.get("youtubeComments", []),
         "youtubeDataStatus": raw.get("youtubeDataStatus", "not_applicable"),
     }
@@ -313,6 +321,87 @@ def build_fact_check_result(
         "warnings": _result_warnings(sources, merged_state.get("searchNotice")),
         "answer": answer,
     })
+
+
+def build_progress_sources(state: FactCheckState) -> list[dict[str, object]]:
+    """Expose only source identity and access state before final answer assembly."""
+    raw_sources = state.get("sources", [])
+    if not isinstance(raw_sources, list):
+        return []
+
+    projected: list[dict[str, object]] = []
+    seen_ids: set[str] = set()
+    for raw in raw_sources:
+        if not isinstance(raw, dict):
+            continue
+        source_id = raw.get("id")
+        raw_url = raw.get("resolvedUrl") or raw.get("url")
+        if not isinstance(source_id, str) or not source_id or source_id in seen_ids:
+            continue
+        if not isinstance(raw_url, str) or len(raw_url) > 2048:
+            continue
+        try:
+            parsed_url = urlsplit(raw_url)
+        except ValueError:
+            continue
+        if parsed_url.scheme not in {"http", "https"} or not parsed_url.hostname:
+            continue
+
+        status = raw.get("accessStatus")
+        if status not in {"verified", "unavailable"}:
+            status = "candidate"
+        source = FactCheckProgressSource.model_validate({
+            "id": source_id,
+            "url": raw_url,
+            "title": str(raw.get("title") or parsed_url.hostname)[:300],
+            "publisher": str(raw.get("publisher") or parsed_url.hostname)[:300],
+            "accessStatus": status,
+            "sourceType": str(raw.get("sourceType") or "유형 미확인")[:100],
+        })
+        projected.append(source.model_dump(mode="json"))
+        seen_ids.add(source_id)
+        if len(projected) == 6:
+            break
+    return projected
+
+
+def build_progress_preview(state: FactCheckState) -> dict[str, object]:
+    """Build an early, strictly projected claim summary from validated evidence."""
+    result = build_fact_check_result(state, {})
+    evidence_by_id = {evidence.id: evidence for evidence in result.evidence}
+    sources_by_id = {source.id: source for source in result.sources}
+    claims: list[dict[str, object]] = []
+
+    for claim in result.claims:
+        citations: list[dict[str, str]] = []
+        for evidence_id in claim.evidenceIds:
+            evidence = evidence_by_id.get(evidence_id)
+            source = sources_by_id.get(evidence.sourceId) if evidence else None
+            if (
+                evidence is None
+                or source is None
+                or source.accessStatus != "verified"
+                or source.sourceType == "유튜브"
+            ):
+                continue
+            citation = FactCheckProgressCitation.model_validate({
+                "sourceId": evidence.sourceId,
+                "quote": evidence.quote,
+            })
+            citations.append(citation.model_dump(mode="json"))
+            if len(citations) == 3:
+                break
+
+        preview_claim = FactCheckProgressClaim.model_validate({
+            "id": claim.id,
+            "quote": claim.quote,
+            "summary": claim.summary,
+            "verdict": claim.verdict,
+            "citations": citations,
+        })
+        claims.append(preview_claim.model_dump(mode="json"))
+
+    return {"claims": claims}
 
 
 def build_runtime_workflow(

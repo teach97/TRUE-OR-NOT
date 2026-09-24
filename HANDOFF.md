@@ -1,5 +1,13 @@
 # 팩트체크 에이전트 UI MVP 작업 인계서
 
+## 2026-09-24 YouTube 영상 메타데이터와 댓글 아바타
+
+- **영상 정보:** YouTube Data API `videos.list` 요청에서 `snippet,statistics`를 받아 영상 제목과 함께 채널명(`snippet.channelTitle`), 게시일(`snippet.publishedAt`), 조회수(`statistics.viewCount`)를 화면에 표시합니다. 조회수는 정수 문자열로 유지해 큰 값도 정밀도 손실 없이 쉼표 서식으로 렌더링합니다. UI의 날짜 라벨은 공식 API의 게시일 의미에 맞춰 `게시일`로 표시합니다.
+- **댓글 아바타:** 각 공개 댓글 왼쪽에 로컬 SVG로 생성한 임의의 회색 프로필 그림을 배치합니다. 실제 댓글 작성자 사진·프로필 URL이나 개인정보는 요청하지 않으며, UI와 개인정보 안내에서 합성 이미지임을 밝힙니다.
+- **계약·개인정보:** `youtubeChannelTitle`, `youtubePublishedAt`, `youtubeViewCount`를 Python/TypeScript 응답 계약까지 전달하고 길이·날짜·숫자 형식을 검증합니다. YouTube Data API에서 받은 제목·채널명·게시일·조회수·댓글은 기존 정책과 같이 JSON 내보내기에서 제외합니다. 동의 문구, 개인정보 처리방침, 이용약관을 갱신했습니다.
+- **회귀 검증:** backend `236 passed` (기존 Starlette/AnyIO deprecation warning 1건), Node `17 passed`, `npm run typecheck`, Turbopack 기반 `npm run build`, `uv lock --check`, `git diff --check` 통과.
+- **실 API:** 서버 환경에 `YOUTUBE_API_KEY`가 없어 Google API live 호출은 확인하지 않았습니다. 실제 사용 전 키를 서버 전용 `backend/.env`에 설정하고 재시작해 채널·게시일·조회수 응답을 확인해야 합니다. API 응답의 게시일은 영상 공개 시점을 나타내며, 비공개 상태로 올린 뒤 공개한 영상은 최초 업로드 시각과 다를 수 있습니다.
+
 ## 2026-09-23 중복 링크·일본어 검색 결과 보정
 
 - **원인:** SerpApi 요청은 `gl=kr`, `hl=ko`만 설정해 검색 지역과 화면 언어를 지정했으며, 검색 문서 언어 제한이 없었습니다. URL 중복 제거도 검색 결과 단계에만 적용되어 다른 URL이 같은 최종 기사로 리디렉션되면 중복으로 남았습니다. AI 답변 UI는 문단마다 출처 전체 링크를 반복해서 렌더링했습니다.

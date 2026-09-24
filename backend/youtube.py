@@ -1,6 +1,7 @@
 """Small, read-only adapter for documented public YouTube Data API fields."""
 import json
 import re
+from datetime import datetime
 from urllib.parse import parse_qs, urlsplit
 
 import httpx
@@ -10,6 +11,10 @@ API_ROOT = "https://www.googleapis.com/youtube/v3"
 MAX_COMMENT_COUNT = 10
 MAX_RESPONSE_BYTES = 256_000
 _VIDEO_ID = re.compile(r"^[A-Za-z0-9_-]{11}$")
+_VIEW_COUNT = re.compile(r"^\d{1,30}$")
+_PUBLISHED_AT = re.compile(
+    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$"
+)
 
 
 def youtube_video_id(raw_url: str) -> str | None:
@@ -80,8 +85,37 @@ async def _request_json(
     return payload
 
 
-def _unavailable(title: str | None = None) -> dict:
-    return {"title": title, "comments": [], "status": "unavailable"}
+def _bounded_text(value: object, max_length: int) -> str | None:
+    if not isinstance(value, str):
+        return None
+    normalized = value.strip()
+    return normalized if normalized and len(normalized) <= max_length else None
+
+
+def _published_at(value: object) -> str | None:
+    if not isinstance(value, str) or not _PUBLISHED_AT.fullmatch(value):
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return value if parsed.tzinfo is not None else None
+
+
+def _unavailable(
+    title: str | None = None,
+    channel_title: str | None = None,
+    published_at: str | None = None,
+    view_count: str | None = None,
+) -> dict:
+    return {
+        "title": title,
+        "channelTitle": channel_title,
+        "publishedAt": published_at,
+        "viewCount": view_count,
+        "comments": [],
+        "status": "unavailable",
+    }
 
 
 async def fetch_youtube_data(
@@ -90,9 +124,16 @@ async def fetch_youtube_data(
     api_key: str,
     client: httpx.AsyncClient,
 ) -> dict:
-    """Fetch the current title and at most ten top-level comments for one video."""
+    """Fetch public video metadata and at most ten top-level comments."""
     if not isinstance(api_key, str) or not api_key.strip():
-        return {"title": None, "comments": [], "status": "not_configured"}
+        return {
+            "title": None,
+            "channelTitle": None,
+            "publishedAt": None,
+            "viewCount": None,
+            "comments": [],
+            "status": "not_configured",
+        }
     video_id = youtube_video_id(raw_url)
     if video_id is None:
         return _unavailable()
@@ -101,16 +142,21 @@ async def fetch_youtube_data(
         video_payload = await _request_json(
             client,
             f"{API_ROOT}/videos",
-            params={"part": "snippet", "id": video_id, "key": api_key},
+            params={"part": "snippet,statistics", "id": video_id, "key": api_key},
         )
     except (httpx.HTTPError, TimeoutError, ValueError):
         return _unavailable()
 
     videos = video_payload.get("items")
     snippet = videos[0].get("snippet") if isinstance(videos, list) and videos and isinstance(videos[0], dict) else None
-    title = snippet.get("title") if isinstance(snippet, dict) else None
-    if not isinstance(title, str) or not title.strip():
+    title = _bounded_text(snippet.get("title"), 300) if isinstance(snippet, dict) else None
+    if title is None:
         return _unavailable()
+    channel_title = _bounded_text(snippet.get("channelTitle"), 300)
+    published_at = _published_at(snippet.get("publishedAt"))
+    statistics = videos[0].get("statistics") if isinstance(videos[0], dict) else None
+    raw_view_count = statistics.get("viewCount") if isinstance(statistics, dict) else None
+    view_count = raw_view_count if isinstance(raw_view_count, str) and _VIEW_COUNT.fullmatch(raw_view_count) else None
 
     try:
         comments_payload = await _request_json(
@@ -126,11 +172,11 @@ async def fetch_youtube_data(
             },
         )
     except (httpx.HTTPError, TimeoutError, ValueError):
-        return _unavailable(title)
+        return _unavailable(title, channel_title, published_at, view_count)
 
     threads = comments_payload.get("items")
     if not isinstance(threads, list):
-        return _unavailable(title)
+        return _unavailable(title, channel_title, published_at, view_count)
     comments = []
     for thread in threads[:MAX_COMMENT_COUNT]:
         thread_snippet = thread.get("snippet") if isinstance(thread, dict) else None
@@ -139,4 +185,11 @@ async def fetch_youtube_data(
         comment_text = comment_snippet.get("textDisplay") if isinstance(comment_snippet, dict) else None
         if isinstance(comment_text, str) and comment_text.strip():
             comments.append(comment_text)
-    return {"title": title, "comments": comments, "status": "collected"}
+    return {
+        "title": title,
+        "channelTitle": channel_title,
+        "publishedAt": published_at,
+        "viewCount": view_count,
+        "comments": comments,
+        "status": "collected",
+    }

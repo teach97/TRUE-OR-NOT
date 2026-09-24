@@ -17,7 +17,9 @@ def test_health_and_status_do_not_claim_provider_readiness(monkeypatch):
     with TestClient(app) as client:
         health = client.get("/health")
         assert health.status_code == 200
-        assert health.json() == {"status": "ok", "service": "factlens-backend"}
+        body = health.json()
+        assert body["status"] == "ok" and body["service"] == "factlens-backend"
+        assert isinstance(body.get("revision"), str) and body["revision"]
         status = client.get("/api/fact-check")
         assert status.status_code == 200
         assert status.headers["cache-control"] == "no-store"

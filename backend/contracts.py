@@ -41,6 +41,13 @@ class FactSource(_ContractModel):
     searchQuery: str | None = Field(default=None, max_length=300)
     candidateOrder: int | None = Field(default=None, ge=1, le=1000)
     youtubeTitle: str | None = Field(default=None, max_length=300)
+    youtubeChannelTitle: str | None = Field(default=None, max_length=300)
+    youtubePublishedAt: str | None = Field(
+        default=None,
+        max_length=50,
+        pattern=r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$",
+    )
+    youtubeViewCount: str | None = Field(default=None, pattern=r"^\d{1,30}$")
     youtubeComments: list[Annotated[str, Field(max_length=10_000)]] = Field(
         default_factory=list,
         max_length=10,
@@ -48,6 +55,30 @@ class FactSource(_ContractModel):
     youtubeDataStatus: Literal[
         "not_applicable", "not_configured", "collected", "unavailable",
     ] = "not_applicable"
+
+
+class FactCheckProgressSource(_ContractModel):
+    """Small, non-sensitive source projection used while verification is running."""
+
+    id: str = Field(min_length=1, max_length=100)
+    url: str = Field(min_length=1, max_length=2048)
+    title: str = Field(min_length=1, max_length=300)
+    publisher: str = Field(min_length=1, max_length=300)
+    accessStatus: Literal["candidate", "verified", "unavailable"]
+    sourceType: str = Field(min_length=1, max_length=100)
+
+
+class FactCheckProgressCitation(_ContractModel):
+    sourceId: str = Field(min_length=1, max_length=100)
+    quote: str = Field(min_length=1, max_length=2_000)
+
+
+class FactCheckProgressClaim(_ContractModel):
+    id: str = Field(min_length=1, max_length=100)
+    quote: str = Field(min_length=1, max_length=12_000)
+    summary: str = Field(min_length=1, max_length=2_000)
+    verdict: str = Field(min_length=1, max_length=100)
+    citations: list[FactCheckProgressCitation] = Field(max_length=3)
 
 
 class FactEvidence(_ContractModel):
@@ -58,6 +89,17 @@ class FactEvidence(_ContractModel):
     quoteTranslation: str | None = Field(default=None, max_length=2_000)
     quoteVerified: Literal[True]
     relation: EvidenceRelation
+    sectionTitle: str | None = Field(default=None, min_length=1, max_length=300)
+    sectionText: str | None = Field(default=None, min_length=1, max_length=8_000)
+    sectionTruncated: bool = False
+
+    @model_validator(mode="after")
+    def validate_section_details(self):
+        if (self.sectionTitle is None) != (self.sectionText is None):
+            raise ValueError("Section title and text must be provided together")
+        if self.sectionTruncated and self.sectionText is None:
+            raise ValueError("Truncated section details need section text")
+        return self
 
 
 class FactClaim(_ContractModel):

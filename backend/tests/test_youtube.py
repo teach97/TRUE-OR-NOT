@@ -18,11 +18,24 @@ def test_youtube_video_id_accepts_video_urls_and_rejects_lookalikes():
 
 def test_fetches_official_video_title_and_bounded_plain_text_comments():
     requests = []
+    metadata = {
+        "title": "AGI 전망 인터뷰",
+        "channelTitle": "AI 연구 채널",
+        "publishedAt": "2026-09-20T12:30:00Z",
+        "viewCount": "1234567",
+    }
 
     def handler(request):
         requests.append(request)
         if request.url.path.endswith("/videos"):
-            return httpx.Response(200, json={"items": [{"snippet": {"title": "AGI 전망 인터뷰"}}]})
+            return httpx.Response(200, json={"items": [{
+                "snippet": {
+                    "title": metadata["title"],
+                    "channelTitle": metadata["channelTitle"],
+                    "publishedAt": metadata["publishedAt"],
+                },
+                "statistics": {"viewCount": metadata["viewCount"]},
+            }]})
         return httpx.Response(200, json={"items": [
             {"snippet": {"topLevelComment": {"snippet": {"textDisplay": f"댓글 {index}"}}}}
             for index in range(20)
@@ -38,7 +51,7 @@ def test_fetches_official_video_title_and_bounded_plain_text_comments():
 
     result = asyncio.run(run())
     assert result == {
-        "title": "AGI 전망 인터뷰",
+        **metadata,
         "comments": [f"댓글 {index}" for index in range(MAX_COMMENT_COUNT)],
         "status": "collected",
     }
@@ -46,7 +59,7 @@ def test_fetches_official_video_title_and_bounded_plain_text_comments():
     video_request, comments_request = requests
     assert video_request.url.host == "www.googleapis.com"
     assert video_request.url.path.endswith("/youtube/v3/videos")
-    assert video_request.url.params["part"] == "snippet"
+    assert video_request.url.params["part"] == "snippet,statistics"
     assert video_request.url.params["id"] == "aB_12345678"
     assert video_request.url.params["key"] == "youtube-test-key"
     assert comments_request.url.path.endswith("/youtube/v3/commentThreads")
@@ -59,7 +72,14 @@ def test_fetches_official_video_title_and_bounded_plain_text_comments():
 def test_comments_unavailable_keeps_video_title_without_exposing_provider_error():
     def handler(request):
         if request.url.path.endswith("/videos"):
-            return httpx.Response(200, json={"items": [{"snippet": {"title": "제목"}}]})
+            return httpx.Response(200, json={"items": [{
+                "snippet": {
+                    "title": "제목",
+                    "channelTitle": "채널",
+                    "publishedAt": "2026-09-20T12:30:00Z",
+                },
+                "statistics": {"viewCount": "42"},
+            }]})
         return httpx.Response(403, json={"error": {"message": "private diagnostic"}})
 
     async def run():
@@ -70,7 +90,14 @@ def test_comments_unavailable_keeps_video_title_without_exposing_provider_error(
                 client=client,
             )
 
-    assert asyncio.run(run()) == {"title": "제목", "comments": [], "status": "unavailable"}
+    assert asyncio.run(run()) == {
+        "title": "제목",
+        "channelTitle": "채널",
+        "publishedAt": "2026-09-20T12:30:00Z",
+        "viewCount": "42",
+        "comments": [],
+        "status": "unavailable",
+    }
 
 
 def test_missing_key_or_invalid_video_url_makes_no_api_request():
@@ -85,10 +112,12 @@ def test_missing_key_or_invalid_video_url_makes_no_api_request():
             return await fetch_youtube_data(url, api_key=key, client=client)
 
     assert asyncio.run(run("https://youtube.com/watch?v=aB_12345678", "")) == {
-        "title": None, "comments": [], "status": "not_configured"
+        "title": None, "channelTitle": None, "publishedAt": None, "viewCount": None,
+        "comments": [], "status": "not_configured"
     }
     assert asyncio.run(run("https://youtube.com/channel/abc", "test-key")) == {
-        "title": None, "comments": [], "status": "unavailable"
+        "title": None, "channelTitle": None, "publishedAt": None, "viewCount": None,
+        "comments": [], "status": "unavailable"
     }
     assert requests == []
 
@@ -96,7 +125,10 @@ def test_missing_key_or_invalid_video_url_makes_no_api_request():
 def test_oversized_api_payload_is_treated_as_unavailable():
     def handler(request):
         if request.url.path.endswith("/videos"):
-            return httpx.Response(200, json={"items": [{"snippet": {"title": "제목"}}]})
+            return httpx.Response(200, json={"items": [{"snippet": {
+                "title": "제목", "channelTitle": "채널",
+                "publishedAt": "2026-09-20T12:30:00Z",
+            }, "statistics": {"viewCount": "42"}}]})
         return httpx.Response(200, content=b"{" + b" " * 300_000 + b"}", headers={"content-type": "application/json"})
 
     async def run():
@@ -107,4 +139,38 @@ def test_oversized_api_payload_is_treated_as_unavailable():
                 client=client,
             )
 
-    assert asyncio.run(run()) == {"title": "제목", "comments": [], "status": "unavailable"}
+    assert asyncio.run(run()) == {
+        "title": "제목", "channelTitle": "채널",
+        "publishedAt": "2026-09-20T12:30:00Z", "viewCount": "42",
+        "comments": [], "status": "unavailable",
+    }
+
+
+def test_ignores_malformed_youtube_metadata_without_rejecting_comments():
+    def handler(request):
+        if request.url.path.endswith("/videos"):
+            return httpx.Response(200, json={"items": [{
+                "snippet": {
+                    "title": "제목",
+                    "channelTitle": "채널" * 200,
+                    "publishedAt": "not-a-date",
+                },
+                "statistics": {"viewCount": "12 views"},
+            }]})
+        return httpx.Response(200, json={"items": []})
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            return await fetch_youtube_data(
+                "https://youtube.com/watch?v=aB_12345678",
+                api_key="youtube-test-key",
+                client=client,
+            )
+
+    result = asyncio.run(run())
+    assert result["title"] == "제목"
+    assert result["channelTitle"] is None
+    assert result["publishedAt"] is None
+    assert result["viewCount"] is None
+    assert result["comments"] == []
+    assert result["status"] == "collected"

@@ -48,6 +48,29 @@ def test_search_candidates_exclude_japanese_pages_across_providers():
     assert [source["url"] for source in sources] == ["https://news.example.kr/agi"]
 
 
+def test_search_candidates_exclude_naver_kin_answers():
+    from search import _project_candidates
+
+    sources = _project_candidates([
+        {"url": "https://kin.naver.com/qna/detail.naver?d1id=1&dirId=1&docId=123", "title": "마크저커버그 뱀파이어인가요", "searchProvider": "serpapi_google", "searchQuery": "마크저커버그"},
+        {"url": "https://m.kin.naver.com/qna/detail.naver?d1id=1&dirId=2&docId=456", "title": "모바일 지식인 답변", "searchProvider": "gemini_google_search", "searchQuery": "마크저커버그"},
+        {"url": "https://namu.wiki/w/reptilian", "title": "렙틸리언", "searchProvider": "serpapi_google", "searchQuery": "마크저커버그"},
+    ])
+
+    assert [source["url"] for source in sources] == ["https://namu.wiki/w/reptilian"]
+
+
+def test_search_candidates_exclude_reported_ad_doorway_hosts():
+    from search import _project_candidates
+
+    sources = _project_candidates([
+        {"url": "https://sziaeletem.hu/cikk/reptilian-zuckerberg", "title": "광고 도어웨이", "searchProvider": "serpapi_google", "searchQuery": "마크저커버그"},
+        {"url": "https://namu.wiki/w/reptilian", "title": "렙틸리언", "searchProvider": "serpapi_google", "searchQuery": "마크저커버그"},
+    ])
+
+    assert [source["url"] for source in sources] == ["https://namu.wiki/w/reptilian"]
+
+
 def test_search_collects_deduplicated_candidates_without_evidence():
     assert importlib.util.find_spec("search") is not None, "Search adapter missing"
     from search import search_sources

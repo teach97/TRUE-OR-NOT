@@ -28,17 +28,19 @@ def test_score_boundaries_have_stable_public_labels(score, band, label):
 @pytest.mark.parametrize(
     ("verdict", "requested", "expected"),
     [
-        ("mostly_supported", 70, 80),
+        ("mostly_supported", 70, 70),
         ("mostly_supported", 96, 96),
-        ("partially_supported", 95, 79),
+        ("partially_supported", 95, 95),
         ("partially_supported", 61, 61),
-        ("contradicted", 50, 39),
+        ("contradicted", 50, 50),
         ("contradicted", 8, 8),
-        ("missing_context", 95, 50),
-        ("conflicting_sources", 10, 50),
-        ("insufficient_evidence", 2, 50),
-        ("not_checkable", 100, 50),
+        ("missing_context", 95, 95),
+        ("conflicting_sources", 10, 10),
+        ("insufficient_evidence", 2, 2),
+        ("not_checkable", 100, 100),
+        ("mostly_supported", 120, 100),
+        ("contradicted", -5, 0),
     ],
 )
-def test_grounding_normalizes_scores_to_the_verified_verdict(verdict, requested, expected):
+def test_model_score_is_preserved_verbatim_within_range(verdict, requested, expected):
     assert normalize_fact_score(verdict, requested) == expected
