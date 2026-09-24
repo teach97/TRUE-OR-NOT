@@ -183,31 +183,69 @@ def test_verify_claims_jev_without_sources_never_calls_gateway():
     assert result["claims"][0]["verdictCode"] == "insufficient_evidence"
 
 
-def test_fast_check_text_mode_returns_single_scored_claim():
+def test_fast_check_searches_google_and_sends_read_source_text_to_jev(monkeypatch):
     import runtime
 
-    async def handler(request):
+    claim = "AGI\uB294 2030\uB144 \uC548\uC5D0 \uC624\uB098?"
+    seen = {"search_paths": [], "jev_state": None}
+
+    def handler(request):
+        if request.url.host == "serpapi.com":
+            seen["search_paths"].append(request.url.path)
+            if request.url.path == "/account.json":
+                return httpx.Response(200, json={
+                    "plan_name": "Free", "plan_monthly_price": 0,
+                    "plan_searches_left": 3, "extra_credits": 0,
+                })
+            assert request.url.path == "/search.json"
+            assert request.url.params["q"] == "AGI 2030\uB144"
+            return httpx.Response(200, json={
+                "search_metadata": {"status": "Success"},
+                "organic_results": [{
+                    "position": 1,
+                    "title": "AGI timeline outlook",
+                    "link": "https://www.aitimes.com/news/agi-outlook",
+                }],
+            })
+
         assert request.url.host == "ai-gateway.vercel.sh"
+        seen["jev_state"] = json.loads(request.content)["state"]
         return jev_response(verdict="mostly_supported", score=3.0, confidence=0.9)
+
+    async def fake_fetch(url):
+        assert url == "https://www.aitimes.com/news/agi-outlook"
+        return (
+            "Expert forecasts disagree on AGI arrival timelines.",
+            url,
+        )
+
+    monkeypatch.setattr(runtime, "fetch_public_text", fake_fetch)
 
     async def run():
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             return await runtime.run_jev_fast_check(
-                text="Water boils at 100C.", focus="",
-                client=client, api_key="k",
+                text=claim, focus="",
+                client=client, api_key="k", search_api_key="test-serp-key",
+                consent=True,
             )
 
     result = asyncio.run(run())
     assert result.model == "typesafe-ai/jev"
-    assert result.text == "Water boils at 100C."
+    assert result.text == claim
     assert [(c.id, c.verdictCode, c.factScore) for c in result.claims] == [
-        ("c1", "mostly_supported", 75)]
+        ("c1", "mostly_supported", 75),
+    ]
+    assert seen["search_paths"] == ["/account.json", "/search.json"]
+    assert seen["jev_state"]["claim"] == claim
+    assert "Expert forecasts disagree" in seen["jev_state"]["evidence"]
     assert result.claims[0].evidenceIds == []
     assert result.evidence == []
-    assert result.sources == []
+    assert [source.url for source in result.sources] == [
+        "https://www.aitimes.com/news/agi-outlook",
+    ]
 
 
-def test_fast_check_link_mode_uses_page_text_and_seed_source(monkeypatch):
+def test_fast_check_uses_linked_source_as_evidence_without_replacing_claim(monkeypatch):
     import runtime
 
     async def fake_fetch(url):
@@ -215,6 +253,7 @@ def test_fast_check_link_mode_uses_page_text_and_seed_source(monkeypatch):
         return ("Fetched page body text here.", "https://example.org/article")
 
     async def handler(request):
+        assert "Fetched page body text here." in json.loads(request.content)["state"]["evidence"]
         return jev_response(verdict="partially_supported", score=2.0, confidence=0.8)
 
     monkeypatch.setattr(runtime, "fetch_public_text", fake_fetch)
@@ -222,13 +261,13 @@ def test_fast_check_link_mode_uses_page_text_and_seed_source(monkeypatch):
     async def run():
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             return await runtime.run_jev_fast_check(
-                text="https://example.org/article", focus="",
+                text="Water boils at 50C.", focus="",
                 link_url="https://example.org/article",
                 client=client, api_key="k",
             )
 
     result = asyncio.run(run())
-    assert result.text == "Fetched page body text here."
+    assert result.text == "Water boils at 50C."
     assert [s.id for s in result.sources] == ["s0"]
     assert result.sources[0].accessStatus == "verified"
     assert result.claims[0].factScore == 50
@@ -259,13 +298,19 @@ def test_fast_check_truncates_long_text_to_contract_limit():
 def test_fast_check_propagates_jev_failure_without_llm_fallback(monkeypatch):
     import runtime
 
+    async def fake_fetch(url):
+        return "Relevant source text.", url
+
     async def handler(request):
         return httpx.Response(500, json={"error": "busy"})
+
+    monkeypatch.setattr(runtime, "fetch_public_text", fake_fetch)
 
     async def run():
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             return await runtime.run_jev_fast_check(
                 text="Some claim text here.", focus="",
+                link_url="https://example.org/source",
                 client=client, api_key="k",
             )
 

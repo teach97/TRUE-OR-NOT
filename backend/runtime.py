@@ -20,15 +20,12 @@ from contracts import (
 )
 from extraction import extract_claims, extract_image_claims, extract_page_claims
 from google_serp import FreeSearchUnavailable, search_google_free
-from jev import JevError, evaluate_claims_jev
+from jev import JevError
 from providers import ProviderCallError, providers_for_preference, run_with_fallback
 from schemas import FactCheckRequest
-from search import origin_group_for_url, search_sources, source_type_for_url
+from search import build_search_query, origin_group_for_url, search_sources, source_type_for_url
 from sources import fetch_public_text, read_sources
 from verification import (
-    _JEV_MODE_WARNING,
-    _JEV_SUMMARIES,
-    _base_claim_result,
     verify_claims,
     verify_claims_jev,
 )
@@ -358,6 +355,10 @@ def _result_warnings(sources: list[dict], search_notice: str | None = None) -> l
         warnings.append(
             "무료 Google 검색을 사용할 수 없어 기존 웹검색 후보로 대체했습니다. 표시된 후보 순위는 Google 자연검색 순위가 아닙니다."
         )
+    elif search_notice == "SERPAPI_FREE_ONLY_UNAVAILABLE":
+        warnings.append(
+            "\uBB34\uB8CC Google \uAC80\uC0C9\uC744 \uC0AC\uC6A9\uD560 \uC218 \uC5C6\uC5B4 \uAC80\uC0C9 \uC6D0\uBB38\uC744 \uD655\uBCF4\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4."
+        )
     return warnings
 
 
@@ -426,58 +427,76 @@ async def run_jev_fast_check(
     link_url: str | None = None,
     client: httpx.AsyncClient,
     api_key: str | None,
+    search_api_key: str | None = None,
+    consent: bool = True,
 ) -> FactCheckResult:
-    """Single Jev verdict for Jev mode: no extract/search/read/synthesize stages."""
-    page_text = ""
-    sources: list[dict] = []
-    if link_url:
-        try:
-            fetched, final_url = await fetch_public_text(link_url)
-        except Exception:
-            fetched, final_url = "", link_url
-        if isinstance(fetched, str) and fetched.strip():
-            page_text = fetched
-            host = urlsplit(final_url or link_url).hostname or link_url
-            sources = [{
-                "id": "s0",
-                "url": link_url,
-                "resolvedUrl": final_url,
-                "title": host,
-                "publisher": host,
-                "publishedAt": None,
-                "retrievedAt": "",
-                "accessStatus": "verified",
-                "sourceType": source_type_for_url(link_url),
-                "originGroupId": origin_group_for_url(link_url),
-                "searchProvider": None,
-                "searchQuery": None,
-                "candidateOrder": None,
-            }]
-    full_text = _truncate_units(page_text.strip() or text, 12_000)
-    if not full_text.strip():
+    """Search and read evidence, then return Jev's score-only claim result."""
+    full_text = _truncate_units(text.strip(), 12_000)
+    if not full_text:
         raise JevError("Nothing to judge")
-    judgments = await evaluate_claims_jev(
-        [{"id": "c1", "quote": full_text, "kind": "fact"}],
-        {"c1": full_text},
-        client=client,
-        api_key=api_key,
-    )
-    if not judgments:
-        raise JevError("Jev returned no judgment")
-    judgment = judgments[0]
-    timestamp = datetime.now(timezone.utc).isoformat()
-    normalized_sources = [_normalize_source(source, timestamp) for source in sources]
-    base = {
+
+    claim = {
         "id": "c1",
         "quote": full_text,
         "start": 0,
         "end": len(full_text.encode("utf-16-le")) // 2,
         "kind": "fact",
     }
-    claim = _base_claim_result(
-        base, judgment["verdictCode"], _JEV_SUMMARIES[judgment["verdictCode"]], judgment["factScore"]
+    query_text = focus.strip() or full_text
+    state = {
+        "text": full_text,
+        "focus": focus,
+        "consent": consent,
+        "claims": [claim],
+        "searchQueries": {"c1": build_search_query(query_text)},
+    }
+    sources: list[dict] = []
+    if link_url:
+        host = urlsplit(link_url).hostname or link_url
+        sources.append({
+            "id": "s0",
+            "url": link_url,
+            "title": host,
+            "publisher": host,
+            "sourceType": source_type_for_url(link_url),
+            "originGroupId": origin_group_for_url(link_url),
+            "accessStatus": "pending",
+            "searchProvider": None,
+            "searchQuery": None,
+            "candidateOrder": None,
+        })
+
+    search_notice = None
+    if consent:
+        try:
+            search_result = await search_google_free(
+                state,
+                api_key=search_api_key or "",
+                client=client,
+            )
+            sources.extend(search_result.get("sources", []))
+        except FreeSearchUnavailable as exc:
+            _logger.warning("Jev free Google search unavailable reason=%s", str(exc))
+            search_notice = "SERPAPI_FREE_ONLY_UNAVAILABLE"
+    else:
+        search_notice = "SERPAPI_FREE_ONLY_UNAVAILABLE"
+
+    state["sources"] = sources[:6]
+    read_result = await read_sources(state, reader=fetch_public_text)
+    state.update(read_result)
+    judgment_result = await verify_claims_jev(
+        state,
+        client=client,
+        api_key=api_key,
     )
-    claim["warnings"] = [_JEV_MODE_WARNING]
+    if not judgment_result.get("claims"):
+        raise JevError("Jev returned no judgment")
+
+    timestamp = datetime.now(timezone.utc).isoformat()
+    normalized_sources = [
+        _normalize_source(source, timestamp) for source in read_result.get("sources", [])
+    ]
+    warnings = _result_warnings(normalized_sources, search_notice)
     return FactCheckResult.model_validate({
         "text": full_text,
         "focus": focus,
@@ -485,10 +504,10 @@ async def run_jev_fast_check(
         "model": "typesafe-ai/jev",
         "reasoning": "max",
         "checkedAt": timestamp,
-        "claims": [claim],
+        "claims": judgment_result["claims"],
         "sources": normalized_sources,
-        "evidence": [],
-        "warnings": _result_warnings(normalized_sources, None),
+        "evidence": judgment_result.get("evidence", []),
+        "warnings": warnings,
         "answer": insufficient_answer(),
     })
 

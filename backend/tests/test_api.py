@@ -1,5 +1,6 @@
 """Offline API boundary checks; no provider calls."""
 import importlib.util
+import json
 
 import httpx
 import pytest
@@ -84,8 +85,30 @@ def test_jev_endpoint_returns_scored_result(monkeypatch):
 
     real_async_client = httpx.AsyncClient
 
+    seen = []
+
     def handler(request):
+        if request.url.host == "serpapi.com":
+            seen.append(request.url.path)
+            if request.url.path == "/account.json":
+                return httpx.Response(200, json={
+                    "plan_name": "Free", "plan_monthly_price": 0,
+                    "plan_searches_left": 3, "extra_credits": 0,
+                })
+            assert request.url.params["q"] == "Water boils at 50C."
+            return httpx.Response(200, json={
+                "search_metadata": {"status": "Success"},
+                "organic_results": [{
+                    "position": 1,
+                    "title": "Boiling point reference",
+                    "link": "https://example.org/boiling-point",
+                }],
+            })
+
         assert request.url.host == "ai-gateway.vercel.sh"
+        seen.append("jev")
+        state = json.loads(request.content)["state"]
+        assert "Water boils at 100 degrees Celsius" in state["evidence"]
         return httpx.Response(200, json={
             "model": "typesafe-ai/jev",
             "answers": {
@@ -107,10 +130,18 @@ def test_jev_endpoint_returns_scored_result(monkeypatch):
     def mock_client(*args, **kwargs):
         return real_async_client(*args, transport=httpx.MockTransport(handler), **kwargs)
 
+    async def fake_fetch(url):
+        return "Water boils at 100 degrees Celsius at sea level.", url
+
     monkeypatch.setattr(main.httpx, "AsyncClient", mock_client)
+    monkeypatch.setattr(runtime, "fetch_public_text", fake_fetch)
     monkeypatch.setattr(
         main, "load_settings",
-        lambda: Settings(api_key=SecretStr(""), ai_gateway_api_key=SecretStr("gw-test")),
+        lambda: Settings(
+            api_key=SecretStr(""),
+            ai_gateway_api_key=SecretStr("gw-test"),
+            serpapi_api_key=SecretStr("serp-test"),
+        ),
     )
     with TestClient(app) as client:
         response = client.post("/api/fact-check/jev", json={
@@ -121,6 +152,10 @@ def test_jev_endpoint_returns_scored_result(monkeypatch):
         assert body["model"] == "typesafe-ai/jev"
         assert [(c["id"], c["verdictCode"]) for c in body["claims"]] == [("c1", "contradicted")]
         assert body["claims"][0]["evidenceIds"] == []
+        assert [source["url"] for source in body["sources"]] == [
+            "https://example.org/boiling-point",
+        ]
+        assert seen == ["/account.json", "/search.json", "jev"]
 
 
 def test_jev_endpoint_maps_gateway_failure_to_502(monkeypatch):
@@ -129,21 +164,46 @@ def test_jev_endpoint_maps_gateway_failure_to_502(monkeypatch):
     from main import app
     from pydantic import SecretStr
     from runtime import Settings
+    import runtime
 
     real_async_client = httpx.AsyncClient
+
+    def handler(request):
+        if request.url.host == "serpapi.com":
+            if request.url.path == "/account.json":
+                return httpx.Response(200, json={
+                    "plan_name": "Free", "plan_monthly_price": 0,
+                    "plan_searches_left": 3, "extra_credits": 0,
+                })
+            return httpx.Response(200, json={
+                "search_metadata": {"status": "Success"},
+                "organic_results": [{
+                    "position": 1,
+                    "title": "Test source",
+                    "link": "https://example.org/source",
+                }],
+            })
+        return httpx.Response(500, json={"error": "busy"})
 
     def mock_client(*args, **kwargs):
         return real_async_client(
             *args,
-            transport=httpx.MockTransport(
-                lambda request: httpx.Response(500, json={"error": "busy"})),
+            transport=httpx.MockTransport(handler),
             **kwargs,
         )
 
+    async def fake_fetch(url):
+        return "Relevant source text.", url
+
     monkeypatch.setattr(main.httpx, "AsyncClient", mock_client)
+    monkeypatch.setattr(runtime, "fetch_public_text", fake_fetch)
     monkeypatch.setattr(
         main, "load_settings",
-        lambda: Settings(api_key=SecretStr(""), ai_gateway_api_key=SecretStr("gw-test")),
+        lambda: Settings(
+            api_key=SecretStr(""),
+            ai_gateway_api_key=SecretStr("gw-test"),
+            serpapi_api_key=SecretStr("serp-test"),
+        ),
     )
     with TestClient(app) as client:
         response = client.post("/api/fact-check/jev", json={
