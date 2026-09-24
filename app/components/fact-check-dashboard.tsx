@@ -175,7 +175,11 @@ type ChatProgress = {
   sourcesRead?: ProgressSource[]; sourcesReadElapsedSeconds?: number;
   claims?: ProgressClaim[]; claimsElapsedSeconds?: number; completed?: boolean; error?: string;
 };
-type ChatMessage = {id: string; role: 'assistant' | 'user'; text?: string; answer?: FactCheckAnswer; sources?: FactSource[]; progress?: ChatProgress; meta?: string; tone?: 'normal' | 'error'; imagePreview?: string};
+type ChatMessage = {id: string; role: 'assistant' | 'user'; text?: string; answer?: FactCheckAnswer; sources?: FactSource[]; progress?: ChatProgress; meta?: string; tone?: 'normal' | 'error'; imagePreview?: string; thinking?: boolean};
+
+function ThinkingDots() {
+  return <span className="thinking-dots" role="status" aria-label="답변 준비 중"><span/><span/><span/></span>;
+}
 const WELCOME_MESSAGE: ChatMessage = {id: 'welcome', role: 'assistant', text: '확인하고 싶은 주장이나 원문을 보내주세요. 문장을 나누고, 직접 확인할 수 있는 출처와 인용을 연결하겠습니다.'};
 
 function Modal({open, title, onClose, children}: {open: boolean; title: string; onClose: () => void; children: ReactNode}) {
@@ -488,18 +492,14 @@ export default function FactCheckDashboard() {
     const startedAt = performance.now();
     const elapsedSeconds = () => Math.floor((performance.now() - startedAt) / 1000);
     let progressMessageId: string | null = null;
+    const thinkingId = addMessage({role: 'assistant', thinking: true});
+    progressMessageId = thinkingId;
+    const removeThinking = () => setMessages(messages => messages.filter(message => message.id !== thinkingId));
     const release = () => {if (request.current === controller) request.current = null;};
     const updateProgressMessage = (patch: Partial<ChatProgress>) => {
       if (generation.current !== current) return;
-      if (progressMessageId === null) {
-        progressMessageId = `message-${messageCounter.current++}`;
-        setMessages(messages => [...messages, {
-          id: progressMessageId!, role: 'assistant', progress: patch,
-        }]);
-        return;
-      }
       setMessages(messages => messages.map(message => message.id === progressMessageId
-        ? {...message, progress: {...message.progress, ...patch}}
+        ? {...message, thinking: false, progress: {...message.progress, ...patch}}
         : message));
     };
     let gate: GateDecision | null = null;
@@ -510,6 +510,7 @@ export default function FactCheckDashboard() {
       if (generation.current !== current || controller.signal.aborted) {release(); return;}
     }
     if (gate?.action === 'reply' && gate.reply) {
+      removeThinking();
       addMessage({role: 'assistant', text: gate.reply});
       setDraft(''); setImage(null); release();
       return;
@@ -518,17 +519,19 @@ export default function FactCheckDashboard() {
     if (!gate) {
       const fallback = classifyChatInput(draft, {hasPrevious: !sample && liveResult !== null, hasAttachment: !!(image || detectedLink)});
       if (fallback.kind === 'meta') {
+        removeThinking();
         addMessage({role: 'assistant', text: fallback.topic === 'history' ? describeHistory(messages, liveResult, DEMO_TEXT) : metaReply(fallback.topic)});
         setDraft(''); setImage(null); release();
         return;
       }
       if (fallback.kind === 'followup' && !prevHasClaims) {
+        removeThinking();
         addMessage({role: 'assistant', text: '이전 검증에서 검증 가능한 주장을 못 찾았어. 확인할 원문·링크·이미지를 보내주면 바로 검증할게.'});
         setDraft(''); release();
         return;
       }
     }
-    if (configured === false) {setNotice(configurationHelp); release(); return;}
+    if (configured === false) {removeThinking(); setNotice(configurationHelp); release(); return;}
     const effectiveText = followUp && liveResult ? liveResult.text : draft;
     const effectiveFocus = followUp
       ? [focus.trim(), gateFocus.trim(), draft.trim()].filter(part => part).join(' / ')
@@ -688,7 +691,7 @@ export default function FactCheckDashboard() {
             {messages.map(message => <motion.div key={message.id} className={`chat-message ${message.role === 'user' ? 'is-user' : 'is-assistant'} ${message.answer ? 'has-answer' : ''} ${message.progress ? 'has-progress' : ''} ${message.tone === 'error' ? 'is-error' : ''}`} initial={reduce ? false : {opacity: 0, y: 10}} animate={{opacity: 1, y: 0}} transition={{duration: reduce ? 0 : .22}}>
               {message.role === 'assistant' && <span className="chat-avatar"><Icon name="lens" size={16}/></span>}
               <div className={`chat-bubble ${message.answer ? 'chat-bubble--answer' : ''}`}>
-                {message.answer ? <AnswerOverview answer={message.answer} sources={message.sources ?? []} messageId={message.id}/> : message.progress ? <ProgressReply progress={message.progress}/> : <>{message.imagePreview && <img className="chat-image-preview" src={message.imagePreview} alt="사용자가 보낸 이미지"/>}{message.text ? <p>{message.text}</p> : null}</>}
+                {message.answer ? <AnswerOverview answer={message.answer} sources={message.sources ?? []} messageId={message.id}/> : message.progress ? <ProgressReply progress={message.progress}/> : message.thinking ? <ThinkingDots/> : <>{message.imagePreview && <img className="chat-image-preview" src={message.imagePreview} alt="사용자가 보낸 이미지"/>}{message.text ? <p>{message.text}</p> : null}</>}
                 {message.meta && <small>{message.meta}</small>}
               </div>
             </motion.div>)}

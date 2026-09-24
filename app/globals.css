@@ -678,6 +678,19 @@ button, p, h3, dd { overflow-wrap: anywhere; }
 
 /* Donut chart sweep is handled by stroke-dashoffset transition above. */
 
+/* Thinking indicator: three bouncing dots while the next step loads */
+.thinking-dots { display: inline-flex; align-items: center; gap: 6px; padding: 10px 4px; }
+.thinking-dots > span {
+  width: 7px; height: 7px; border-radius: 50%; background: var(--accent);
+  opacity: .35; animation: thinking-bounce 1.2s ease-in-out infinite;
+}
+.thinking-dots > span:nth-child(2) { animation-delay: .15s; }
+.thinking-dots > span:nth-child(3) { animation-delay: .3s; }
+@keyframes thinking-bounce {
+  0%, 60%, 100% { transform: translateY(0); opacity: .35; }
+  30% { transform: translateY(-6px); opacity: 1; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
   *, *::before, *::after { animation: none !important; transition: none !important; }

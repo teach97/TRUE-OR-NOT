@@ -42,10 +42,10 @@
     "semantic_hash": "0716f3cd8fc90612a5f2401c914a6b80"
   },
   "app/components/fact-check-dashboard.tsx": {
-    "mtime": 1790234455.620052,
-    "seen": 1790234808.9236732,
-    "ast_hash": "5a87c47e5d5273478709042b5ff98bc2",
-    "semantic_hash": "5a87c47e5d5273478709042b5ff98bc2"
+    "mtime": 1790235722.5038252,
+    "seen": 1790235728.7348065,
+    "ast_hash": "0d272ff87ef0ab3f5155615faa95ec9c",
+    "semantic_hash": ""
   },
   "app/components/fact-check-reply.test.mjs": {
     "mtime": 1790232710.3757534,
