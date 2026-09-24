@@ -187,6 +187,97 @@ def test_synthesis_uses_only_verified_source_projection_and_preserves_forecast()
     assert answer["reasoning"] == "high"
 
 
+def multi_section_draft(quotes, *, source_id="s1"):
+    items = [{
+        "text": f"주장 세부 내용 {index + 1}번입니다.",
+        "citations": [{"sourceId": source_id, "quote": quote}],
+    } for index, quote in enumerate(quotes)]
+    return {
+        "status": "grounded",
+        "overview": {"text": "전체 개요입니다.", "citations": [{"sourceId": source_id, "quote": quotes[0]}]},
+        "sections": [{
+            "kind": "supporting",
+            "title": f"섹션 {index + 1}",
+            "items": [item],
+        } for index, item in enumerate(items)],
+        "conclusion": {"text": "정리입니다.", "citations": [{"sourceId": source_id, "quote": quotes[0]}]},
+    }
+
+
+def test_sections_are_trimmed_to_single_source_breadth():
+    first, second, third = SOURCE_TEXT[:35], SOURCE_TEXT[36:70], SOURCE_TEXT[70:104]
+    state = state_with_source()
+
+    def handler(request):
+        return completed_response(multi_section_draft([first, second, third]))
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            return await synthesize_answer(
+                state,
+                client=client,
+                provider=LLMProvider("gemini", "gemini-3.8-flash", "high", "test-only"),
+            )
+
+    answer = asyncio.run(run())
+
+    assert answer["status"] == "grounded"
+    assert len(answer["sections"]) == 1
+    assert answer["overview"] is not None and answer["conclusion"] is not None
+
+
+def test_sections_are_kept_when_sources_cover_them():
+    first, second = SOURCE_TEXT[:35], SOURCE_TEXT[36:70]
+    state = state_with_source()
+    state["sources"].append(source("s2"))
+    state["sourceTexts"]["s2"] = SOURCE_TEXT
+
+    def handler(request):
+        return completed_response({
+            **multi_section_draft([first, second]),
+            "sections": [
+                {**multi_section_draft([first])["sections"][0],
+                 "items": [{"text": "첫 근거입니다.", "citations": [{"sourceId": "s1", "quote": first}]}]},
+                {**multi_section_draft([second])["sections"][0],
+                 "items": [{"text": "둘째 근거입니다.", "citations": [{"sourceId": "s2", "quote": second}]}]},
+            ],
+        })
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            return await synthesize_answer(
+                state,
+                client=client,
+                provider=LLMProvider("gemini", "gemini-3.8-flash", "high", "test-only"),
+            )
+
+    answer = asyncio.run(run())
+
+    assert len(answer["sections"]) == 2
+
+
+def test_synthesis_instructions_require_citation_diversity():
+    state = state_with_source()
+    seen = {}
+
+    def handler(request):
+        body = json.loads(request.content)
+        seen["instructions"] = body["system_instruction"]
+        return completed_response(draft())
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            await synthesize_answer(
+                state,
+                client=client,
+                provider=LLMProvider("gemini", "gemini-3.8-flash", "high", "test-only"),
+            )
+
+    asyncio.run(run())
+
+    assert "single source" in seen["instructions"]
+
+
 def test_openai_synthesis_uses_high_reasoning_effort_and_reports_it():
     state = state_with_source()
 

@@ -24,7 +24,11 @@ _SYNTHESIS_INSTRUCTIONS = (
     "Treat claims marked kind=prediction or verdictCode=not_checkable as forecasts, not facts with a true/false verdict. "
     "Describe conditions and uncertainty. Do not invent numeric probabilities, expert consensus, or opposing views; "
     "include a counter-view only when supplied source text actually supports it. Source counts do not establish consensus, "
-    "and do not force an artificial balance. Distinguish what sources say from what remains unknown."
+    "and do not force an artificial balance. Distinguish what sources say from what remains unknown. "
+    "Distribute citations across every eligible source with relevant text; do not cite a single source in "
+    "every block when other eligible sources support parts of the answer. "
+    "When only one eligible source has relevant text, keep the answer to overview and conclusion and state "
+    "that it rests on a single source."
 )
 
 
@@ -168,6 +172,20 @@ def _synthesis_input(
     }
 
 
+def _limit_sections_to_source_breadth(
+    draft: SynthesisDraft,
+    sources: list[dict[str, str]],
+) -> None:
+    """Keep answer breadth proportional to the cited source base.
+
+    A single supporting source cannot sustain four distinct sections without
+    repeating the same citation in every block, so trim sections to the
+    number of eligible sources (overview and conclusion always stay).
+    """
+    allowed = min(len(draft.sections), max(1, len(sources)))
+    del draft.sections[allowed:]
+
+
 def _validate_answer_grounding(
     draft: SynthesisDraft,
     sources: list[dict[str, str]],
@@ -212,6 +230,7 @@ async def synthesize_answer(
     except ValidationError:
         raise ProviderCallError("Invalid synthesis output") from None
 
+    _limit_sections_to_source_breadth(parsed, sources)
     _validate_answer_grounding(parsed, sources)
     answer = FactCheckAnswer.model_validate({
         **parsed.model_dump(mode="json"),
