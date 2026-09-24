@@ -590,9 +590,14 @@ export default function FactCheckDashboard() {
       if (error instanceof FactCheckError && /CONFIG|KEY_MISSING/i.test(error.code)) setConfigured(false);
       setNotice(message);
       if (progressMessageId) {
-        setMessages(messages => messages.map(item => item.id === progressMessageId && item.progress
-          ? {...item, progress: {...item.progress, error: message}}
-          : item));
+        const errorId = `message-${messageCounter.current++}`;
+        setMessages(messages => {
+          const target = messages.find(item => item.id === progressMessageId);
+          if (target?.progress) {
+            return messages.map(item => item.id === progressMessageId ? {...item, progress: {...item.progress, error: message}} : item);
+          }
+          return [...messages.filter(item => item.id !== progressMessageId), {id: errorId, role: 'assistant', text: message, tone: 'error'}];
+        });
       } else {
         addMessage({role: 'assistant', text: message, tone: 'error'});
       }
