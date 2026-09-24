@@ -445,6 +445,8 @@ export default function FactCheckDashboard() {
     const controller = new AbortController();
     request.current = controller;
     addMessage({role: 'user', text: followUp ? draft.trim() : draft, meta: continuedThread ? '이전 검증에 이어서 확인' : focus ? `확인 요청: ${focus}` : undefined, ...(image ? {imagePreview: image.preview} : {})});
+    setDraft('');
+    setImage(null);
     const current = generation.current;
     const startedAt = performance.now();
     const elapsedSeconds = () => Math.floor((performance.now() - startedAt) / 1000);
