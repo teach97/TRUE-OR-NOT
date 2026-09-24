@@ -259,8 +259,8 @@ function VerifyTimeline({progress}: {progress: ChatProgress}) {
   }, [currentIndex]);
   if (!progress.statusStage && !progress.completed && !progress.error) return null;
   return <ol className="verify-timeline" aria-label="검증 단계 진행">
-    {travel && <span key={travel.key} className="verify-traveler" aria-hidden="true" style={{'--travel-from': `${((travel.from + 0.5) / VERIFY_STAGES.length) * 100}%`, '--travel-width': `${((travel.to - travel.from) / VERIFY_STAGES.length) * 100}%`} as CSSProperties}/>}
     {VERIFY_STAGES.map((stage, index) => <li key={stage.id} data-state={index < currentIndex ? 'done' : index === currentIndex ? 'active' : 'todo'}><span className="verify-timeline-dot" aria-hidden="true"/><span>{stage.label}</span></li>)}
+    {travel && <span key={travel.key} className="verify-traveler" aria-hidden="true" style={{'--travel-from': `${((travel.from + 0.5) / VERIFY_STAGES.length) * 100}%`, '--travel-width': `${((travel.to - travel.from) / VERIFY_STAGES.length) * 100}%`} as CSSProperties}/>}
   </ol>;
 }
 
