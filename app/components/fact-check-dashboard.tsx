@@ -401,7 +401,8 @@ export default function FactCheckDashboard() {
     return {action: value.action, reply: typeof value.reply === 'string' ? value.reply : null, focus: typeof value.focus === 'string' ? value.focus : null};
   }
   const prevHasClaims = (liveResult?.claims.length ?? 0) > 0;
-  const followUp = !sample && !image && !detectedLink && prevHasClaims && isFollowUpText(draft);
+  const continuedThread = !sample && !image && !detectedLink && liveResult !== null && isFollowUpText(draft);
+  const followUp = continuedThread && prevHasClaims;
 
   function loadSample() {
     stop();
@@ -443,6 +444,7 @@ export default function FactCheckDashboard() {
     stop();
     const controller = new AbortController();
     request.current = controller;
+    addMessage({role: 'user', text: followUp ? draft.trim() : draft, meta: continuedThread ? '이전 검증에 이어서 확인' : focus ? `확인 요청: ${focus}` : undefined, ...(image ? {imagePreview: image.preview} : {})});
     const current = generation.current;
     const startedAt = performance.now();
     const elapsedSeconds = () => Math.floor((performance.now() - startedAt) / 1000);
@@ -469,7 +471,6 @@ export default function FactCheckDashboard() {
       if (generation.current !== current || controller.signal.aborted) {release(); return;}
     }
     if (gate?.action === 'reply' && gate.reply) {
-      addMessage({role: 'user', text: draft.trim()});
       addMessage({role: 'assistant', text: gate.reply});
       setDraft(''); setImage(null); release();
       return;
@@ -478,13 +479,11 @@ export default function FactCheckDashboard() {
     if (!gate) {
       const fallback = classifyChatInput(draft, {hasPrevious: !sample && liveResult !== null, hasAttachment: !!(image || detectedLink)});
       if (fallback.kind === 'meta') {
-        addMessage({role: 'user', text: draft.trim()});
         addMessage({role: 'assistant', text: fallback.topic === 'history' ? describeHistory(messages, liveResult, DEMO_TEXT) : metaReply(fallback.topic)});
         setDraft(''); setImage(null); release();
         return;
       }
       if (fallback.kind === 'followup' && !prevHasClaims) {
-        addMessage({role: 'user', text: draft.trim(), meta: '이전 검증에 이어서 확인'});
         addMessage({role: 'assistant', text: '이전 검증에서 검증 가능한 주장을 못 찾았어. 확인할 원문·링크·이미지를 보내주면 바로 검증할게.'});
         setDraft(''); release();
         return;
@@ -496,7 +495,6 @@ export default function FactCheckDashboard() {
       ? [focus.trim(), gateFocus.trim(), draft.trim()].filter(part => part).join(' / ')
       : [focus.trim(), gateFocus.trim()].filter(part => part).join(' / ');
     const submitted: FactCheckRequest = {text: effectiveText, focus: effectiveFocus, consent: true as const, modelPreference, ...(detectedLink && !followUp ? {linkUrl: detectedLink} : {}), ...(image ? {image: {mime: image.mime, data: image.data}} : {})};
-    addMessage({role: 'user', text: followUp ? draft.trim() : draft, meta: followUp ? '이전 검증에 이어서 확인' : focus ? `확인 요청: ${focus}` : undefined, ...(image ? {imagePreview: image.preview} : {})});
     if (!followUp) {
       setLiveResult(null);
       dispatch({type: 'reset'});
