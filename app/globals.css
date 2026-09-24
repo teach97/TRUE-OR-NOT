@@ -87,8 +87,11 @@ button, p, h3, dd { overflow-wrap: anywhere; }
 .panel-host { min-width: 0; border: 1px solid var(--line); border-radius: var(--radius-panel); background: rgb(17 21 26 / .88); overflow: hidden; }
 .chat-hero.panel-host { max-width: 980px; margin: 0 auto; padding: 74px 0 20px; border: 0; background: transparent; overflow: visible; }
 .chat-intro { max-width: 760px; margin: 0 auto; text-align: center; }
-.chat-intro--wordmark { display: flex; width: 100%; min-height: clamp(156px, 18vw, 200px); align-items: center; justify-content: center; }
+.chat-intro--wordmark { --wordmark-effect-bleed-x: 120px; --wordmark-effect-bleed-y: 64px; position: relative; display: block; width: 100%; height: clamp(156px, 18vw, 200px); min-height: clamp(156px, 18vw, 200px); margin-bottom: 80px; overflow: visible; }
 .chat-intro--wordmark > div { width: 100%; min-width: 0; }
+@media (min-width: 1121px) {
+  .chat-intro--wordmark { --wordmark-effect-bleed-x: clamp(0px, calc(50vw - 536px), 120px); }
+}
 .chat-kicker { display: inline-flex; align-items: center; gap: 8px; color: var(--accent); font-size: 11px; letter-spacing: .08em; }
 .chat-kicker svg { color: var(--accent); }
 .chat-intro h1 { margin-top: 20px; color: #f3f4f4; font-size: clamp(38px, 5.2vw, 66px); line-height: 1.04; letter-spacing: -.075em; }
@@ -384,6 +387,7 @@ button, p, h3, dd { overflow-wrap: anywhere; }
   .brand { padding: 0 6px; font-size: 20px; }
   .workspace-label { padding: 10px 8px; font-size: 11px; }
   .page-content { padding-right: 28px; padding-left: 28px; }
+  .chat-intro--wordmark { --wordmark-effect-bleed-x: clamp(0px, calc(50vw - 503px), 57px); }
   .topbar { padding-right: 28px; padding-left: 28px; }
   .trust-index-main { gap: 17px; }
   .trust-ring { flex-basis: 128px; width: 128px; height: 128px; }
@@ -407,6 +411,10 @@ button, p, h3, dd { overflow-wrap: anywhere; }
   .claim-selector { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
+@media (min-width: 721px) and (max-width: 960px) {
+  .chat-intro--wordmark { --wordmark-effect-bleed-x: clamp(0px, calc(50vw - 444px), 36px); }
+}
+
 @media (max-width: 720px) {
   .app-shell { display: block; }
   .sidebar { display: none; }
@@ -418,6 +426,7 @@ button, p, h3, dd { overflow-wrap: anywhere; }
   .topbar-actions .text-button span, .profile-mark { display: none; }
   .page-content { padding: 0 20px; }
   .chat-hero.panel-host { padding-top: 55px; }
+  .chat-intro--wordmark { --wordmark-effect-bleed-x: 18px; --wordmark-effect-bleed-y: 24px; margin-bottom: 34px; }
   .chat-intro h1 { font-size: clamp(36px, 11vw, 52px); }
   .chat-intro p { margin-top: 14px; font-size: 13px; }
   .chat-thread { margin-top: 28px; }
@@ -483,6 +492,7 @@ button, p, h3, dd { overflow-wrap: anywhere; }
   .page-content { padding-right: 16px; padding-left: 16px; }
   .topbar { padding-right: 16px; padding-left: 16px; }
   .chat-intro h1 { font-size: 35px; }
+  .chat-intro--wordmark { --wordmark-effect-bleed-x: 16px; }
   .chat-tools { gap: 3px; }
   .chat-tool { padding-right: 5px; padding-left: 5px; font-size: 10px; }
   .chat-model-select { max-width: 138px; font-size: 10px; }

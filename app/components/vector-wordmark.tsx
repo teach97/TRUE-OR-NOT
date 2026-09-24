@@ -347,6 +347,7 @@ export interface VectorWordmarkProps {
     speed?: number
     damping?: number
     handles?: Partial<HandleGroup>
+    fontSizeReference?: "root" | "parent"
     style?: React.CSSProperties
 }
 
@@ -369,6 +370,7 @@ export default function VectorWordmark(props: VectorWordmarkProps) {
         speed = 50,
         damping = 60,
         handles,
+        fontSizeReference = "root",
         style,
     } = props
 
@@ -506,7 +508,10 @@ export default function VectorWordmark(props: VectorWordmarkProps) {
         let atlasKey = ""
 
         function drawFontPx() {
-            return live.current.fontSpec.size * (boxW / REF_WIDTH)
+            const referenceWidth = fontSizeReference === "parent"
+                ? host!.parentElement?.clientWidth || boxW
+                : boxW
+            return live.current.fontSpec.size * (referenceWidth / REF_WIDTH)
         }
 
         function resize() {

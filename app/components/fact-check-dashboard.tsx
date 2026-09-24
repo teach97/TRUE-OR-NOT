@@ -376,7 +376,17 @@ export default function FactCheckDashboard() {
               speed={0}
               damping={100}
               handles={{size: 54, spread: 29, labels: true}}
-              style={{width: '100%', height: 'clamp(156px, 18vw, 200px)', minWidth: 0, minHeight: 0}}
+              fontSizeReference="parent"
+              style={{
+                position: 'absolute',
+                left: 'calc(0px - var(--wordmark-effect-bleed-x))',
+                top: 'calc(0px - var(--wordmark-effect-bleed-y))',
+                width: 'calc(100% + var(--wordmark-effect-bleed-x) + var(--wordmark-effect-bleed-x))',
+                height: 'calc(100% + var(--wordmark-effect-bleed-y) + var(--wordmark-effect-bleed-y))',
+                minWidth: 0,
+                minHeight: 0,
+                overflow: 'visible',
+              }}
             />
           </div>
           <div className="chat-thread" aria-live="polite">
