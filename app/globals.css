@@ -234,10 +234,15 @@ button, p, h3, dd { overflow-wrap: anywhere; }
 .score-label.score-mostly_false, .badge.score-mostly_false { color: var(--violet); border-color: rgb(184 173 240 / .24); background: rgb(184 173 240 / .07); }
 .score-label.score-false, .badge.score-false { color: var(--rose); border-color: rgb(232 155 167 / .27); background: rgb(232 155 167 / .07); }
 .trust-index-main { display: flex; align-items: center; gap: 25px; margin-top: 23px; }
-.trust-ring { display: grid; place-items: center; flex: 0 0 148px; width: 148px; height: 148px; border-radius: 50%; background: conic-gradient(from -90deg, var(--accent) var(--trust-score, 0%), rgb(255 255 255 / .08) var(--trust-score, 0%) 100%); }
-.trust-ring-inner { display: flex; align-items: baseline; justify-content: center; gap: 4px; width: 118px; height: 118px; border-radius: 50%; background: #15191e; color: var(--accent); font-size: 39px; font-weight: 650; letter-spacing: -.08em; font-variant-numeric: tabular-nums; }
-.trust-ring-inner small { color: #7f8b93; font-size: 11px; font-weight: 500; letter-spacing: 0; }
-.trust-empty { color: #76818a; font-size: 18px; letter-spacing: -.03em; }
+.donut-chart { position: relative; display: grid; flex: 0 0 148px; place-items: center; width: 148px; height: 148px; }
+.donut-chart svg { display: block; }
+.donut-chart-track { color: rgb(255 255 255 / .08); }
+.donut-chart-progress { color: var(--accent); transition: stroke-dashoffset .8s cubic-bezier(.2, .7, .3, 1); }
+.donut-chart-center {
+  position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  color: var(--accent); font-size: 39px; font-weight: 650; letter-spacing: -.08em; font-variant-numeric: tabular-nums;
+}
+.donut-chart-empty { color: #76818a; font-size: 18px; font-weight: 500; letter-spacing: -.03em; }
 .trust-copy { min-width: 0; }
 .trust-copy strong { display: block; color: #d7dfdf; font-size: 14px; font-weight: 550; }
 .trust-copy p { margin-top: 9px; color: #8f9aa2; font-size: 12px; line-height: 1.8; }
@@ -459,8 +464,9 @@ button, p, h3, dd { overflow-wrap: anywhere; }
   .chat-intro--wordmark { --wordmark-effect-bleed-x: clamp(0px, calc(50vw - 503px), 57px); }
   .topbar { padding-right: 28px; padding-left: 28px; }
   .trust-index-main { gap: 17px; }
-  .trust-ring { flex-basis: 128px; width: 128px; height: 128px; }
-  .trust-ring-inner { width: 101px; height: 101px; font-size: 33px; }
+  .donut-chart { flex-basis: 128px; width: 128px; height: 128px; }
+  .donut-chart svg { width: 128px; height: 128px; }
+  .donut-chart-center { font-size: 33px; }
   .claim-card { padding: 12px; }
 }
 
@@ -524,7 +530,9 @@ button, p, h3, dd { overflow-wrap: anywhere; }
   .dashboard-meta > div { width: 100%; gap: 10px; font-size: 10px; }
   .trust-index { padding: 20px 17px 17px; }
   .trust-index-main { align-items: flex-start; flex-direction: column; gap: 17px; }
-  .trust-ring { flex-basis: 128px; width: 128px; height: 128px; }
+  .donut-chart { flex-basis: 128px; width: 128px; height: 128px; }
+  .donut-chart svg { width: 128px; height: 128px; }
+  .donut-chart-center { font-size: 33px; }
   .dashboard-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 8px; }
   .claim-selector { grid-template-columns: 1fr; padding: 12px; }
   .claim-card { min-height: 0; padding: 13px 14px; }
@@ -668,9 +676,7 @@ button, p, h3, dd { overflow-wrap: anywhere; }
 .mobile-tabs button { position: relative; z-index: 1; }
 .mobile-tabs button[aria-pressed='true'] { background: transparent; box-shadow: none; }
 
-/* Smooth trust-ring sweep */
-@property --trust-score { syntax: '<percentage>'; inherits: false; initial-value: 0%; }
-.trust-ring { transition: --trust-score 1s ease; }
+/* Donut chart sweep is handled by stroke-dashoffset transition above. */
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
