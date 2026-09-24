@@ -18,6 +18,7 @@ import FloatingLinesBackground from './floating-lines-background';
 import LineSidebar from './line-sidebar';
 import CountUp from './count-up';
 import LatticeLoader from './lattice-loader';
+import VectorWordmark from './vector-wordmark';
 
 type IconName = 'lens' | 'grid' | 'book' | 'arrow' | 'file' | 'link' | 'close' | 'download' | 'plus' | 'shield' | 'check' | 'reset';
 
@@ -362,7 +363,22 @@ export default function FactCheckDashboard() {
       <header className="topbar"><div className="breadcrumb"><span className="mobile-brand">True or Not</span><strong>대화형 팩트체크</strong></div><div className="topbar-actions"><button className="text-button" aria-label="사용 가이드" onClick={() => setDialog('guide')}><Icon name="book"/><span>사용 가이드</span></button><span className="profile-mark" aria-label="로컬 워크스페이스">F</span></div></header>
       <main id="workspace-main" className="page-content">
         <section className="composer panel-host chat-hero" aria-labelledby="chat-heading">
-          <div className="chat-intro"><span className="chat-kicker"><Icon name="shield" size={15}/>근거를 연결하는 대화</span><h1 id="chat-heading">무엇을 확인해볼까요?</h1><p>주장이나 원문을 보내면, 확인된 사실과 남은 불확실성을 출처와 함께 보여줄게.</p></div>
+          <div className="chat-intro chat-intro--wordmark">
+            <h1 id="chat-heading" className="sr-only">True or Not</h1>
+            <VectorWordmark
+              text="True or Not"
+              font={{fontFamily: 'Inter, system-ui, sans-serif', fontWeight: 800, fontSize: '200px', lineHeight: '1em', letterSpacing: '-0.02em', textAlign: 'center'}}
+              background="#00000000"
+              textColor="#FFFFFF"
+              shade="#FFFFFF"
+              accent="#FFFFFF"
+              reach={156}
+              speed={0}
+              damping={100}
+              handles={{size: 54, spread: 29, labels: true}}
+              style={{width: '100%', height: 'clamp(156px, 18vw, 200px)', minWidth: 0, minHeight: 0}}
+            />
+          </div>
           <div className="chat-thread" aria-live="polite">
             {messages.map(message => <motion.div key={message.id} className={`chat-message ${message.role === 'user' ? 'is-user' : 'is-assistant'} ${message.answer ? 'has-answer' : ''} ${message.tone === 'error' ? 'is-error' : ''}`} initial={reduce ? false : {opacity: 0, y: 10}} animate={{opacity: 1, y: 0}} transition={{duration: reduce ? 0 : .22}}>
               {message.role === 'assistant' && <span className="chat-avatar"><Icon name="lens" size={16}/></span>}

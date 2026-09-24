@@ -87,6 +87,8 @@ button, p, h3, dd { overflow-wrap: anywhere; }
 .panel-host { min-width: 0; border: 1px solid var(--line); border-radius: var(--radius-panel); background: rgb(17 21 26 / .88); overflow: hidden; }
 .chat-hero.panel-host { max-width: 980px; margin: 0 auto; padding: 74px 0 20px; border: 0; background: transparent; overflow: visible; }
 .chat-intro { max-width: 760px; margin: 0 auto; text-align: center; }
+.chat-intro--wordmark { display: flex; width: 100%; min-height: clamp(156px, 18vw, 200px); align-items: center; justify-content: center; }
+.chat-intro--wordmark > div { width: 100%; min-width: 0; }
 .chat-kicker { display: inline-flex; align-items: center; gap: 8px; color: var(--accent); font-size: 11px; letter-spacing: .08em; }
 .chat-kicker svg { color: var(--accent); }
 .chat-intro h1 { margin-top: 20px; color: #f3f4f4; font-size: clamp(38px, 5.2vw, 66px); line-height: 1.04; letter-spacing: -.075em; }
