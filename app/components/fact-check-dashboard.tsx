@@ -475,6 +475,7 @@ export default function FactCheckDashboard() {
       if (generation.current !== current || controller.signal.aborted) return;
       if (!submitted.linkUrl && !submitted.image && (result.text !== submitted.text || result.focus !== submitted.focus)) throw new Error('제출한 원문과 검증 결과가 일치하지 않습니다. 다시 시도해 주세요.');
       setImage(null);
+      setDraft('');
       setLiveResult(result);
       dispatch({type: 'load', snapshot: result});
       setMobileTab('results');
@@ -599,7 +600,14 @@ export default function FactCheckDashboard() {
           <form className="chat-form" onSubmit={submit}>
             <div className="chat-input-shell">
               <label className="sr-only" htmlFor="document-text">확인할 원문</label>
-              <textarea ref={editor} id="document-text" value={draft} onChange={event => {setDraft(event.target.value); if (sample) {setSample(false); setMessages([WELCOME_MESSAGE]);}}} placeholder="확인하고 싶은 주장이나 원문을 입력해 주세요." rows={3} maxLength={12000} onKeyDown={event => {if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {event.preventDefault(); event.currentTarget.form?.requestSubmit();}}}/>
+              <textarea ref={editor} id="document-text" value={draft} onChange={event => {setDraft(event.target.value); if (sample) {setSample(false); setMessages([WELCOME_MESSAGE]);}}} onPaste={async event => {
+                const item = [...(event.clipboardData?.items ?? [])].find(entry => entry.type.startsWith('image/'));
+                if (!item || busy) return;
+                const file = item.getAsFile();
+                if (!file) return;
+                const attached = await downscaleImage(file);
+                if (attached) setImage(attached);
+              }} placeholder="확인하고 싶은 주장이나 원문을 입력해 주세요. 이미지는 Ctrl+V로 붙여넣을 수 있습니다." rows={3} maxLength={12000} onKeyDown={event => {if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {event.preventDefault(); event.currentTarget.form?.requestSubmit();}}}/>
               <div className="chat-input-meta"><span>{draft.length.toLocaleString()} / 12,000</span><span>Ctrl + Enter로 보내기</span></div>
               {(image || detectedLink) && <div className="chat-attachments">
                 {image && <span className="attach-chip"><img src={image.preview} alt="첨부 이미지 미리보기"/><button type="button" onClick={() => setImage(null)} aria-label="이미지 제거">×</button></span>}
