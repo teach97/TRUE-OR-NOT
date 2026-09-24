@@ -69,12 +69,21 @@ test('repeated answer citations always link to the original article and retain i
     {sourceId:'s2',quote:'둘째 출처를 다시 사용'},
   ],[source,secondSource],state);
 
-  assert.deepEqual([...overview,...claim].map(item=>[item.number,item.linkTarget,item.href,item.source?.title]),[
-    [1,'external','https://example.com/article','AGI 전망'],
-    [2,'external','https://example.org/report','전망 보고서'],
+  assert.deepEqual(overview.map(item=>[item.number,item.linkTarget,item.href,item.source?.title]),[
     [1,'external','https://example.com/article','AGI 전망'],
     [2,'external','https://example.org/report','전망 보고서'],
   ]);
+  assert.deepEqual(claim,[]);
   const rankState=createAnswerCitationDisplayState([source,secondSource]);
   assert.equal(presentAnswerCitations([{sourceId:'s2',quote:'둘째 출처'}],[source,secondSource],rankState)[0].number,2);
+});
+
+test('unresolvable citations still warn in every block', () => {
+  const state=createAnswerCitationDisplayState([source]);
+  const first=presentAnswerCitations([{sourceId:'unknown',quote:'출처 없음'}],[source],state);
+  const second=presentAnswerCitations([{sourceId:'unknown',quote:'출처 없음'}],[source],state);
+  assert.equal(first.length,1);
+  assert.equal(first[0].linkTarget,'unavailable');
+  assert.equal(second.length,1);
+  assert.equal(second[0].linkTarget,'unavailable');
 });

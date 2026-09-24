@@ -21,11 +21,13 @@ export type AnswerCitationDisplay = {
 
 export type AnswerCitationDisplayState = {
   sourceNumbers: Map<string, number>;
+  linkedSources: Set<string>;
 };
 
 export function createAnswerCitationDisplayState(sources: FactSource[] = []): AnswerCitationDisplayState {
   return {
     sourceNumbers: new Map(sources.map((source, index) => [source.id, index + 1])),
+    linkedSources: new Set(),
   };
 }
 
@@ -59,6 +61,8 @@ export function presentAnswerCitations(
       displays.push({citation, number, source: null, href: null, linkTarget: 'unavailable'});
       continue;
     }
+    if (state.linkedSources.has(citation.sourceId)) continue;
+    state.linkedSources.add(citation.sourceId);
 
     displays.push({citation, number, source: resolved.source, href: resolved.href, linkTarget: 'external'});
   }
