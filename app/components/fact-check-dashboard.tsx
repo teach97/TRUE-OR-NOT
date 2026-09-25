@@ -350,11 +350,33 @@ export default function FactCheckDashboard() {
   const [liveResult, setLiveResult] = useState<FactCheckResult | null>(null);
   const spotlight = useSpotlight<HTMLElement>();
   const editor = useRef<HTMLTextAreaElement>(null);
+  const threadRef = useRef<HTMLDivElement>(null);
+  const stickToBottom = useRef(true);
+  const [atBottom, setAtBottom] = useState(true);
+  const handleThreadScroll = () => {
+    const el = threadRef.current;
+    if (!el) return;
+    const near = el.scrollHeight - el.scrollTop - el.clientHeight < 48;
+    stickToBottom.current = near;
+    setAtBottom(near);
+  };
+  const scrollThreadToBottom = () => {
+    const el = threadRef.current;
+    if (!el) return;
+    el.scrollTo({top: el.scrollHeight, behavior: reduce ? 'auto' : 'smooth'});
+  };
   const snapshot = state.snapshot;
   const selected = snapshot?.claims.find(claim => claim.id === state.selectedId);
   const sourceDocs = snapshot?.demo && selected ? documents.filter(document => selected.evidenceIds.includes(document.id)) : [];
   const activeDocument = documents.find(document => document.id === dialog);
   const busy = state.status === 'loading';
+  useEffect(() => {
+    if (!stickToBottom.current) return;
+    stickToBottom.current = false;
+    setAtBottom(true);
+    scrollThreadToBottom();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages, busy]);
   const configurationHelp = '서버 설정이 필요합니다. backend/.env에 OPENAI_API_KEY, GEMINI_API_KEY 또는 AI_GATEWAY_API_KEY를 설정한 뒤 서버를 다시 시작해 주세요. 키를 화면이나 채팅에 입력하지 마세요.';
   const serviceLabel = configured === true ? 'LLM fallback 설정됨 · 접근 미확인' : configured === false ? 'LLM 키 미설정' : configError ? '설정 확인 실패' : '서버 설정 확인 중';
   const modelLabel = MODEL_OPTIONS.find(model => model.id === configuredModel)?.label
@@ -515,6 +537,7 @@ export default function FactCheckDashboard() {
     const controller = new AbortController();
     request.current = controller;
     addMessage({role: 'user', text: followUp ? draft.trim() : draft, meta: continuedThread ? '이전 검증에 이어서 확인' : focus ? `확인 요청: ${focus}` : undefined, ...(image ? {imagePreview: image.preview} : {})});
+    stickToBottom.current = true;
     setDraft('');
     setImage(null);
     const current = generation.current;
@@ -743,7 +766,8 @@ export default function FactCheckDashboard() {
               }}
             />
           </div>
-          <div className="chat-thread" aria-live="polite">
+          <div className="chat-thread-wrap">
+          <div className="chat-thread" ref={threadRef} onScroll={handleThreadScroll} aria-live="polite">
             {messages.map(message => <motion.div key={message.id} className={`chat-message ${message.role === 'user' ? 'is-user' : 'is-assistant'} ${message.answer ? 'has-answer' : ''} ${message.factScore !== undefined ? 'has-fact-score' : ''} ${message.progress ? 'has-progress' : ''} ${message.tone === 'error' ? 'is-error' : ''}`} initial={reduce ? false : {opacity: 0, y: 10}} animate={{opacity: 1, y: 0}} transition={{duration: reduce ? 0 : .22}}>
               {message.role === 'assistant' && <span className="chat-avatar"><Icon name="lens" size={16}/></span>}
               <div className={`chat-bubble ${message.answer ? 'chat-bubble--answer' : ''} ${message.factScore !== undefined ? 'chat-bubble--fact-score' : ''}`}>
@@ -752,6 +776,8 @@ export default function FactCheckDashboard() {
               </div>
             </motion.div>)}
             {busy && <div className="chat-message is-assistant chat-message--loading" data-testid="verification-loading"><span className="chat-avatar"><Icon name="lens" size={16}/></span><div className="chat-bubble"><div className="chat-loader-row"><LatticeLoader label="검증 중" doneLabel="검증 완료" errorLabel="검증 실패" pattern="orbit" grid={3} shape="round" cellSize={7} gap={3} fontSize={12} step={75} idleOpacity={0.15} glow color="#ffffff" showTimer/><span>{notice || '근거를 모으고 사실 여부를 대조하고 있습니다.'}</span></div></div></div>}
+          </div>
+          {!atBottom && <button type="button" className="thread-to-bottom" onClick={() => {stickToBottom.current = true; scrollThreadToBottom(); setAtBottom(true);}} aria-label="채팅 맨 아래로 이동"><Icon name="arrow" size={16}/></button>}
           </div>
           <form className="chat-form" onSubmit={submit}>
             <div className="chat-input-shell">

@@ -100,6 +100,10 @@ button, p, h3, dd { overflow-wrap: anywhere; }
 .chat-thread::-webkit-scrollbar { width: 8px; }
 .chat-thread::-webkit-scrollbar-thumb { border-radius: 4px; background: rgb(155 221 212 / .25); }
 .chat-thread::-webkit-scrollbar-track { background: transparent; }
+.chat-thread-wrap { position: relative; }
+.thread-to-bottom { position: absolute; right: 12px; bottom: 12px; z-index: 5; display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; border: 1px solid rgb(155 221 212 / .35); background: rgb(13 17 22 / .92); color: var(--accent); box-shadow: 0 4px 16px rgb(0 0 0 / .45); }
+.thread-to-bottom:hover { border-color: var(--accent); background: rgb(20 28 31 / .95); }
+.thread-to-bottom svg { transform: rotate(90deg); }
 .chat-message { display: flex; align-items: flex-start; gap: 10px; max-width: 82%; }
 .chat-message.is-user { align-self: flex-end; justify-content: flex-end; }
 .chat-avatar { display: grid; place-items: center; flex: 0 0 29px; width: 29px; height: 29px; margin-top: 2px; border: 1px solid rgb(155 221 212 / .3); border-radius: 10px; color: var(--accent); background: rgb(155 221 212 / .09); }
