@@ -271,7 +271,7 @@ class _TextParser(HTMLParser):
     def sections(self):
         sections = []
         for section in self.section_records:
-            title = section.get('title') or self._normalize(section['title_parts'])[:300]
+            title = section.get('title') or self._normalize(section.get('title_parts') or [])[:300]
             text = self._normalize(section['parts'])
             if title and text:
                 sections.append({
