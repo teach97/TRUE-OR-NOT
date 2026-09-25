@@ -6,7 +6,7 @@ type ReplyResult = Pick<FactCheckResult, 'answer' | 'sources' | 'evidence' | 'mo
 
 export type AssistantReply =
   | {answer: FactCheckAnswer; sources: FactSource[]; meta: string; factScore?: never}
-  | {factScore: number | null; answer?: never; sources?: never; meta?: never};
+  | {factScore: number | null; verdict: string | null; answer?: never; sources?: never; meta?: never};
 
 export type ResolvedAnswerCitation = {source: FactSource; href: string};
 export type AnswerCitationDisplay = {
@@ -70,7 +70,7 @@ export function presentAnswerCitations(
 
 export function composeAssistantReply(result: ReplyResult): AssistantReply {
   if (result.model === 'typesafe-ai/jev') {
-    return {factScore: result.claims[0]?.factScore ?? null};
+    return {factScore: result.claims[0]?.factScore ?? null, verdict: result.claims[0]?.verdict ?? null};
   }
 
   return {

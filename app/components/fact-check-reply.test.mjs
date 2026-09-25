@@ -51,12 +51,24 @@ test('Jev chat reply exposes only the fact score, not the fallback answer or sou
   const reply = composeAssistantReply({
     model:'typesafe-ai/jev',
     answer:{status:'insufficient_evidence',overview:null,sections:[],conclusion:null,model:null,reasoning:null},
-    claims:[{factScore:72}],
+    claims:[{factScore:72, verdict:'근거 부족'}],
     sources:[],
     evidence:[],
   });
 
-  assert.deepEqual(reply, {factScore:72});
+  assert.deepEqual(reply, {factScore:72, verdict:'근거 부족'});
+});
+
+test('Jev chat reply tolerates a missing verdict label', () => {
+  const reply = composeAssistantReply({
+    model:'typesafe-ai/jev',
+    answer:{status:'insufficient_evidence',overview:null,sections:[],conclusion:null,model:null,reasoning:null},
+    claims:[{factScore:0}],
+    sources:[],
+    evidence:[],
+  });
+
+  assert.deepEqual(reply, {factScore:0, verdict:null});
 });
 
 test('citation resolution never links missing, unverified, YouTube or unsafe sources', () => {
