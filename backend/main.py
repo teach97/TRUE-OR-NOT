@@ -13,9 +13,9 @@ from pydantic import BaseModel, ConfigDict, Field
 from contracts import AgentStatus, FactCheckResponse
 from intent import classify_intent
 from jev import JevError
-from providers import ProviderCallError, configured_model_options, configured_providers, run_with_fallback
+from providers import ProviderCallError, configured_model_options, configured_providers, providers_for_preference, run_with_fallback
 from runtime import build_runtime_workflow, load_settings, run_jev_fast_check
-from schemas import FactCheckRequest
+from schemas import FactCheckRequest, ModelPreference
 
 
 app = FastAPI(title="True or Not Backend", version="0.1.0")
@@ -178,13 +178,21 @@ class IntentRequest(BaseModel):
 
     text: str = Field(min_length=1, max_length=2000)
     context: IntentContext = Field(default_factory=IntentContext)
+    modelPreference: ModelPreference = "auto"
 
 
 @app.post("/api/intent")
 async def intent(payload: IntentRequest):
     """Decide verify-vs-reply with one cheap model call; never streams."""
     settings = load_settings()
-    providers = configured_providers(settings)
+    try:
+        providers = providers_for_preference(settings, payload.modelPreference)
+    except ValueError:
+        return JSONResponse(
+            {"code": "NOT_CONFIGURED", "message": "선택한 모델의 API 키가 설정되어 있지 않습니다."},
+            status_code=503,
+            headers={"Cache-Control": "no-store"},
+        )
     if not providers:
         return JSONResponse(
             {"code": "NOT_CONFIGURED", "message": "서버의 LLM provider 설정이 필요합니다."},

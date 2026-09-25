@@ -462,8 +462,8 @@ export default function FactCheckDashboard() {
       recentUser: messages.filter(message => message.role === 'user' && message.text).slice(-3).map(message => message.text!.slice(0, 200)),
     };
   }
-  async function requestGate(text: string, signal: AbortSignal): Promise<GateDecision> {
-    const response = await fetch('/api/intent', {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify({text, context: gateContext()}), signal});
+  async function requestGate(text: string, model: ModelPreference, signal: AbortSignal): Promise<GateDecision> {
+    const response = await fetch('/api/intent', {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify({text, context: gateContext(), modelPreference: model}), signal});
     if (!response.ok) throw new Error('INTENT_FAILED');
     const value = await response.json() as {action?: unknown; reply?: unknown; focus?: unknown};
     if (value?.action !== 'verify' && value?.action !== 'reply') throw new Error('INTENT_FAILED');
@@ -534,7 +534,7 @@ export default function FactCheckDashboard() {
     let gate: GateDecision | null = null;
     if (!image && !detectedLink && draft.trim().length <= 120) {
       try {
-        gate = await requestGate(draft.trim(), controller.signal);
+        gate = await requestGate(draft.trim(), modelPreference, controller.signal);
       } catch { gate = null; }
       if (generation.current !== current || controller.signal.aborted) {release(); return;}
     }

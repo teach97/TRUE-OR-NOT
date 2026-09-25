@@ -91,5 +91,68 @@ def test_intent_endpoint_rejects_bad_payloads_and_reports_unconfigured(monkeypat
         assert client.post("/api/intent", json={"text": ""}).status_code == 422
         assert client.post(
             "/api/intent", json={"text": "하이", "context": {"previousText": 1}}).status_code == 422
+        assert client.post(
+            "/api/intent", json={"text": "하이", "modelPreference": "nope"}).status_code == 422
         unconfigured = client.post("/api/intent", json={"text": "하이"})
         assert unconfigured.status_code == 503
+
+
+def test_intent_endpoint_uses_selected_model(monkeypatch):
+    import main
+    from fastapi.testclient import TestClient
+    from main import app
+    from pydantic import SecretStr
+    from runtime import Settings
+    import runtime
+
+    real_async_client = httpx.AsyncClient
+    hits: list[str] = []
+
+    def handler(request):
+        hits.append(request.url.host + request.url.path)
+        if request.url.host == "api.openai.com":
+            return httpx.Response(200, json={
+                "status": "completed",
+                "output": [{
+                    "type": "message",
+                    "content": [{
+                        "type": "output_text",
+                        "text": json.dumps(
+                            {"action": "reply", "reply": "hi", "focus": ""},
+                            ensure_ascii=False),
+                    }],
+                }],
+            })
+        return decision_response({"action": "reply", "reply": "hi", "focus": ""})
+
+    def mock_client(*args, **kwargs):
+        return real_async_client(*args, transport=httpx.MockTransport(handler), **kwargs)
+
+    monkeypatch.setattr(main.httpx, "AsyncClient", mock_client)
+    monkeypatch.setattr(
+        main, "load_settings",
+        lambda: Settings(api_key=SecretStr("openai-test-only"), gemini_api_key=SecretStr("gemini-test-only")),
+    )
+    with TestClient(app) as client:
+        response = client.post("/api/intent", json={"text": "하이", "modelPreference": "gpt-6-luna"})
+        assert response.status_code == 200
+        assert hits == ["api.openai.com/v1/responses"]
+        picked = client.post("/api/intent", json={"text": "하이", "modelPreference": "gemini-3.7-flash"})
+        assert picked.status_code == 200
+        assert hits[-1] == "generativelanguage.googleapis.com/v1beta/interactions"
+
+
+def test_intent_endpoint_reports_missing_selected_model(monkeypatch):
+    import main
+    from fastapi.testclient import TestClient
+    from main import app
+    from pydantic import SecretStr
+    from runtime import Settings
+
+    monkeypatch.setattr(
+        main, "load_settings",
+        lambda: Settings(api_key=SecretStr("openai-test-only"), gemini_api_key=SecretStr("")),
+    )
+    with TestClient(app) as client:
+        missing = client.post("/api/intent", json={"text": "하이", "modelPreference": "gemini-3.7-flash"})
+        assert missing.status_code == 503
