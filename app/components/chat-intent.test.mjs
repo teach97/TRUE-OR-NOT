@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {classifyChatInput, describeHistory, metaReply} from './chat-intent.ts';
+import {classifyChatInput, describeHistory, isIdentityQuestion, metaReply} from './chat-intent.ts';
 
 test('routes meta questions away from verification', () => {
   const previous = {hasPrevious: true, hasAttachment: false};
@@ -9,6 +9,13 @@ test('routes meta questions away from verification', () => {
   assert.deepEqual(classifyChatInput('안녕', previous), {kind: 'meta', topic: 'greeting'});
   assert.deepEqual(classifyChatInput('고마워', previous), {kind: 'meta', topic: 'thanks'});
   assert.deepEqual(classifyChatInput('너는 뭐야?', previous), {kind: 'meta', topic: 'identity'});
+  assert.deepEqual(classifyChatInput('너 무슨모델이야', previous), {kind: 'meta', topic: 'identity'});
+  assert.deepEqual(classifyChatInput('넌 무슨모델이야?', previous), {kind: 'meta', topic: 'identity'});
+  assert.deepEqual(classifyChatInput('너 누구야', previous), {kind: 'meta', topic: 'identity'});
+  assert.deepEqual(classifyChatInput('어떤 모델이야?', previous), {kind: 'meta', topic: 'identity'});
+  assert.ok(isIdentityQuestion('너 무슨모델이야'));
+  assert.ok(!isIdentityQuestion('마크저커버그는 뱀파이어인가'));
+  assert.ok(!isIdentityQuestion(''));
   assert.deepEqual(classifyChatInput('너 지금 나랑 대화한 기록 볼수있어?', {hasPrevious: false, hasAttachment: false}), {kind: 'meta', topic: 'history'});
 });
 

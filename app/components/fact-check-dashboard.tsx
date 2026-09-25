@@ -12,7 +12,7 @@ import { scoreBand, scoreLabel } from '../lib/fact-score';
 import { formatYoutubePublishedAt, formatYoutubeViewCount, stripYoutubeApiDataForExport, youtubeThumbnailUrl } from '../lib/youtube-context';
 import { FactCheckError, readFactCheckStream, safeSourceUrl, validResult } from './fact-check-client';
 import { composeAssistantReply, createAnswerCitationDisplayState, presentAnswerCitations } from './fact-check-reply';
-import { classifyChatInput, describeHistory, isFollowUpText, metaReply } from './chat-intent';
+import { classifyChatInput, describeHistory, isFollowUpText, isIdentityQuestion, metaReply } from './chat-intent';
 import { DEMO_FOCUS, DEMO_TEXT, demoPreview, documents } from './demo-fixture';
 import ScrambleText from './scramble-text';
 import FloatingLinesBackground from './floating-lines-background';
@@ -532,6 +532,13 @@ export default function FactCheckDashboard() {
         : message));
     };
     let gate: GateDecision | null = null;
+    if (!image && !detectedLink && isIdentityQuestion(draft)) {
+      removeThinking();
+      const label = jevMode ? 'Jev' : modelSelection === 'auto' ? 'Auto' : (MODEL_OPTIONS.find(model => model.id === modelSelection)?.label ?? modelSelection);
+      addMessage({role: 'assistant', text: jevMode ? `지금은 ${label} 모드야. 빠른 판정으로 점수만 보여줘.` : `지금은 ${label} 모드야.`});
+      setDraft(''); setImage(null); release();
+      return;
+    }
     if (!image && !detectedLink && draft.trim().length <= 120) {
       try {
         gate = await requestGate(draft.trim(), modelPreference, controller.signal);

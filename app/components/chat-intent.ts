@@ -23,11 +23,13 @@ const CLAIM_PATTERNS = [
 ];
 const SHIELD_GUARD = /하지 ?마|그만해|닥쳐|조용히/;
 
+const IDENTITY_PATTERNS = [/너는 누구/, /너가 누구/, /너는 뭐야/, /너가 뭐야/, /자기소개/, /뭐하는/, /누구야$/, /무슨 ?모델/, /어떤 모델/, /모델명/];
+
 const EARLY_META: Array<{topic: MetaTopic; patterns: RegExp[]}> = [
   {topic: 'history', patterns: [/볼\s*수\s*있/, /보여줘/, /기억/, /대화/, /지금까지/, /여태까지/, /뭘 검증했/, /뭐 검증했/, /검증 기록/, /검증한 거/, /무슨 검증/, /대화 기록/, /채팅 기록/]},
   {topic: 'greeting', patterns: [/^안녕/, /^하이/, /^헬로/, /^반가워/, /^안녕하세요/]},
   {topic: 'thanks', patterns: [/고마워/, /감사/, /고생했/, /땡큐/, /수고했/]},
-  {topic: 'identity', patterns: [/너는 누구/, /너가 누구/, /너는 뭐야/, /너가 뭐야/, /자기소개/, /뭐하는/]},
+  {topic: 'identity', patterns: IDENTITY_PATTERNS},
 ];
 
 const HELP_PATTERNS = [/뭘 할 수 있/, /뭐 할 수 있/, /뭐할 수 있/, /도와줘/, /도울 수 있/, /기능이 뭐/, /기능 뭐/, /사용법/, /어떻게 써/, /어떻게 사용/];
@@ -41,6 +43,11 @@ const LATE_META: Array<{topic: MetaTopic; patterns: RegExp[]}> = [
 export function isFollowUpText(text: string): boolean {
   const trimmed = text.trim();
   return trimmed.length > 0 && trimmed.length <= 60 && FOLLOW_UP_PATTERNS.some(pattern => pattern.test(trimmed));
+}
+
+export function isIdentityQuestion(text: string): boolean {
+  const trimmed = text.trim();
+  return trimmed.length > 0 && trimmed.length <= 60 && IDENTITY_PATTERNS.some(pattern => pattern.test(trimmed));
 }
 
 export function classifyChatInput(
