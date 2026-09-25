@@ -369,7 +369,10 @@ async def _read_url(session, raw, *, include_title=False):
             body = bytearray()
             async for chunk in response.content.iter_chunked(16384):
                 if len(body) + len(chunk) > 512000:
-                    raise ValueError('SOURCE_TOO_LARGE')
+                    remaining = 512000 - len(body)
+                    if remaining > 0:
+                        body.extend(chunk[:remaining])
+                    break
                 body.extend(chunk)
             decoded = body.decode('utf-8', errors='replace')
             title = html_title(decoded) if media == 'text/html' else ''
