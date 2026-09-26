@@ -28,6 +28,7 @@ _DOORWAY_MARKERS = (
     'will be redirected shortly',
 )
 _MAX_DOORWAY_TEXT = 300
+_MAX_CONCURRENT_READS = 4
 
 
 def _is_japanese_page_text(text):
@@ -421,86 +422,103 @@ def _generic_title(title, raw_url):
     return normalized in {host, f'www.{host}', 'source', 'untitled'}
 
 
+async def _read_candidate(source, *, reader, youtube_reader):
+    """Read one candidate. Returns (item, text, sections); item None drops it."""
+    item = {
+        **source,
+        'accessStatus':'unavailable',
+        'retrievedAt':datetime.now(timezone.utc).isoformat(),
+        'youtubeTitle':None,
+        'youtubeChannelTitle':None,
+        'youtubePublishedAt':None,
+        'youtubeViewCount':None,
+        'youtubeComments':[],
+        'youtubeDataStatus':'not_applicable',
+    }
+    if source.get('sourceType') == '유튜브':
+        item['youtubeDataStatus'] = 'not_configured' if youtube_reader is None else 'unavailable'
+        if youtube_reader is not None:
+            try:
+                data = await youtube_reader(source['url'])
+                title = data.get('title') if isinstance(data, dict) else None
+                channel_title = data.get('channelTitle') if isinstance(data, dict) else None
+                published_at = data.get('publishedAt') if isinstance(data, dict) else None
+                view_count = data.get('viewCount') if isinstance(data, dict) else None
+                comments = data.get('comments') if isinstance(data, dict) else None
+                status = data.get('status') if isinstance(data, dict) else None
+                if isinstance(title, str) and title.strip():
+                    item['youtubeTitle'] = title.strip()[:300]
+                if isinstance(channel_title, str) and channel_title.strip() and len(channel_title) <= 300:
+                    item['youtubeChannelTitle'] = channel_title.strip()
+                if isinstance(published_at, str) and len(published_at) <= 50:
+                    try:
+                        parsed_published_at = datetime.fromisoformat(published_at.replace('Z', '+00:00'))
+                    except ValueError:
+                        parsed_published_at = None
+                    if parsed_published_at is not None and parsed_published_at.tzinfo is not None:
+                        item['youtubePublishedAt'] = published_at
+                if isinstance(view_count, str) and re.fullmatch(r'\d{1,30}', view_count):
+                    item['youtubeViewCount'] = view_count
+                if isinstance(comments, list):
+                    item['youtubeComments'] = [
+                        comment for comment in comments[:10]
+                        if isinstance(comment, str) and comment.strip()
+                    ]
+                if status in {'collected', 'unavailable', 'not_configured'}:
+                    item['youtubeDataStatus'] = status
+            except Exception:
+                # One unavailable YouTube item must not fail other source reads.
+                item['youtubeDataStatus'] = 'unavailable'
+        if (
+            item['youtubeDataStatus'] == 'unavailable'
+            and isinstance(item['youtubeViewCount'], str)
+            and item['youtubeViewCount'].isdigit()
+            and int(item['youtubeViewCount']) <= MIN_YOUTUBE_VIEWS
+        ):
+            # Low-reach videos are excluded from results entirely.
+            return None, None, None
+        return item, None, None
+    try:
+        result = await reader(source['url'])
+        if isinstance(result, SourceReadResult):
+            text, final_url, page_title = result.text, result.url, result.title
+            sections = result.sections
+        else:
+            text, final_url = result
+            page_title = ''
+            sections = []
+        if not text.strip():
+            raise ValueError('SOURCE_EMPTY')
+        if _is_japanese_page_text(text):
+            return None, None, None
+        if page_title and _generic_title(item.get('title'), source['url']):
+            item['title'] = page_title
+        item.update(accessStatus='verified', resolvedUrl=final_url)
+        return item, text, sections if isinstance(sections, list) and sections else None
+    except (ValueError, OSError, aiohttp.ClientError, TimeoutError):
+        return item, None, None
+
+
 async def read_sources(state, *, reader=fetch_public_text, youtube_reader=None):
+    candidates = state['sources'][:6]
+    semaphore = asyncio.Semaphore(_MAX_CONCURRENT_READS)
+
+    async def bounded(source):
+        async with semaphore:
+            return await _read_candidate(source, reader=reader, youtube_reader=youtube_reader)
+
+    # Concurrent reads cut wall time from the sum to roughly the slowest
+    # source; gather preserves candidate order for ranking.
+    results = await asyncio.gather(*(bounded(source) for source in candidates))
     sources, texts, source_sections = [], {}, {}
-    for source in state['sources'][:6]:
-        item = {
-            **source,
-            'accessStatus':'unavailable',
-            'retrievedAt':datetime.now(timezone.utc).isoformat(),
-            'youtubeTitle':None,
-            'youtubeChannelTitle':None,
-            'youtubePublishedAt':None,
-            'youtubeViewCount':None,
-            'youtubeComments':[],
-            'youtubeDataStatus':'not_applicable',
-        }
-        if source.get('sourceType') == '유튜브':
-            item['youtubeDataStatus'] = 'not_configured' if youtube_reader is None else 'unavailable'
-            if youtube_reader is not None:
-                try:
-                    data = await youtube_reader(source['url'])
-                    title = data.get('title') if isinstance(data, dict) else None
-                    channel_title = data.get('channelTitle') if isinstance(data, dict) else None
-                    published_at = data.get('publishedAt') if isinstance(data, dict) else None
-                    view_count = data.get('viewCount') if isinstance(data, dict) else None
-                    comments = data.get('comments') if isinstance(data, dict) else None
-                    status = data.get('status') if isinstance(data, dict) else None
-                    if isinstance(title, str) and title.strip():
-                        item['youtubeTitle'] = title.strip()[:300]
-                    if isinstance(channel_title, str) and channel_title.strip() and len(channel_title) <= 300:
-                        item['youtubeChannelTitle'] = channel_title.strip()
-                    if isinstance(published_at, str) and len(published_at) <= 50:
-                        try:
-                            parsed_published_at = datetime.fromisoformat(published_at.replace('Z', '+00:00'))
-                        except ValueError:
-                            parsed_published_at = None
-                        if parsed_published_at is not None and parsed_published_at.tzinfo is not None:
-                            item['youtubePublishedAt'] = published_at
-                    if isinstance(view_count, str) and re.fullmatch(r'\d{1,30}', view_count):
-                        item['youtubeViewCount'] = view_count
-                    if isinstance(comments, list):
-                        item['youtubeComments'] = [
-                            comment for comment in comments[:10]
-                            if isinstance(comment, str) and comment.strip()
-                        ]
-                    if status in {'collected', 'unavailable', 'not_configured'}:
-                        item['youtubeDataStatus'] = status
-                except Exception:
-                    # One unavailable YouTube item must not fail other source reads.
-                    item['youtubeDataStatus'] = 'unavailable'
-            if (
-                item['youtubeDataStatus'] == 'unavailable'
-                and isinstance(item['youtubeViewCount'], str)
-                and item['youtubeViewCount'].isdigit()
-                and int(item['youtubeViewCount']) <= MIN_YOUTUBE_VIEWS
-            ):
-                # Low-reach videos are excluded from results entirely.
-                continue
-            sources.append(item)
+    for source, (item, text, sections) in zip(candidates, results):
+        if item is None:
             continue
-        try:
-            result = await reader(source['url'])
-            if isinstance(result, SourceReadResult):
-                text, final_url, page_title = result.text, result.url, result.title
-                sections = result.sections
-            else:
-                text, final_url = result
-                page_title = ''
-                sections = []
-            if not text.strip():
-                raise ValueError('SOURCE_EMPTY')
-            if _is_japanese_page_text(text):
-                continue
-            if page_title and _generic_title(item.get('title'), source['url']):
-                item['title'] = page_title
-            item.update(accessStatus='verified', resolvedUrl=final_url)
-            texts[source['id']] = text
-            if isinstance(sections, list) and sections:
-                source_sections[source['id']] = sections
-        except (ValueError, OSError, aiohttp.ClientError, TimeoutError):
-            pass
         sources.append(item)
+        if text is not None:
+            texts[source['id']] = text
+        if sections:
+            source_sections[source['id']] = sections
 
     # Redirect aliases often point at the same article. Keep the first
     # (highest-ranked) source and its text so one page cannot count twice.

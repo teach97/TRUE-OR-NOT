@@ -1,10 +1,11 @@
 """Deterministic HTTP response fixtures; resolver safety tested separately."""
 import asyncio
+import time
 import pytest
 import sources
 
 
-def test_read_node_attempts_sources_sequentially_even_after_failure():
+def test_read_node_attempts_all_sources_concurrently_even_after_failure():
     events = []
 
     async def reader(url):
@@ -17,9 +18,33 @@ def test_read_node_attempts_sources_sequentially_even_after_failure():
 
     candidates = [{"id": f"s{i}", "url": f"https://example.org/{i}"} for i in range(1, 4)]
     state = asyncio.run(sources.read_sources({"sources": candidates}, reader=reader))
-    assert events == [(event, source["url"]) for source in candidates for event in ("start", "end")]
+    assert sorted(events) == sorted([(event, source["url"]) for source in candidates for event in ("start", "end")])
     assert [s["id"] for s in state["sources"]] == ["s1", "s2", "s3"]
     assert [s["accessStatus"] for s in state["sources"]] == ["unavailable", "verified", "verified"]
+
+
+def test_read_node_fetches_slow_sources_in_parallel():
+    async def reader(url):
+        await asyncio.sleep(0.2)
+        return "Actual source content", url
+
+    candidates = [{"id": f"s{i}", "url": f"https://example.org/{i}"} for i in range(4)]
+    started = time.monotonic()
+    state = asyncio.run(sources.read_sources({"sources": candidates}, reader=reader))
+    elapsed = time.monotonic() - started
+    assert [s["id"] for s in state["sources"]] == ["s0", "s1", "s2", "s3"]
+    assert elapsed < 0.6
+
+
+def test_read_node_keeps_candidate_order_when_slow_sources_finish_first():
+    async def reader(url):
+        await asyncio.sleep(0.05 * (3 - int(url.rsplit("/", 1)[1])))
+        return "Actual source content", url
+
+    candidates = [{"id": f"s{i}", "url": f"https://example.org/{i}"} for i in range(4)]
+    state = asyncio.run(sources.read_sources({"sources": candidates}, reader=reader))
+    assert [s["id"] for s in state["sources"]] == ["s0", "s1", "s2", "s3"]
+    assert [s["accessStatus"] for s in state["sources"]] == ["verified"] * 4
 
 
 class Response:
@@ -61,10 +86,17 @@ def test_redirect_to_unsafe_address_rejected(url):
         run([Response(302, {'Location':url})])
 
 
-@pytest.mark.parametrize('response', [Response(403), Response(200, {'Content-Type':'application/pdf'}), Response(200, {'Content-Type':'text/html','Content-Encoding':'gzip'}), Response(body=b'x'*512001), Response(body=b' '), Response(302, {'Location':'/loop'})])
+@pytest.mark.parametrize('response', [Response(403), Response(200, {'Content-Type':'application/pdf'}), Response(200, {'Content-Type':'text/html','Content-Encoding':'gzip'}), Response(body=b' '*512001), Response(body=b' '), Response(302, {'Location':'/loop'})])
 def test_unavailable_and_oversized_content_rejected(response):
     with pytest.raises(ValueError):
         run([response]*4)
+
+
+def test_oversized_page_is_truncated_and_parsed_instead_of_rejected():
+    html = ('<html><body><article><p>Early content marker.</p></article></body></html>' + '<p>Filler.</p>' * 60000).encode('utf-8')
+    assert len(html) > 512000
+    (text, _), _ = run([Response(body=html)])
+    assert 'Early content marker.' in text
 
 
 def test_read_rejects_cross_origin_meta_refresh_doorway():
