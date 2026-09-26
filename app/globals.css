@@ -175,6 +175,10 @@ button, p, h3, dd { overflow-wrap: anywhere; }
 .progress-source-title-row { display: flex; align-items: center; gap: 5px; min-width: 0; }
 .progress-source-title-row a, .progress-source-title-row strong { flex: 1 1 auto; min-width: 0; }
 .progress-source-favicon { flex: 0 0 auto; width: 14px; height: 14px; border-radius: 3px; }
+.jev-source-list { display: grid; gap: 6px; margin: 10px 0 0; padding: 0; list-style: none; }
+.jev-source-list li { display: flex; align-items: center; gap: 6px; min-width: 0; font-size: 11px; }
+.jev-source-list a, .jev-source-list strong { overflow-wrap: anywhere; color: #c5d8d5; font-weight: 500; text-decoration: none; }
+.jev-source-list a:hover { color: #e0f6f2; text-decoration: underline; }
 .progress-disclaimer { display: block; margin-top: 11px; color: #879298; font-size: 9px; line-height: 1.55; }
 .progress-error { margin-top: 10px; color: #e5acb4; font-size: 10px; line-height: 1.65; }
 .chat-message.is-user .chat-bubble { border-color: rgb(155 221 212 / .22); border-radius: 14px 14px 4px 14px; background: rgb(45 70 72 / .55); color: #e6f2f0; }

@@ -242,6 +242,23 @@ function JevFactScore({score, verdict, search}: {score: number | null; verdict?:
   </section>;
 }
 
+function JevSourceList({sources}: {sources: FactSource[]}) {
+  if (!sources.length) return null;
+  return <ul className="jev-source-list" aria-label="JEV 검증 출처">{
+    sources.map((source, index) => {
+      const href = safeSourceUrl(source.url);
+      const icon = faviconUrlFor(source.url);
+      return <li key={source.id}>
+        <span className="progress-source-index">[{index + 1}]</span>
+        {icon && <img className="progress-source-favicon" src={icon} alt="" width={12} height={12} loading="lazy" onError={event => {event.currentTarget.hidden = true;}}/>}
+        {href
+          ? <a href={href} target="_blank" rel="noopener noreferrer">{source.title}</a>
+          : <strong>{source.title}</strong>}
+      </li>;
+    })
+  }</ul>;
+}
+
 const VERIFY_STAGES: Array<{id: AgentStage; label: string}> = [
   {id: 'extracting', label: '추출'},
   {id: 'searching', label: '검색'},
@@ -633,22 +650,24 @@ export default function FactCheckDashboard() {
           },
         },
       );
-      const runJev = async (): Promise<FactCheckResult | null> => {
-        try {
-          const jevResponse = await fetch('/api/fact-check/jev', {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify({...submitted, jevMode: true}), signal: controller.signal});
-          if (!jevResponse.ok) return null;
-          const value: unknown = await jevResponse.json();
-          return validResult(value) ? value : null;
-        } catch {
-          return null;
+      const runJev = async (): Promise<FactCheckResult> => {
+        const jevResponse = await fetch('/api/fact-check/jev', {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify({...submitted, jevMode: true}), signal: controller.signal});
+        if (!jevResponse.ok) {
+          const error = await jevResponse.json().catch(()=>null);
+          throw new FactCheckError(typeof error?.code === 'string' ? error.code : 'HTTP_ERROR', typeof error?.message === 'string' ? error.message : `서버 요청에 실패했습니다 (${jevResponse.status}).`);
         }
+        const value: unknown = await jevResponse.json();
+        if (!validResult(value)) throw new FactCheckError('PROTOCOL', '검증 결과 형식이 올바르지 않습니다.');
+        return value;
       };
       let result: FactCheckResult;
       let jevResult: FactCheckResult | null = null;
       if (jevMode) {
-        const jevPromise = runJev();
-        result = await runMain();
-        jevResult = await jevPromise;
+        result = await runJev();
+        jevResult = result;
+        if (generation.current !== current || controller.signal.aborted) return;
+        removeThinking();
+        progressMessageId = null;
       } else {
         result = await runMain();
       }
@@ -768,7 +787,9 @@ export default function FactCheckDashboard() {
             {messages.map(message => <motion.div key={message.id} className={`chat-message ${message.role === 'user' ? 'is-user' : 'is-assistant'} ${message.answer ? 'has-answer' : ''} ${message.factScore !== undefined ? 'has-fact-score' : ''} ${message.progress ? 'has-progress' : ''} ${message.tone === 'error' ? 'is-error' : ''}`} initial={reduce ? false : {opacity: 0, y: 10}} animate={{opacity: 1, y: 0}} transition={{duration: reduce ? 0 : .22}}>
               {message.role === 'assistant' && <span className="chat-avatar"><Icon name="lens" size={16}/></span>}
               <div className={`chat-bubble ${message.answer ? 'chat-bubble--answer' : ''} ${message.factScore !== undefined ? 'chat-bubble--fact-score' : ''}`}>
-                {message.answer ? <><AnswerOverview answer={message.answer} sources={message.sources ?? []} messageId={message.id}/>{message.factScore !== undefined && <JevFactScore score={message.factScore} verdict={message.verdict} search={message.search}/>}</> : message.progress ? <ProgressReply progress={message.progress}/> : message.thinking ? <ThinkingDots/> : <>{message.imagePreview && <img className="chat-image-preview" src={message.imagePreview} alt="사용자가 보낸 이미지"/>}{message.text ? <p>{message.text}</p> : null}</>}
+                {message.answer ? (message.factScore !== undefined
+                  ? <><JevFactScore score={message.factScore} verdict={message.verdict} search={message.search}/><JevSourceList sources={message.sources ?? []}/></>
+                  : <AnswerOverview answer={message.answer} sources={message.sources ?? []} messageId={message.id}/>) : message.progress ? <ProgressReply progress={message.progress}/> : message.thinking ? <ThinkingDots/> : <>{message.imagePreview && <img className="chat-image-preview" src={message.imagePreview} alt="사용자가 보낸 이미지"/>}{message.text ? <p>{message.text}</p> : null}</>}
                 {message.meta && <small>{message.meta}</small>}
               </div>
             </motion.div>)}
