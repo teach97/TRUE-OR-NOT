@@ -204,7 +204,9 @@ button, p, h3, dd { overflow-wrap: anywhere; }
 .chat-focus-control input { width: 128px; min-width: 0; min-height: 28px; padding: 0; border: 0; outline: 0; color: #dce3e4; background: transparent; font-size: 11px; }
 .chat-focus-control input::placeholder { color: #69737c; }
 .chat-model-control { display: inline-flex; flex: 0 0 auto; min-width: 0; }
-.chat-jev-toggle { display: inline-flex; align-items: center; gap: 6px; color: var(--subtle); font-size: 10px; font-weight: 600; white-space: nowrap; cursor: pointer; }
+.chat-jev-toggle { display: inline-flex; align-items: center; color: var(--subtle); font-size: 10px; font-weight: 600; white-space: nowrap; }
+.chat-jev-toggle .bell-toggle__bell { display: none; }
+.chat-jev-toggle .bell-toggle__button { gap: 0; }
 .chat-model-control .glide-select { width: 230px; max-width: 34vw; }
 .chat-model-control .glide-select__trigger { min-width: 112px; }
 .chat-model-policy { color: var(--subtle); font-size: 9px; white-space: nowrap; }

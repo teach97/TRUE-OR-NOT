@@ -24,7 +24,7 @@ import BlurText from './blur-text';
 import { useSpotlight } from './spotlight';
 import TechText from './tech-text';
 import BorderGlow from './border-glow';
-import SquishSwitch from './squish-switch';
+import BellToggle from './bell-toggle';
 import GlideSelect from './glide-select';
 import type { GlideSelectOption } from './glide-select';
 
@@ -816,7 +816,7 @@ export default function FactCheckDashboard() {
               <div className="chat-toolbar">
                 <div className="chat-tools"><button type="button" className="chat-tool" onClick={() => fileInput.current?.click()} disabled={busy} aria-label="이미지 첨부"><Icon name="file" size={16}/><span>이미지</span></button><input ref={fileInput} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" aria-label="이미지 첨부" tabIndex={-1} onChange={async event => {const file = event.target.files?.[0]; event.target.value = ''; if (!file || busy) return; const attached = await downscaleImage(file); if (attached) attachImage(attached);}}/><label className="chat-focus-control" htmlFor="focus-request"><Icon name="lens" size={15}/><span>확인 요청</span><input id="focus-request" value={focus} maxLength={500} onChange={event => setFocus(event.target.value)} placeholder="선택 입력"/></label></div>
                 <div className="chat-send-group">
-                  <label className="chat-jev-toggle"><SquishSwitch checked={jevMode} onChange={setJevMode} disabled={busy || jevConfigured !== true || !!image} thumbOnColor="#ffffff" trackOnColor="#65f470" width={46} height={26} ariaLabel="JEV 모드"/><span>JEV</span></label>
+                  <span className="chat-jev-toggle"><BellToggle pressed={jevMode} onChange={setJevMode} disabled={busy || jevConfigured !== true || !!image} offLabel="JEV OFF" onLabel=" JEV ON" revealBounce={0.3} waves={false} badge={false} size="sm" label="JEV 모드"/></span>
                   <div className="chat-model-control"><span className="sr-only">답변 모델</span><GlideSelect options={modelPickerOptions} value={modelSelection} onChange={value => setModelSelection(value as ModelSelection)} disabled={busy} ariaLabel="답변 모델 선택" ariaDescribedBy="model-preference-help" size="md" radius={9} menuWidth={260} placement="top" align="right"/></div>
                   <span id="model-preference-help" className="sr-only">Auto는 설정된 모델을 순서대로 시도합니다. 개별 모델은 단독 사용합니다. JEV 스위치를 켜면 TypeSafe 빠른 판정 점수도 함께 표시하며 이미지는 지원하지 않습니다.</span>
                   {busy
