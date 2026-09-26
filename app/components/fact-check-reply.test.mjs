@@ -47,8 +47,14 @@ test('insufficient evidence does not fall back to a claim summary', () => {
   assert.equal(reply.text,undefined);
 });
 
-test('Jev chat reply exposes only the fact score, not the fallback answer or source counts', () => {
+test('Jev score attaches to the model answer when both run', () => {
   const reply = composeAssistantReply({
+    model:'gpt-6-luna',
+    answer:{status:'insufficient_evidence',overview:null,sections:[],conclusion:null,model:'gpt-6-luna',reasoning:'max'},
+    claims:[],
+    sources:[{searchProvider:'tavily_search'}],
+    evidence:[],
+  }, {
     model:'typesafe-ai/jev',
     answer:{status:'insufficient_evidence',overview:null,sections:[],conclusion:null,model:null,reasoning:null},
     claims:[{factScore:72, verdict:'근거 부족'}],
@@ -56,19 +62,24 @@ test('Jev chat reply exposes only the fact score, not the fallback answer or sou
     evidence:[],
   });
 
-  assert.deepEqual(reply, {factScore:72, verdict:'근거 부족', search:'Tavily 검색'});
+  assert.equal(reply.factScore, 72);
+  assert.equal(reply.verdict, '근거 부족');
+  assert.equal(reply.search, 'Tavily 검색');
+  assert.ok(reply.answer);
+  assert.ok(reply.meta.includes('GPT-6 Luna Max'));
 });
 
-test('Jev chat reply tolerates a missing verdict label', () => {
+test('missing Jev result leaves a plain model answer', () => {
   const reply = composeAssistantReply({
-    model:'typesafe-ai/jev',
-    answer:{status:'insufficient_evidence',overview:null,sections:[],conclusion:null,model:null,reasoning:null},
-    claims:[{factScore:0}],
+    model:'gpt-6-luna',
+    answer:{status:'insufficient_evidence',overview:null,sections:[],conclusion:null,model:'gpt-6-luna',reasoning:'max'},
+    claims:[],
     sources:[],
     evidence:[],
   });
 
-  assert.deepEqual(reply, {factScore:0, verdict:null, search:null});
+  assert.equal(reply.factScore, undefined);
+  assert.equal(reply.search, undefined);
 });
 
 test('reply meta names the answering model and the search backend', () => {

@@ -6,9 +6,14 @@ import { safeSourceUrl } from './fact-check-client.ts';
 
 type ReplyResult = Pick<FactCheckResult, 'answer' | 'sources' | 'evidence' | 'model' | 'claims'>;
 
-export type AssistantReply =
-  | {answer: FactCheckAnswer; sources: FactSource[]; meta: string; factScore?: never}
-  | {factScore: number | null; verdict: string | null; search: string | null; answer?: never; sources?: never; meta?: never};
+export type AssistantReply = {
+  answer: FactCheckAnswer;
+  sources: FactSource[];
+  meta: string;
+  factScore?: number | null;
+  verdict?: string | null;
+  search?: string | null;
+};
 
 export function modelLabel(model: string | null): string {
   if (!model) return '모델 미확인';
@@ -85,16 +90,19 @@ export function presentAnswerCitations(
   return displays;
 }
 
-export function composeAssistantReply(result: ReplyResult): AssistantReply {
-  if (result.model === 'typesafe-ai/jev') {
-    return {factScore: result.claims[0]?.factScore ?? null, verdict: result.claims[0]?.verdict ?? null, search: searchBackendLabel(result.sources)};
-  }
-
+export function composeAssistantReply(result: ReplyResult, jevResult: ReplyResult | null = null): AssistantReply {
   const search = searchBackendLabel(result.sources);
   const meta = `${modelLabel(result.answer.model ?? result.model)}${search ? ` · ${search}` : ''} · ${result.sources.length}개 출처 · ${result.evidence.length}개 인용`;
-  return {
+  const reply: AssistantReply = {
     answer: result.answer,
     sources: result.sources,
     meta,
   };
+  const claim = jevResult?.claims[0];
+  if (claim) {
+    reply.factScore = claim.factScore ?? null;
+    reply.verdict = claim.verdict ?? null;
+    reply.search = searchBackendLabel(jevResult?.sources ?? []);
+  }
+  return reply;
 }

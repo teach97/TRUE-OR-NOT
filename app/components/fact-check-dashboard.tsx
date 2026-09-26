@@ -24,6 +24,7 @@ import BlurText from './blur-text';
 import { useSpotlight } from './spotlight';
 import TechText from './tech-text';
 import BorderGlow from './border-glow';
+import SquishSwitch from './squish-switch';
 import GlideSelect from './glide-select';
 import type { GlideSelectOption } from './glide-select';
 
@@ -171,7 +172,7 @@ type ChatProgress = {
   claims?: ProgressClaim[]; claimsElapsedSeconds?: number; completed?: boolean; error?: string;
 };
 type ChatMessage = {id: string; role: 'assistant' | 'user'; text?: string; answer?: FactCheckAnswer; factScore?: number | null; verdict?: string | null; search?: string | null; sources?: FactSource[]; progress?: ChatProgress; meta?: string; tone?: 'normal' | 'error'; imagePreview?: string; thinking?: boolean};
-type ModelSelection = ModelPreference | 'jev';
+type ModelSelection = ModelPreference;
 
 function ThinkingDots() {
   return <span className="thinking-dots" role="status" aria-label="답변 준비 중"><span/><span/><span/></span>;
@@ -347,8 +348,8 @@ export default function FactCheckDashboard() {
   const [configuredModel, setConfiguredModel] = useState<string | null>(null);
   const [modelOptions, setModelOptions] = useState<ModelOption[]>([]);
   const [modelSelection, setModelSelection] = useState<ModelSelection>('auto');
-  const jevMode = modelSelection === 'jev';
-  const modelPreference: ModelPreference = jevMode ? 'auto' : modelSelection;
+  const [jevMode, setJevMode] = useState(false);
+  const modelPreference: ModelPreference = modelSelection;
   const [configError, setConfigError] = useState(false);
   const [liveResult, setLiveResult] = useState<FactCheckResult | null>(null);
   const spotlight = useSpotlight<HTMLElement>();
@@ -393,22 +394,15 @@ export default function FactCheckDashboard() {
       tag: model.id.startsWith('gemini-') ? 'Gemini' : 'OpenAI',
       disabled: !model.configured,
     })),
-    {
-      value: 'jev',
-      label: 'Jev',
-      tag: image ? '이미지 미지원' : jevConfigured === true ? 'TypeSafe' : jevConfigured === false ? '키 미설정' : '설정 확인 중',
-      disabled: jevConfigured !== true || !!image,
-    },
   ];
   const attachImage = (attached: NonNullable<typeof image>) => {
     if (jevMode) {
-      setModelSelection('auto');
-      setNotice('이미지는 JEV에서 지원하지 않아 Auto로 전환했어.');
+      setJevMode(false);
+      setNotice('이미지는 JEV에서 지원하지 않아 껐어.');
     }
     setImage(attached);
   };
   const trustScore = snapshot?.claims.length ? Math.round(snapshot.claims.reduce((total, claim) => total + claim.factScore, 0) / snapshot.claims.length) : null;
-  const compact = !snapshot?.demo && (liveResult?.model === 'typesafe-ai/jev');
   const sourceCount = snapshot ? snapshot.demo ? documents.length : liveResult?.sources.length ?? 0 : 0;
   const evidenceCount = snapshot ? snapshot.demo ? snapshot.claims.reduce((total, claim) => total + claim.evidenceIds.length, 0) : liveResult?.evidence.length ?? 0 : 0;
   const warningCount = snapshot ? snapshot.demo ? snapshot.claims.filter(claim => claim.scoreBand !== 'verified').length : liveResult?.warnings.length ?? 0 : 0;
@@ -560,8 +554,8 @@ export default function FactCheckDashboard() {
     let gate: GateDecision | null = null;
     if (!image && !detectedLink && isIdentityQuestion(draft)) {
       removeThinking();
-      const label = jevMode ? 'Jev' : modelSelection === 'auto' ? 'Auto' : (MODEL_OPTIONS.find(model => model.id === modelSelection)?.label ?? modelSelection);
-      addMessage({role: 'assistant', text: jevMode ? `지금은 ${label} 모드야. 빠른 판정으로 점수만 보여줘.` : `지금은 ${label} 모드야.`});
+      const label = modelSelection === 'auto' ? 'Auto' : (MODEL_OPTIONS.find(model => model.id === modelSelection)?.label ?? modelSelection);
+      addMessage({role: 'assistant', text: jevMode ? `지금은 ${label} 모드에 JEV를 같이 쓸게. 답변 아래에 Jev 점수도 보여줘.` : `지금은 ${label} 모드야.`});
       setDraft(''); setImage(null); release();
       return;
     }
@@ -598,7 +592,7 @@ export default function FactCheckDashboard() {
     const effectiveFocus = followUp
       ? [focus.trim(), gateFocus.trim(), draft.trim()].filter(part => part).join(' / ')
       : [focus.trim(), gateFocus.trim()].filter(part => part).join(' / ');
-    const submitted: FactCheckRequest = {text: effectiveText, focus: effectiveFocus, consent: true as const, modelPreference, ...(detectedLink && !followUp ? {linkUrl: detectedLink} : {}), ...(image ? {image: {mime: image.mime, data: image.data}} : {}), ...(jevMode ? {jevMode: true} : {})};
+    const submitted: FactCheckRequest = {text: effectiveText, focus: effectiveFocus, consent: true as const, modelPreference, ...(detectedLink && !followUp ? {linkUrl: detectedLink} : {}), ...(image ? {image: {mime: image.mime, data: image.data}} : {})};
     if (!followUp) {
       setLiveResult(null);
       dispatch({type: 'reset'});
@@ -606,44 +600,50 @@ export default function FactCheckDashboard() {
     dispatch({type: 'start'});
     setNotice(followUp ? '이전 원문을 유지하고 확인 요청으로 이어서 검증합니다.' : '검증 요청을 서버로 전송하고 있습니다.');
     try {
-      let result: FactCheckResult;
-      if (jevMode) {
-        const jevResponse = await fetch('/api/fact-check/jev', {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify(submitted), signal: controller.signal});
-        if (!jevResponse.ok) {
-          const error = await jevResponse.json().catch(()=>null);
-          throw new FactCheckError(typeof error?.code === 'string' ? error.code : 'HTTP_ERROR', typeof error?.message === 'string' ? error.message : `서버 요청에 실패했습니다 (${jevResponse.status}).`);
+      const runMain = async () => readFactCheckStream(
+        await fetch('/api/fact-check', {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify(submitted), signal: controller.signal}),
+        {
+          signal: controller.signal,
+          onStage: stage => {
+            if (generation.current !== current) return;
+            updateProgressMessage({status: stage.message, statusStage: stage.stage, statusElapsedSeconds: elapsedSeconds()});
+            setNotice(stage.message);
+          },
+          onSources: event => {
+            if (generation.current !== current) return;
+            const elapsed = elapsedSeconds();
+            updateProgressMessage(event.phase === 'found'
+              ? {sourcesFound: event.sources, sourcesFoundElapsedSeconds: elapsed}
+              : {sourcesRead: event.sources, sourcesReadElapsedSeconds: elapsed});
+            setNotice(event.phase === 'found'
+              ? '검색 결과에서 출처 후보를 찾았어. 원문을 읽고 있어.'
+              : '출처 원문을 가져왔어. 주장과 인용을 검증하고 있어.');
+          },
+          onPreview: event => {
+            if (generation.current !== current) return;
+            updateProgressMessage({claims: event.claims, claimsElapsedSeconds: elapsedSeconds()});
+            setNotice('1차 검증을 마쳤어. 최종 답변과 인용을 정리하고 있어.');
+          },
+        },
+      );
+      const runJev = async (): Promise<FactCheckResult | null> => {
+        try {
+          const jevResponse = await fetch('/api/fact-check/jev', {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify({...submitted, jevMode: true}), signal: controller.signal});
+          if (!jevResponse.ok) return null;
+          const value: unknown = await jevResponse.json();
+          return validResult(value) ? value : null;
+        } catch {
+          return null;
         }
-        const value: unknown = await jevResponse.json();
-        if (!validResult(value)) throw new FactCheckError('PROTOCOL', '검증 결과 형식이 올바르지 않습니다.');
-        if (generation.current !== current || controller.signal.aborted) return;
-        removeThinking();
-        progressMessageId = null;
-        result = value;
+      };
+      let result: FactCheckResult;
+      let jevResult: FactCheckResult | null = null;
+      if (jevMode) {
+        const jevPromise = runJev();
+        result = await runMain();
+        jevResult = await jevPromise;
       } else {
-      const response = await fetch('/api/fact-check', {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify(submitted), signal: controller.signal});
-      result = await readFactCheckStream(response, {
-        signal: controller.signal,
-        onStage: stage => {
-          if (generation.current !== current) return;
-          updateProgressMessage({status: stage.message, statusStage: stage.stage, statusElapsedSeconds: elapsedSeconds()});
-          setNotice(stage.message);
-        },
-        onSources: event => {
-          if (generation.current !== current) return;
-          const elapsed = elapsedSeconds();
-          updateProgressMessage(event.phase === 'found'
-            ? {sourcesFound: event.sources, sourcesFoundElapsedSeconds: elapsed}
-            : {sourcesRead: event.sources, sourcesReadElapsedSeconds: elapsed});
-          setNotice(event.phase === 'found'
-            ? '검색 결과에서 출처 후보를 찾았어. 원문을 읽고 있어.'
-            : '출처 원문을 가져왔어. 주장과 인용을 검증하고 있어.');
-        },
-        onPreview: event => {
-          if (generation.current !== current) return;
-          updateProgressMessage({claims: event.claims, claimsElapsedSeconds: elapsedSeconds()});
-          setNotice('1차 검증을 마쳤어. 최종 답변과 인용을 정리하고 있어.');
-        },
-      });
+        result = await runMain();
       }
       if (generation.current !== current || controller.signal.aborted) return;
       if (!submitted.linkUrl && !submitted.image && (result.text !== submitted.text || result.focus !== submitted.focus)) throw new Error('제출한 원문과 검증 결과가 일치하지 않습니다. 다시 시도해 주세요.');
@@ -657,7 +657,7 @@ export default function FactCheckDashboard() {
       }
       setMobileTab('results');
       if (!(followUp && !result.claims.length)) setNotice(result.claims.length ? '검증이 완료되었습니다. 아래에서 출처와 남은 불확실성을 확인해 주세요.' : '검증 가능한 주장을 찾지 못했습니다. 결과의 경고를 확인해 주세요.');
-      const reply = composeAssistantReply(result);
+      const reply = composeAssistantReply(result, jevResult);
       const finalMessage: ChatMessage = {id: `message-${messageCounter.current++}`, role: 'assistant', ...reply};
       if (progressMessageId) {
         setMessages(messages => [...messages.map(message => message.id === progressMessageId && message.progress
@@ -761,7 +761,7 @@ export default function FactCheckDashboard() {
             {messages.map(message => <motion.div key={message.id} className={`chat-message ${message.role === 'user' ? 'is-user' : 'is-assistant'} ${message.answer ? 'has-answer' : ''} ${message.factScore !== undefined ? 'has-fact-score' : ''} ${message.progress ? 'has-progress' : ''} ${message.tone === 'error' ? 'is-error' : ''}`} initial={reduce ? false : {opacity: 0, y: 10}} animate={{opacity: 1, y: 0}} transition={{duration: reduce ? 0 : .22}}>
               {message.role === 'assistant' && <span className="chat-avatar"><Icon name="lens" size={16}/></span>}
               <div className={`chat-bubble ${message.answer ? 'chat-bubble--answer' : ''} ${message.factScore !== undefined ? 'chat-bubble--fact-score' : ''}`}>
-                {message.answer ? <AnswerOverview answer={message.answer} sources={message.sources ?? []} messageId={message.id}/> : message.factScore !== undefined ? <JevFactScore score={message.factScore} verdict={message.verdict} search={message.search}/> : message.progress ? <ProgressReply progress={message.progress}/> : message.thinking ? <ThinkingDots/> : <>{message.imagePreview && <img className="chat-image-preview" src={message.imagePreview} alt="사용자가 보낸 이미지"/>}{message.text ? <p>{message.text}</p> : null}</>}
+                {message.answer ? <><AnswerOverview answer={message.answer} sources={message.sources ?? []} messageId={message.id}/>{message.factScore !== undefined && <JevFactScore score={message.factScore} verdict={message.verdict} search={message.search}/>}</> : message.progress ? <ProgressReply progress={message.progress}/> : message.thinking ? <ThinkingDots/> : <>{message.imagePreview && <img className="chat-image-preview" src={message.imagePreview} alt="사용자가 보낸 이미지"/>}{message.text ? <p>{message.text}</p> : null}</>}
                 {message.meta && <small>{message.meta}</small>}
               </div>
             </motion.div>)}
@@ -788,9 +788,10 @@ export default function FactCheckDashboard() {
               <div className="chat-toolbar">
                 <div className="chat-tools"><button type="button" className="chat-tool" onClick={() => setDialog('guide')}><Icon name="plus" size={17}/><span>검증 조건</span></button><button type="button" className="chat-tool" onClick={() => fileInput.current?.click()} disabled={busy} aria-label="이미지 첨부"><Icon name="file" size={16}/><span>이미지</span></button><input ref={fileInput} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" aria-label="이미지 첨부" tabIndex={-1} onChange={async event => {const file = event.target.files?.[0]; event.target.value = ''; if (!file || busy) return; const attached = await downscaleImage(file); if (attached) attachImage(attached);}}/><span className="chat-tool is-static"><Icon name="link" size={16}/><span>웹 검색</span></span><label className="chat-focus-control" htmlFor="focus-request"><Icon name="lens" size={15}/><span>확인 요청</span><input id="focus-request" value={focus} maxLength={500} onChange={event => setFocus(event.target.value)} placeholder="선택 입력"/></label></div>
                 <div className="chat-send-group">
+                  <label className="chat-jev-toggle"><SquishSwitch checked={jevMode} onChange={setJevMode} disabled={busy || jevConfigured !== true || !!image} thumbOnColor="#ffffff" trackOnColor="#65f470" width={46} height={26} ariaLabel="JEV 모드"/><span>JEV</span></label>
                   <div className="chat-model-control"><span className="sr-only">답변 모델</span><GlideSelect options={modelPickerOptions} value={modelSelection} onChange={value => setModelSelection(value as ModelSelection)} disabled={busy} ariaLabel="답변 모델 선택" ariaDescribedBy="model-preference-help" size="md" radius={9} menuWidth={260} placement="top" align="right"/></div>
-                  <span className="chat-model-policy">{jevMode ? 'JEV · 빠른 판정' : modelSelection === 'auto' ? '모델 순차 폴백' : '선택 모델 고정'}</span>
-                  <span id="model-preference-help" className="sr-only">Auto는 설정된 모델을 순서대로 시도합니다. 개별 모델은 단독 사용합니다. JEV는 TypeSafe 빠른 판정을 사용하며 이미지는 지원하지 않습니다.</span>
+                  <span className="chat-model-policy">{jevMode ? 'JEV 점수 함께 표시' : modelSelection === 'auto' ? '모델 순차 폴백' : '선택 모델 고정'}</span>
+                  <span id="model-preference-help" className="sr-only">Auto는 설정된 모델을 순서대로 시도합니다. 개별 모델은 단독 사용합니다. JEV 스위치를 켜면 TypeSafe 빠른 판정 점수도 함께 표시하며 이미지는 지원하지 않습니다.</span>
                   <button type="submit" className="chat-send" disabled={busy || (!draft.trim() && !image)} aria-label={busy ? '검증 진행 중' : sample ? '예시 다시 보기' : '팩트 검증 시작'}><Icon name="arrow" size={19}/></button>
                 </div>
               </div>
@@ -808,7 +809,7 @@ export default function FactCheckDashboard() {
               <Panel className="trust-panel"><TrustIndex score={trustScore} claimCount={snapshot.claims.length} sourceCount={sourceCount} evidenceCount={evidenceCount} warningCount={warningCount}/></Panel>
               <Panel className="claim-panel"><div className="panel-top"><h3><Icon name="grid" size={17}/><BlurText text="주장별 점수"/></h3><span>선택하면 근거가 바뀝니다</span></div><div className="claim-selector" aria-label="주장 후보 선택">{snapshot.claims.map((claim, index) => <motion.button key={claim.id} ref={spotlight} layout={!reduce} className={`claim-card ${selected?.id === claim.id ? 'is-selected' : ''}`} aria-pressed={selected?.id === claim.id} onClick={() => select(claim.id)}><div className="claim-card-top"><span>주장 {String(index + 1).padStart(2, '0')}</span><Badge claim={claim}/></div><p>{claim.quote}</p><span className="claim-card-bottom">{selected?.id === claim.id ? '선택한 주장' : '근거 살펴보기'}<Icon name={selected?.id === claim.id ? 'check' : 'arrow'} size={15}/></span></motion.button>)}</div></Panel>
             </div>
-            {!compact && <><div className="mobile-tabs" role="group" aria-label="검토 화면 선택"><span className="mobile-tabs-indicator" data-active={mobileTab} aria-hidden="true"/><button aria-pressed={mobileTab === 'original'} onClick={() => setMobileTab('original')}>원문</button><button aria-pressed={mobileTab === 'results'} onClick={() => setMobileTab('results')}>결과</button><button aria-pressed={mobileTab === 'sources'} onClick={() => setMobileTab('sources')}>출처</button></div>
+            <><div className="mobile-tabs" role="group" aria-label="검토 화면 선택"><span className="mobile-tabs-indicator" data-active={mobileTab} aria-hidden="true"/><button aria-pressed={mobileTab === 'original'} onClick={() => setMobileTab('original')}>원문</button><button aria-pressed={mobileTab === 'results'} onClick={() => setMobileTab('results')}>결과</button><button aria-pressed={mobileTab === 'sources'} onClick={() => setMobileTab('sources')}>출처</button></div>
             <div className={`dashboard-detail-layout mobile-${mobileTab}`}>
               <Panel as="article" className="original-panel"><div className="panel-top"><h3><Icon name="file" size={17}/><BlurText text="원문"/></h3><span>{snapshot.demo ? '합성 문서' : '제출한 원문'}</span></div><div className="original-content"><span className="article-kicker">{snapshot.demo ? '문화 행사 · 가상의 사례' : '검증 요청 시점의 원문'}</span><h3>{snapshot.demo ? '달빛시 가을빛 축제, 알아두면 좋은 내용' : '검증한 원문'}</h3><p className="article-byline">{snapshot.demo ? 'True or Not 예시 편집실 · 실제 기사 아님' : '원문을 보존한 상태로 주장을 추출했습니다.'}</p><div className="original-text">{original}</div><div className="highlight-legend"><span/>강조된 문장을 선택하면 오른쪽 근거가 바뀝니다.</div>{snapshot.focus && <div className="focus-note"><Icon name="lens" size={17}/><div><strong>확인하고 싶은 내용</strong><p>{snapshot.focus}</p><small>{snapshot.demo ? '예시의 비교 범위를 보여드립니다.' : '검증의 참고 범위로 전달했습니다.'}</small></div></div>}</div><div className="original-footer"><Icon name="shield" size={15}/>{snapshot.demo ? '실제 인물·지역·사건과 무관한 합성 예시입니다.' : '원문에서 추출한 최대 3개의 주장을 검증합니다.'}</div></Panel>
               <Panel className="evidence-panel"><div className="panel-top"><h3><Icon name="lens" size={18}/><BlurText text="선택한 주장과 근거"/></h3><span>{snapshot.demo ? '예시 비교' : '수집된 원문 비교'}</span></div><AnimatePresence mode="wait" initial={false}><motion.div className="detail-content" key={selected?.id || 'empty'} initial={reduce ? false : {opacity: 0, y: 5}} animate={{opacity: 1, y: 0}} exit={{opacity: 0}} transition={{duration: reduce ? 0 : 0.18}}>{selected ? <>
@@ -849,7 +850,7 @@ export default function FactCheckDashboard() {
                 {!snapshot.demo && selectedLiveClaim && <div className="detail-blocks"><div><h4>확인된 내용</h4>{selectedLiveClaim.confirmed.length ? <ul>{selectedLiveClaim.confirmed.map((text, index) => <li key={index}>{text}</li>)}</ul> : <p>직접 확인된 내용이 없습니다.</p>}</div><div><h4>남은 불확실성</h4>{selectedLiveClaim.unresolved.length ? <ul>{selectedLiveClaim.unresolved.map((text, index) => <li key={index}>{text}</li>)}</ul> : <p>현재 기록된 불확실성이 없습니다.</p>}</div>{selectedLiveClaim.warnings.length > 0 && <div><h4>주장별 주의사항</h4><ul>{selectedLiveClaim.warnings.map((text, index) => <li key={index}>{text}</li>)}</ul></div>}</div>}
               </> : <div className="empty-evidence"><Icon name="lens" size={27}/><h4>주장을 선택해 주세요</h4><p>위의 주장 카드를 선택하면 연결된 출처와 인용이 표시됩니다.</p></div>}</motion.div></AnimatePresence></Panel>
               <Panel className="source-index-panel"><div className="panel-top"><h3><Icon name="book" size={17}/><BlurText text="검토한 출처"/></h3><span>{sourceCount}개 수집</span></div><div className="source-index-grid">{snapshot.demo ? documents.map((source, index) => <button className="source-index-card" ref={spotlight} key={source.id} onClick={() => setDialog(source.id)}><span className="source-index-number">{String(index + 1).padStart(2, '0')}</span><span><strong>{source.title}</strong><small>{source.publisher}</small></span><Icon name="arrow" size={15}/></button>) : liveResult?.sources.map((source, index) => {const href = safeSourceUrl(source.url); const sourceLabel = source.sourceType === '유튜브' ? source.youtubeDataStatus === 'collected' ? `공개 댓글 ${source.youtubeComments.length}개` : source.youtubeDataStatus === 'not_configured' ? '댓글 API 미설정' : '댓글 조회 불가' : source.accessStatus === 'verified' ? '원문 확인' : '접근 불가'; const content = <><span className="source-index-number">{String(index + 1).padStart(2, '0')}</span><span><strong>{source.youtubeTitle || source.title}</strong><small>{source.sourceType} · {source.publisher} · {sourceDiscoveryLabel(source)} · {sourceLabel}</small></span><Icon name="arrow" size={15}/></>; return href ? <a className="source-index-card" ref={spotlight} href={href} target="_blank" rel="noopener noreferrer" key={source.id}>{content}</a> : <div className="source-index-card" ref={spotlight} key={source.id}>{content}</div>;})}{!sourceCount && <div className="source-index-empty">아직 수집된 출처가 없습니다.</div>}</div></Panel>
-            </div></>}
+            </div></>
           </> : <Panel className="dashboard-empty"><div className="empty-orbit"><Icon name="lens" size={31}/></div><h3>검증 결과가 이곳에 쌓입니다.</h3><p>대화창에 원문을 보내면 주장별 신뢰지수와 근거 출처를 연결해 보여드립니다.</p><div className="empty-preview-stats"><span><strong>--</strong><small>신뢰지수</small></span><span><strong>--</strong><small>검토 출처</small></span><span><strong>--</strong><small>연결 근거</small></span></div><button className="secondary-button" onClick={loadSample}>예시 대시보드 보기 <Icon name="arrow"/></button></Panel>}
         </section>
         <footer className="page-footer"><span><span className="footer-mark">F</span>True or Not <span className="footer-divider">/</span>판단을 대신하지 않고, 근거를 연결합니다.</span><span className="footer-links"><a href="/privacy">개인정보 처리방침</a><a href="/terms">이용약관</a><a href="https://www.youtube.com/t/terms" target="_blank" rel="noopener noreferrer">YouTube 약관</a><a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">Google 개인정보</a></span><button className="text-button" onClick={() => setDialog('guide')}>검증 원칙<Icon name="arrow" size={15}/></button></footer>
