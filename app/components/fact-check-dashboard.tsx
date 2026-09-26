@@ -23,6 +23,7 @@ import LatticeLoader from './lattice-loader';
 import BlurText from './blur-text';
 import { useSpotlight } from './spotlight';
 import TechText from './tech-text';
+import BorderGlow from './border-glow';
 import GlideSelect from './glide-select';
 import type { GlideSelectOption } from './glide-select';
 
@@ -768,7 +769,7 @@ export default function FactCheckDashboard() {
           {!atBottom && <button type="button" className="thread-to-bottom" onClick={() => {stickToBottom.current = true; scrollThreadToBottom(); setAtBottom(true);}} aria-label="채팅 맨 아래로 이동"><Icon name="arrow" size={16}/></button>}
           </div>
           <form className="chat-form" onSubmit={submit}>
-            <div className="chat-input-shell">
+            <BorderGlow className="chat-input-shell" borderRadius={19} backgroundColor="#1c1f23" glowIntensity={1.9} glowRadius={46} animated coneSpread={32}>
               <label className="sr-only" htmlFor="document-text">확인할 원문</label>
               <textarea ref={editor} id="document-text" value={draft} onChange={event => {setDraft(event.target.value); if (sample) {setSample(false); setMessages([WELCOME_MESSAGE]);}}} onPaste={async event => {
                 const item = [...(event.clipboardData?.items ?? [])].find(entry => entry.type.startsWith('image/'));
@@ -792,7 +793,7 @@ export default function FactCheckDashboard() {
                   <button type="submit" className="chat-send" disabled={busy || (!draft.trim() && !image)} aria-label={busy ? '검증 진행 중' : sample ? '예시 다시 보기' : '팩트 검증 시작'}><Icon name="arrow" size={19}/></button>
                 </div>
               </div>
-            </div>
+            </BorderGlow>
             <div className="chat-footer"><div>{sample && <span className="sample-state"><Icon name="shield" size={14}/>합성 예시는 외부로 전송하지 않습니다.</span>}</div><button type="button" className="sample-chip" onClick={loadSample}>예시로 시작하기 <Icon name="arrow" size={14}/></button></div>
           </form>
           <div className={`chat-status ${busy ? 'is-busy' : ''}`} role="status" aria-live="polite">{busy ? notice || '검증을 진행하고 있습니다.' : notice || (configured === false && jevConfigured !== true ? configurationHelp : '원문을 입력하거나 예시로 시작해 근거를 확인해 보세요.')}</div>
