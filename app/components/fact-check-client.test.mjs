@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {readFactCheckStream, safeSourceUrl} from './fact-check-client.ts';
+import {faviconUrlFor, readFactCheckStream, safeSourceUrl} from './fact-check-client.ts';
 
 const insufficientAnswer = {status:'insufficient_evidence',overview:null,sections:[],conclusion:null,model:null,reasoning:null};
 const result = {text:'한글 원문',focus:'',demo:false,model:'gpt-6-luna',reasoning:'max',checkedAt:'2026-09-19',claims:[],sources:[],evidence:[],warnings:[],answer:insufficientAnswer};
@@ -91,6 +91,11 @@ test('source links accept only safe HTTP and HTTPS URLs', () => {
  assert.equal(safeSourceUrl('https://example.com/a'),'https://example.com/a');
  assert.equal(safeSourceUrl('http://example.com/a'),'http://example.com/a');
  for (const url of ['javascript:alert(1)','data:text/html,hello','file:///C:/secret','not a URL']) assert.equal(safeSourceUrl(url),null);
+});
+test('favicons resolve per host and reject unsafe URLs', () => {
+ assert.equal(faviconUrlFor('https://www.reddit.com/r/changemyview'),'https://www.google.com/s2/favicons?domain=www.reddit.com&sz=64');
+ assert.equal(faviconUrlFor('http://example.com:8080/a?b=c'),'https://www.google.com/s2/favicons?domain=example.com&sz=64');
+ for (const url of ['javascript:alert(1)','data:text/html,hello','file:///C:/secret','not a URL','']) assert.equal(faviconUrlFor(url),null);
 });
 
 test('accepts bounded search provenance and rejects malformed candidate order', async () => {

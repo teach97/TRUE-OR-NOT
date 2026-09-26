@@ -15,6 +15,13 @@ export class FactCheckError extends Error {
 export function safeSourceUrl(value: string): string | null {
   try {const url = new URL(value); return ['http:', 'https:'].includes(url.protocol) ? url.href : null;} catch {return null;}
 }
+export function faviconUrlFor(value: string): string | null {
+  try {
+    const url = new URL(value);
+    if (!['http:', 'https:'].includes(url.protocol) || !url.hostname) return null;
+    return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(url.hostname)}&sz=64`;
+  } catch {return null;}
+}
 function validSourceMetadata(source: FactSource): boolean {
   return (source.searchProvider == null || ['openai_web_search', 'gemini_google_search', 'serpapi_google'].includes(source.searchProvider))
     && (source.searchQuery == null || (typeof source.searchQuery === 'string' && source.searchQuery.length <= 300))

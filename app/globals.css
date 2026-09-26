@@ -172,6 +172,7 @@ button, p, h3, dd { overflow-wrap: anywhere; }
 .progress-source-copy a, .progress-source-copy strong { color: #c5d8d5; font-size: 10px; line-height: 1.5; overflow-wrap: anywhere; text-decoration: none; }
 .progress-source-copy a:hover { color: #e0f6f2; text-decoration: underline; }
 .progress-source-copy small { margin: 0; color: #89949a; font-size: 9px; line-height: 1.45; }
+.progress-source-favicon { width: 12px; height: 12px; border-radius: 3px; vertical-align: -2px; margin-right: 4px; }
 .progress-disclaimer { display: block; margin-top: 11px; color: #879298; font-size: 9px; line-height: 1.55; }
 .progress-error { margin-top: 10px; color: #e5acb4; font-size: 10px; line-height: 1.65; }
 .chat-message.is-user .chat-bubble { border-color: rgb(155 221 212 / .22); border-radius: 14px 14px 4px 14px; background: rgb(45 70 72 / .55); color: #e6f2f0; }
