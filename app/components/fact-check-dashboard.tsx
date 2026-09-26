@@ -559,7 +559,9 @@ export default function FactCheckDashboard() {
     request.current = controller;
     addMessage({role: 'user', text: followUp ? draft.trim() : draft, meta: continuedThread ? '이전 검증에 이어서 확인' : focus ? `확인 요청: ${focus}` : undefined, ...(image ? {imagePreview: image.preview} : {})});
     stickToBottom.current = true;
+    const sentDraft = draft;
     setDraft('');
+    setFocus('');
     setImage(null);
     const current = generation.current;
     const startedAt = performance.now();
@@ -580,7 +582,7 @@ export default function FactCheckDashboard() {
       removeThinking();
       const label = modelSelection === 'auto' ? 'Auto' : (MODEL_OPTIONS.find(model => model.id === modelSelection)?.label ?? modelSelection);
       addMessage({role: 'assistant', text: jevMode ? `지금은 ${label} 모드에 JEV를 같이 쓸게. 답변 아래에 Jev 점수도 보여줘.` : `지금은 ${label} 모드야.`});
-      setDraft(''); setImage(null); release();
+      setDraft(''); setFocus(''); setImage(null); release();
       return;
     }
     if (!image && !detectedLink && draft.trim().length <= 120) {
@@ -592,7 +594,7 @@ export default function FactCheckDashboard() {
     if (gate?.action === 'reply' && gate.reply) {
       removeThinking();
       addMessage({role: 'assistant', text: gate.reply});
-      setDraft(''); setImage(null); release();
+      setDraft(''); setFocus(''); setImage(null); release();
       return;
     }
     const gateFocus = gate?.action === 'verify' ? (gate.focus || '') : '';
@@ -601,7 +603,7 @@ export default function FactCheckDashboard() {
       if (fallback.kind === 'meta') {
         removeThinking();
         addMessage({role: 'assistant', text: fallback.topic === 'history' ? describeHistory(messages, liveResult, DEMO_TEXT) : metaReply(fallback.topic)});
-        setDraft(''); setImage(null); release();
+        setDraft(''); setFocus(''); setImage(null); release();
         return;
       }
       if (fallback.kind === 'followup' && !prevHasClaims) {
@@ -695,6 +697,7 @@ export default function FactCheckDashboard() {
     } catch (error) {
       if (generation.current !== current || controller.signal.aborted) return;
       dispatch({type: 'cancel'});
+      setDraft(sentDraft);
       const message = error instanceof FactCheckError && /CONFIG|KEY_MISSING/i.test(error.code) ? configurationHelp : error instanceof Error ? `검증 실패: ${error.message} 다시 시도하실 수 있습니다.` : '검증 요청에 실패했습니다. 네트워크를 확인하고 다시 시도해 주세요.';
       if (error instanceof FactCheckError && /CONFIG|KEY_MISSING/i.test(error.code)) setConfigured(false);
       setNotice(message);
