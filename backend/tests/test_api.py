@@ -88,22 +88,13 @@ def test_jev_endpoint_returns_scored_result(monkeypatch):
     seen = []
 
     def handler(request):
-        if request.url.host == "serpapi.com":
-            seen.append(request.url.path)
-            if request.url.path == "/account.json":
-                return httpx.Response(200, json={
-                    "plan_name": "Free", "plan_monthly_price": 0,
-                    "plan_searches_left": 3, "extra_credits": 0,
-                })
-            assert request.url.params["q"] == "Water boils at 50C."
-            return httpx.Response(200, json={
-                "search_metadata": {"status": "Success"},
-                "organic_results": [{
-                    "position": 1,
-                    "title": "Boiling point reference",
-                    "link": "https://example.org/boiling-point",
-                }],
-            })
+        if request.url.host == "api.openai.com":
+            seen.append("search")
+            return httpx.Response(200, json={"status": "completed", "output": [
+                {"type": "web_search_call", "status": "completed", "action": {"sources": [
+                    {"url": "https://example.org/boiling-point", "title": "Boiling point reference"},
+                ]}},
+            ]})
 
         assert request.url.host == "ai-gateway.vercel.sh"
         seen.append("jev")
@@ -138,9 +129,8 @@ def test_jev_endpoint_returns_scored_result(monkeypatch):
     monkeypatch.setattr(
         main, "load_settings",
         lambda: Settings(
-            api_key=SecretStr(""),
+            api_key=SecretStr("test-openai-key"),
             ai_gateway_api_key=SecretStr("gw-test"),
-            serpapi_api_key=SecretStr("serp-test"),
         ),
     )
     with TestClient(app) as client:
@@ -155,7 +145,7 @@ def test_jev_endpoint_returns_scored_result(monkeypatch):
         assert [source["url"] for source in body["sources"]] == [
             "https://example.org/boiling-point",
         ]
-        assert seen == ["/account.json", "/search.json", "jev"]
+        assert seen == ["search", "jev"]
 
 
 def test_jev_endpoint_maps_gateway_failure_to_502(monkeypatch):
@@ -169,20 +159,12 @@ def test_jev_endpoint_maps_gateway_failure_to_502(monkeypatch):
     real_async_client = httpx.AsyncClient
 
     def handler(request):
-        if request.url.host == "serpapi.com":
-            if request.url.path == "/account.json":
-                return httpx.Response(200, json={
-                    "plan_name": "Free", "plan_monthly_price": 0,
-                    "plan_searches_left": 3, "extra_credits": 0,
-                })
-            return httpx.Response(200, json={
-                "search_metadata": {"status": "Success"},
-                "organic_results": [{
-                    "position": 1,
-                    "title": "Test source",
-                    "link": "https://example.org/source",
-                }],
-            })
+        if request.url.host == "api.openai.com":
+            return httpx.Response(200, json={"status": "completed", "output": [
+                {"type": "web_search_call", "status": "completed", "action": {"sources": [
+                    {"url": "https://example.org/source", "title": "Test source"},
+                ]}},
+            ]})
         return httpx.Response(500, json={"error": "busy"})
 
     def mock_client(*args, **kwargs):
@@ -200,9 +182,8 @@ def test_jev_endpoint_maps_gateway_failure_to_502(monkeypatch):
     monkeypatch.setattr(
         main, "load_settings",
         lambda: Settings(
-            api_key=SecretStr(""),
+            api_key=SecretStr("test-openai-key"),
             ai_gateway_api_key=SecretStr("gw-test"),
-            serpapi_api_key=SecretStr("serp-test"),
         ),
     )
     with TestClient(app) as client:

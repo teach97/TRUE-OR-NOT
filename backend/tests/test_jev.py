@@ -183,30 +183,21 @@ def test_verify_claims_jev_without_sources_never_calls_gateway():
     assert result["claims"][0]["verdictCode"] == "insufficient_evidence"
 
 
-def test_fast_check_searches_google_and_sends_read_source_text_to_jev(monkeypatch):
+def test_fast_check_searches_with_llm_and_sends_read_source_text_to_jev(monkeypatch):
     import runtime
+    from runtime import Settings
 
     claim = "AGI\uB294 2030\uB144 \uC548\uC5D0 \uC624\uB098?"
-    seen = {"search_paths": [], "jev_state": None}
+    seen = {"search_hosts": [], "jev_state": None}
 
     def handler(request):
-        if request.url.host == "serpapi.com":
-            seen["search_paths"].append(request.url.path)
-            if request.url.path == "/account.json":
-                return httpx.Response(200, json={
-                    "plan_name": "Free", "plan_monthly_price": 0,
-                    "plan_searches_left": 3, "extra_credits": 0,
-                })
-            assert request.url.path == "/search.json"
-            assert request.url.params["q"] == "AGI 2030\uB144"
-            return httpx.Response(200, json={
-                "search_metadata": {"status": "Success"},
-                "organic_results": [{
-                    "position": 1,
-                    "title": "AGI timeline outlook",
-                    "link": "https://www.aitimes.com/news/agi-outlook",
-                }],
-            })
+        if request.url.host == "api.openai.com":
+            seen["search_hosts"].append(request.url.host)
+            return httpx.Response(200, json={"status": "completed", "output": [
+                {"type": "web_search_call", "status": "completed", "action": {"sources": [
+                    {"url": "https://www.aitimes.com/news/agi-outlook", "title": "AGI timeline outlook"},
+                ]}},
+            ]})
 
         assert request.url.host == "ai-gateway.vercel.sh"
         seen["jev_state"] = json.loads(request.content)["state"]
@@ -225,7 +216,8 @@ def test_fast_check_searches_google_and_sends_read_source_text_to_jev(monkeypatc
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             return await runtime.run_jev_fast_check(
                 text=claim, focus="",
-                client=client, api_key="k", search_api_key="test-serp-key",
+                client=client, api_key="k",
+                settings=Settings(api_key=SecretStr("test-openai-key")),
                 consent=True,
             )
 
@@ -235,7 +227,7 @@ def test_fast_check_searches_google_and_sends_read_source_text_to_jev(monkeypatc
     assert [(c.id, c.verdictCode, c.factScore) for c in result.claims] == [
         ("c1", "mostly_supported", 75),
     ]
-    assert seen["search_paths"] == ["/account.json", "/search.json"]
+    assert seen["search_hosts"] == ["api.openai.com"]
     assert seen["jev_state"]["claim"] == claim
     assert "Expert forecasts disagree" in seen["jev_state"]["evidence"]
     assert result.claims[0].evidenceIds == []
@@ -247,6 +239,7 @@ def test_fast_check_searches_google_and_sends_read_source_text_to_jev(monkeypatc
 
 def test_fast_check_uses_linked_source_as_evidence_without_replacing_claim(monkeypatch):
     import runtime
+    from runtime import Settings
 
     async def fake_fetch(url):
         assert url == "https://example.org/article"
@@ -264,6 +257,7 @@ def test_fast_check_uses_linked_source_as_evidence_without_replacing_claim(monke
                 text="Water boils at 50C.", focus="",
                 link_url="https://example.org/article",
                 client=client, api_key="k",
+                settings=Settings(api_key=SecretStr("")),
             )
 
     result = asyncio.run(run())
@@ -275,6 +269,7 @@ def test_fast_check_uses_linked_source_as_evidence_without_replacing_claim(monke
 
 def test_fast_check_truncates_long_text_to_contract_limit():
     import runtime
+    from runtime import Settings
 
     seen = {}
 
@@ -288,6 +283,7 @@ def test_fast_check_truncates_long_text_to_contract_limit():
             return await runtime.run_jev_fast_check(
                 text="가" * 15000, focus="",
                 client=client, api_key="k",
+                settings=Settings(api_key=SecretStr("")),
             )
 
     result = asyncio.run(run())
@@ -297,6 +293,7 @@ def test_fast_check_truncates_long_text_to_contract_limit():
 
 def test_fast_check_propagates_jev_failure_without_llm_fallback(monkeypatch):
     import runtime
+    from runtime import Settings
 
     async def fake_fetch(url):
         return "Relevant source text.", url
@@ -312,6 +309,7 @@ def test_fast_check_propagates_jev_failure_without_llm_fallback(monkeypatch):
                 text="Some claim text here.", focus="",
                 link_url="https://example.org/source",
                 client=client, api_key="k",
+                settings=Settings(api_key=SecretStr("")),
             )
 
     with pytest.raises(JevError):

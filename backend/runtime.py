@@ -19,7 +19,6 @@ from contracts import (
     FactCheckResult,
 )
 from extraction import extract_claims, extract_image_claims, extract_page_claims
-from google_serp import FreeSearchUnavailable, search_google_free
 from jev import JevError
 from providers import ProviderCallError, providers_for_preference, run_with_fallback
 from schemas import FactCheckRequest
@@ -55,7 +54,6 @@ class Settings(BaseModel):
     api_key: SecretStr
     gemini_api_key: SecretStr = SecretStr("")
     youtube_api_key: SecretStr = SecretStr("")
-    serpapi_api_key: SecretStr = SecretStr("")
     ai_gateway_api_key: SecretStr = SecretStr("")
 
 
@@ -66,13 +64,11 @@ def load_settings(env_path: Path | None = None) -> Settings:
     key = os.environ.get("OPENAI_API_KEY", values.get("OPENAI_API_KEY") or "")
     gemini_key = os.environ.get("GEMINI_API_KEY", values.get("GEMINI_API_KEY") or "")
     youtube_key = os.environ.get("YOUTUBE_API_KEY", values.get("YOUTUBE_API_KEY") or "")
-    serpapi_key = os.environ.get("SERPAPI_API_KEY", values.get("SERPAPI_API_KEY") or "")
     gateway_key = os.environ.get("AI_GATEWAY_API_KEY", values.get("AI_GATEWAY_API_KEY") or "")
     return Settings(
         api_key=SecretStr(key.strip()),
         gemini_api_key=SecretStr(gemini_key.strip()),
         youtube_api_key=SecretStr(youtube_key.strip()),
-        serpapi_api_key=SecretStr(serpapi_key.strip()),
         ai_gateway_api_key=SecretStr(gateway_key.strip()),
     )
 
@@ -188,25 +184,13 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
         )
 
     async def search(state: FactCheckState):
-        serpapi_key = settings.serpapi_api_key.get_secret_value()
-        search_notice = None
-        if serpapi_key:
-            try:
-                async with httpx.AsyncClient(timeout=20.0, trust_env=False) as client:
-                    return await search_google_free(
-                        state, api_key=serpapi_key, client=client,
-                    )
-            except FreeSearchUnavailable as exc:
-                _logger.warning("free Google search unavailable reason=%s", str(exc))
-                search_notice = "SERPAPI_FREE_UNAVAILABLE"
-        update = await with_fallback(
+        return await with_fallback(
             state,
             lambda provider, client: search_sources(
                 state, client=client, provider=provider
             ),
             "SEARCH_FAILED",
         )
-        return {**update, "searchNotice": search_notice} if search_notice else update
 
     async def read(state: FactCheckState):
         sources = state.get("sources", [])
@@ -351,13 +335,9 @@ def _result_warnings(sources: list[dict], search_notice: str | None = None) -> l
         warnings.append(
             "유튜브 공개 댓글은 영상별 의견 맥락으로만 표시하며 판정과 인용 근거에는 사용하지 않았습니다."
         )
-    if search_notice == "SERPAPI_FREE_UNAVAILABLE":
+    if search_notice == "LLM_SEARCH_UNAVAILABLE":
         warnings.append(
-            "무료 Google 검색을 사용할 수 없어 기존 웹검색 후보로 대체했습니다. 표시된 후보 순위는 Google 자연검색 순위가 아닙니다."
-        )
-    elif search_notice == "SERPAPI_FREE_ONLY_UNAVAILABLE":
-        warnings.append(
-            "\uBB34\uB8CC Google \uAC80\uC0C9\uC744 \uC0AC\uC6A9\uD560 \uC218 \uC5C6\uC5B4 \uAC80\uC0C9 \uC6D0\uBB38\uC744 \uD655\uBCF4\uD558\uC9C0 \uBABB\uD588\uC2B5\uB2C8\uB2E4."
+            "웹검색을 사용할 수 없어 검색 원문을 확보하지 못했습니다."
         )
     return warnings
 
@@ -427,7 +407,7 @@ async def run_jev_fast_check(
     link_url: str | None = None,
     client: httpx.AsyncClient,
     api_key: str | None,
-    search_api_key: str | None = None,
+    settings: Settings,
     consent: bool = True,
 ) -> FactCheckResult:
     """Search and read evidence, then return Jev's score-only claim result."""
@@ -468,18 +448,21 @@ async def run_jev_fast_check(
 
     search_notice = None
     if consent:
+        async def search_once(provider):
+            try:
+                return await search_sources(state, client=client, provider=provider)
+            except ValueError as exc:
+                raise ProviderCallError(str(exc)) from None
+
         try:
-            search_result = await search_google_free(
-                state,
-                api_key=search_api_key or "",
-                client=client,
-            )
+            providers = providers_for_preference(settings, "auto")
+            search_result, _ = await run_with_fallback(providers, search_once)
             sources.extend(search_result.get("sources", []))
-        except FreeSearchUnavailable as exc:
-            _logger.warning("Jev free Google search unavailable reason=%s", str(exc))
-            search_notice = "SERPAPI_FREE_ONLY_UNAVAILABLE"
+        except (ProviderCallError, ValueError) as exc:
+            _logger.warning("Jev LLM search unavailable reason=%s", type(exc).__name__)
+            search_notice = "LLM_SEARCH_UNAVAILABLE"
     else:
-        search_notice = "SERPAPI_FREE_ONLY_UNAVAILABLE"
+        search_notice = "LLM_SEARCH_UNAVAILABLE"
 
     state["sources"] = sources[:6]
     read_result = await read_sources(state, reader=fetch_public_text)

@@ -104,15 +104,15 @@ def test_source_discovery_order_is_explicitly_not_a_google_rank():
         FactCheckResult.model_validate(payload)
 
 
-def test_source_contract_accepts_google_organic_rank_from_serpapi():
+def test_source_contract_accepts_llm_search_provenance():
     payload = result_payload()
     payload["sources"][0].update({
-        "searchProvider": "serpapi_google",
+        "searchProvider": "gemini_google_search",
         "searchQuery": "AGI 2030년",
         "candidateOrder": 1,
     })
     source = FactCheckResult.model_validate(payload).sources[0]
-    assert source.searchProvider == "serpapi_google"
+    assert source.searchProvider == "gemini_google_search"
     assert source.candidateOrder == 1
 
 

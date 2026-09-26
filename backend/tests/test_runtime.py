@@ -56,16 +56,7 @@ def test_youtube_api_key_is_loaded_from_server_environment_and_redacted(monkeypa
     assert "youtube-test-value" not in repr(settings)
 
 
-def test_serpapi_key_is_server_only_and_redacted(monkeypatch):
-    from runtime import load_settings
-
-    monkeypatch.setenv("SERPAPI_API_KEY", "test-serp-secret")
-    settings = load_settings(Path("missing-test-env-file"))
-    assert settings.serpapi_api_key.get_secret_value() == "test-serp-secret"
-    assert "test-serp-secret" not in repr(settings)
-
-
-def test_configured_free_google_search_is_selected_before_llm_search(monkeypatch):
+def test_llm_search_is_used_directly_without_a_search_notice(monkeypatch):
     import runtime
     from runtime import Settings, make_runtime_adapters
 
@@ -73,55 +64,6 @@ def test_configured_free_google_search_is_selected_before_llm_search(monkeypatch
 
     def handler(request):
         requested_paths.append(request.url.path)
-        if request.url.path == "/account.json":
-            return httpx.Response(200, json={
-                "plan_name": "Free", "plan_monthly_price": 0,
-                "plan_searches_left": 1, "extra_credits": 0,
-            })
-        assert request.url.path == "/search.json"
-        return httpx.Response(200, json={
-            "search_metadata": {"status": "Success"},
-            "organic_results": [{
-                "position": 1, "title": "AGI 전망 기사",
-                "link": "https://www.aitimes.com/news/1",
-            }],
-        })
-
-    real_async_client = httpx.AsyncClient
-
-    def mock_async_client(**kwargs):
-        assert kwargs.get("trust_env") is False
-        return real_async_client(transport=httpx.MockTransport(handler), **kwargs)
-
-    monkeypatch.setattr(runtime.httpx, "AsyncClient", mock_async_client)
-    adapters = make_runtime_adapters(Settings(
-        api_key=SecretStr("test-openai-key"),
-        serpapi_api_key=SecretStr("test-serp-key"),
-    ))
-    update = asyncio.run(adapters.search({
-        "consent": True,
-        "modelPreference": "gpt-6-luna",
-        "claims": [{"id": "c1", "kind": "prediction", "quote": "AGI는 2030년 안에 오나?"}],
-        "searchQueries": {"c1": "AGI 2030년"},
-    }))
-    assert requested_paths == ["/account.json", "/search.json"]
-    assert update["sources"][0]["searchProvider"] == "serpapi_google"
-    assert update["sources"][0]["candidateOrder"] == 1
-
-
-def test_free_quota_exhaustion_falls_back_with_an_explicit_notice(monkeypatch):
-    import runtime
-    from runtime import Settings, make_runtime_adapters
-
-    requested_paths = []
-
-    def handler(request):
-        requested_paths.append(request.url.path)
-        if request.url.path == "/account.json":
-            return httpx.Response(200, json={
-                "plan_name": "Free", "plan_monthly_price": 0,
-                "plan_searches_left": 0, "extra_credits": 0,
-            })
         assert request.url.path == "/v1/responses"
         return httpx.Response(200, json={"status": "completed", "output": [
             {"type": "web_search_call", "status": "completed", "action": {"sources": [
@@ -137,16 +79,15 @@ def test_free_quota_exhaustion_falls_back_with_an_explicit_notice(monkeypatch):
     monkeypatch.setattr(runtime.httpx, "AsyncClient", mock_async_client)
     adapters = make_runtime_adapters(Settings(
         api_key=SecretStr("test-openai-key"),
-        serpapi_api_key=SecretStr("test-serp-key"),
     ))
     update = asyncio.run(adapters.search({
         "consent": True,
         "modelPreference": "gpt-6-luna",
         "claims": [{"id": "c1", "kind": "fact", "quote": "Claim"}],
     }))
-    assert requested_paths == ["/account.json", "/v1/responses"]
+    assert requested_paths == ["/v1/responses"]
     assert update["sources"][0]["searchProvider"] == "openai_web_search"
-    assert update["searchNotice"] == "SERPAPI_FREE_UNAVAILABLE"
+    assert "searchNotice" not in update
 
 
 def test_llm_runtime_ignores_environment_proxy_for_provider_connection(monkeypatch):
