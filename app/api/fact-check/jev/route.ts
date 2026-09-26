@@ -38,7 +38,7 @@ export async function POST(req: Request) {
   if(input.image)return error(400,'INVALID_REQUEST','Jev 모드에서는 이미지를 지원하지 않습니다.');
   if(req.signal.aborted)return error(400,'CANCELLED','요청이 취소되었습니다.');
   try {
-    const signal=AbortSignal.any([req.signal,AbortSignal.timeout(90000)]);
+    const signal=AbortSignal.any([req.signal,AbortSignal.timeout(180000)]);
     const upstream=await fetch(backend('/api/fact-check/jev'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(input),signal,redirect:'error',cache:'no-store'});
     if(!upstream.ok){
       const body=await upstream.json().catch(()=>null);
