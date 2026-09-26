@@ -184,6 +184,7 @@ button, p, h3, dd { overflow-wrap: anywhere; }
 .chat-form { max-width: 880px; margin: 0 auto; }
 .chat-input-shell { position: relative; padding: 17px 17px 10px; border: 1px solid rgb(255 255 255 / .2); border-radius: 19px; background: rgb(28 31 35 / .94); box-shadow: 0 18px 55px rgb(0 0 0 / .18), inset 0 1px 0 rgb(255 255 255 / .05); transition: border-color .2s, box-shadow .2s; }
 .chat-input-shell:focus-within { border-color: rgb(255 255 255 / .55); box-shadow: 0 18px 55px rgb(0 0 0 / .24), 0 0 0 4px rgb(255 255 255 / .07); }
+.chat-input-shell .border-glow-inner { overflow: visible; }
 .chat-input-shell textarea { display: block; width: 100%; min-height: 78px; padding: 0 3px; border: 0; outline: 0; resize: vertical; color: #f1f4f4; background: transparent; font-size: 15px; line-height: 1.8; }
 .chat-input-shell textarea::placeholder { color: #727b84; opacity: 1; }
 .chat-input-meta { display: flex; justify-content: space-between; gap: 12px; padding: 3px 3px 9px; color: #6e7780; font-size: 10px; font-variant-numeric: tabular-nums; }
