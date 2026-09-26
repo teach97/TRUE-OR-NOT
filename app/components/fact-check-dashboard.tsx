@@ -316,9 +316,9 @@ function ProgressReply({progress}: {progress: ChatProgress}) {
             const accessLabel = source.accessStatus === 'candidate' ? '검색 후보' : source.accessStatus === 'verified' ? '원문 확인' : '접근 불가';
             return <li className="progress-source" key={source.id} data-testid={testId}>
               <span className="progress-source-index">[{index + 1}]</span>
-              <span className="progress-source-copy">{href
+              <span className="progress-source-copy"><span className="progress-source-title-row">{icon && <img className="progress-source-favicon" src={icon} alt="" width={14} height={14} loading="lazy" onError={event => {event.currentTarget.hidden = true;}}/>}{href
                 ? <a href={href} target="_blank" rel="noopener noreferrer">{source.title}</a>
-                : <strong>{source.title}</strong>}<small>{icon && <img className="progress-source-favicon" src={icon} alt="" width={12} height={12} loading="lazy" onError={event => {event.currentTarget.hidden = true;}}/>}{source.publisher} · {source.sourceType} · {accessLabel}</small></span>
+                : <strong>{source.title}</strong>}</span><small>{source.publisher} · {source.sourceType} · {accessLabel}</small></span>
             </li>;
           })}</ul>
         : <p className="progress-empty">이 단계에서 확인된 출처가 없어. 다음 검증 단계를 진행하고 있어.</p>}
