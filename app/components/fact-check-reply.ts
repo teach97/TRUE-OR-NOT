@@ -1,12 +1,29 @@
 import type { AnswerCitation, FactCheckAnswer, FactCheckResult, FactSource } from '../lib/fact-check-contract';
 // @ts-ignore -- explicit extension is required by the Node native test runner.
+import { MODEL_OPTIONS } from '../lib/fact-check-contract.ts';
+// @ts-ignore -- explicit extension is required by the Node native test runner.
 import { safeSourceUrl } from './fact-check-client.ts';
 
 type ReplyResult = Pick<FactCheckResult, 'answer' | 'sources' | 'evidence' | 'model' | 'claims'>;
 
 export type AssistantReply =
   | {answer: FactCheckAnswer; sources: FactSource[]; meta: string; factScore?: never}
-  | {factScore: number | null; verdict: string | null; answer?: never; sources?: never; meta?: never};
+  | {factScore: number | null; verdict: string | null; search: string | null; answer?: never; sources?: never; meta?: never};
+
+export function modelLabel(model: string | null): string {
+  if (!model) return '모델 미확인';
+  return MODEL_OPTIONS.find(option => option.id === model)?.label ?? model;
+}
+
+export function searchBackendLabel(sources: FactSource[]): string | null {
+  const providers = new Set(sources.map(source => source.searchProvider));
+  const tavily = providers.has('tavily_search');
+  const llm = providers.has('openai_web_search') || providers.has('gemini_google_search');
+  if (tavily && llm) return 'Tavily+LLM 검색';
+  if (tavily) return 'Tavily 검색';
+  if (llm) return 'LLM 검색';
+  return null;
+}
 
 export type ResolvedAnswerCitation = {source: FactSource; href: string};
 export type AnswerCitationDisplay = {
@@ -70,12 +87,14 @@ export function presentAnswerCitations(
 
 export function composeAssistantReply(result: ReplyResult): AssistantReply {
   if (result.model === 'typesafe-ai/jev') {
-    return {factScore: result.claims[0]?.factScore ?? null, verdict: result.claims[0]?.verdict ?? null};
+    return {factScore: result.claims[0]?.factScore ?? null, verdict: result.claims[0]?.verdict ?? null, search: searchBackendLabel(result.sources)};
   }
 
+  const search = searchBackendLabel(result.sources);
+  const meta = `${modelLabel(result.answer.model ?? result.model)}${search ? ` · ${search}` : ''} · ${result.sources.length}개 출처 · ${result.evidence.length}개 인용`;
   return {
     answer: result.answer,
     sources: result.sources,
-    meta: `${result.sources.length}개 출처 · ${result.evidence.length}개 인용`,
+    meta,
   };
 }

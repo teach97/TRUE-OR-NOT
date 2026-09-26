@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {composeAssistantReply, createAnswerCitationDisplayState, presentAnswerCitations, resolveAnswerCitationSource} from './fact-check-reply.ts';
+import {composeAssistantReply, createAnswerCitationDisplayState, modelLabel, presentAnswerCitations, resolveAnswerCitationSource, searchBackendLabel} from './fact-check-reply.ts';
 
 const source = {id:'s1',url:'https://example.com/article',title:'AGI 전망',publisher:'예시 연구소',accessStatus:'verified',sourceType:'웹'};
 const answer = {
@@ -33,7 +33,7 @@ test('chat reply preserves the structured grounded answer and source mapping', (
   assert.equal(reply.answer.sections[0].title, '남은 불확실성');
   assert.equal(reply.answer.conclusion.text, '2030년 이전 도래를 확정할 수 없습니다.');
   assert.equal(reply.sources[0].id, 's1');
-  assert.equal(reply.meta, '3개 출처 · 2개 인용');
+  assert.equal(reply.meta, 'Gemini 3.8 Flash · 3개 출처 · 2개 인용');
 });
 
 test('insufficient evidence does not fall back to a claim summary', () => {
@@ -52,11 +52,11 @@ test('Jev chat reply exposes only the fact score, not the fallback answer or sou
     model:'typesafe-ai/jev',
     answer:{status:'insufficient_evidence',overview:null,sections:[],conclusion:null,model:null,reasoning:null},
     claims:[{factScore:72, verdict:'근거 부족'}],
-    sources:[],
+    sources:[{searchProvider:'tavily_search'}],
     evidence:[],
   });
 
-  assert.deepEqual(reply, {factScore:72, verdict:'근거 부족'});
+  assert.deepEqual(reply, {factScore:72, verdict:'근거 부족', search:'Tavily 검색'});
 });
 
 test('Jev chat reply tolerates a missing verdict label', () => {
@@ -68,7 +68,18 @@ test('Jev chat reply tolerates a missing verdict label', () => {
     evidence:[],
   });
 
-  assert.deepEqual(reply, {factScore:0, verdict:null});
+  assert.deepEqual(reply, {factScore:0, verdict:null, search:null});
+});
+
+test('reply meta names the answering model and the search backend', () => {
+  assert.equal(modelLabel('gpt-6-luna'), 'GPT-6 Luna Max');
+  assert.equal(modelLabel('unknown-model'), 'unknown-model');
+  assert.equal(modelLabel(null), '모델 미확인');
+  assert.equal(searchBackendLabel([{searchProvider:'tavily_search'}]), 'Tavily 검색');
+  assert.equal(searchBackendLabel([{searchProvider:'gemini_google_search'}]), 'LLM 검색');
+  assert.equal(searchBackendLabel([{searchProvider:'tavily_search'},{searchProvider:'openai_web_search'}]), 'Tavily+LLM 검색');
+  assert.equal(searchBackendLabel([]), null);
+  assert.equal(searchBackendLabel([{searchProvider:null}]), null);
 });
 
 test('citation resolution never links missing, unverified, YouTube or unsafe sources', () => {
