@@ -118,6 +118,84 @@ def test_llm_runtime_ignores_environment_proxy_for_provider_connection(monkeypat
     assert update["claims"][0]["kind"] == "prediction"
 
 
+def test_tavily_search_is_preferred_and_llm_search_is_the_fallback(monkeypatch):
+    import runtime
+    from runtime import Settings, make_runtime_adapters
+
+    requested_hosts = []
+
+    def handler(request):
+        requested_hosts.append(request.url.host)
+        if request.url.host == "api.tavily.com":
+            return httpx.Response(200, json={
+                "query": "AGI 2030년",
+                "results": [{"title": "AGI outlook", "url": "https://www.aitimes.com/news/1", "content": "Snippet."}],
+            })
+        assert request.url.path == "/v1/responses"
+        return httpx.Response(200, json={"status": "completed", "output": [
+            {"type": "web_search_call", "status": "completed", "action": {"sources": [
+                {"url": "https://example.org/report", "title": "Fallback report"},
+            ]}},
+        ]})
+
+    real_async_client = httpx.AsyncClient
+
+    def mock_async_client(**kwargs):
+        return real_async_client(transport=httpx.MockTransport(handler), **kwargs)
+
+    monkeypatch.setattr(runtime.httpx, "AsyncClient", mock_async_client)
+    state = {
+        "consent": True,
+        "modelPreference": "gpt-6-luna",
+        "claims": [{"id": "c1", "kind": "fact", "quote": "Claim"}],
+    }
+
+    adapters = make_runtime_adapters(Settings(
+        api_key=SecretStr("test-openai-key"),
+        tavily_api_key=SecretStr("tvly-test"),
+    ))
+    update = asyncio.run(adapters.search(state))
+    assert requested_hosts == ["api.tavily.com"]
+    assert update["sources"][0]["searchProvider"] == "tavily_search"
+
+    requested_hosts.clear()
+    adapters = make_runtime_adapters(Settings(api_key=SecretStr("test-openai-key")))
+    update = asyncio.run(adapters.search(state))
+    assert requested_hosts == ["api.openai.com"]
+    assert update["sources"][0]["searchProvider"] == "openai_web_search"
+
+
+def test_tavily_outage_falls_back_to_llm_search(monkeypatch):
+    import runtime
+    from runtime import Settings, make_runtime_adapters
+
+    def handler(request):
+        if request.url.host == "api.tavily.com":
+            return httpx.Response(500, json={"error": "busy"})
+        return httpx.Response(200, json={"status": "completed", "output": [
+            {"type": "web_search_call", "status": "completed", "action": {"sources": [
+                {"url": "https://example.org/report", "title": "Fallback report"},
+            ]}},
+        ]})
+
+    real_async_client = httpx.AsyncClient
+
+    def mock_async_client(**kwargs):
+        return real_async_client(transport=httpx.MockTransport(handler), **kwargs)
+
+    monkeypatch.setattr(runtime.httpx, "AsyncClient", mock_async_client)
+    adapters = make_runtime_adapters(Settings(
+        api_key=SecretStr("test-openai-key"),
+        tavily_api_key=SecretStr("tvly-test"),
+    ))
+    update = asyncio.run(adapters.search({
+        "consent": True,
+        "modelPreference": "gpt-6-luna",
+        "claims": [{"id": "c1", "kind": "fact", "quote": "Claim"}],
+    }))
+    assert update["sources"][0]["searchProvider"] == "openai_web_search"
+
+
 def test_runtime_read_stage_uses_youtube_adapter_without_adding_comments_to_source_texts(monkeypatch):
     import runtime
 

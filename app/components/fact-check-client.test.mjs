@@ -105,10 +105,10 @@ test('accepts bounded search provenance and rejects malformed candidate order', 
  const invalid = {...source,candidateOrder:0};
  await assert.rejects(readFactCheckStream(response(JSON.stringify({type:'result',result:{...result,sources:[invalid]}}))),/결과/);
 });
-test('accepts a real Google organic rank only from the SerpApi provider', async () => {
- const source={...verifiedSource,searchProvider:'serpapi_google',searchQuery:'AGI 2030년',candidateOrder:1};
+test('accepts Tavily search provenance like other providers', async () => {
+ const source={...verifiedSource,searchProvider:'tavily_search',searchQuery:'AGI 2030년',candidateOrder:1};
  const actual=await readFactCheckStream(response(JSON.stringify({type:'result',result:{...result,sources:[source]}})));
- assert.equal(actual.sources[0].searchProvider,'serpapi_google');
+ assert.equal(actual.sources[0].searchProvider,'tavily_search');
 });
 test('accepts bounded YouTube metadata and comments but rejects malformed context', async () => {
  const source={id:'s1',url:'https://www.youtube.com/watch?v=aB_12345678',title:'검색 제목',youtubeTitle:'실제 영상 제목',youtubeChannelTitle:'AI 연구 채널',youtubePublishedAt:'2026-09-20T12:30:00Z',youtubeViewCount:'1234567',youtubeComments:['첫 댓글'],youtubeDataStatus:'collected',publisher:'youtube.com',publishedAt:null,retrievedAt:'2026-09-23',accessStatus:'unavailable',sourceType:'유튜브',originGroupId:'youtube'};

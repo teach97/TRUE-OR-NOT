@@ -21,7 +21,7 @@ export type FactSource = {
   id: string; url: string; title: string; publisher: string; publishedAt: string | null;
   retrievedAt: string; accessStatus: 'verified' | 'unavailable';
   sourceType: string; originGroupId: string | null;
-  searchProvider?: 'openai_web_search' | 'gemini_google_search' | 'serpapi_google' | null;
+  searchProvider?: 'openai_web_search' | 'gemini_google_search' | 'tavily_search' | null;
   searchQuery?: string | null;
   candidateOrder?: number | null;
   youtubeTitle: string | null; youtubeChannelTitle: string | null;

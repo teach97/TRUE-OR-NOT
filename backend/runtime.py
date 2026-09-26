@@ -20,6 +20,7 @@ from contracts import (
 )
 from extraction import extract_claims, extract_image_claims, extract_page_claims
 from jev import JevError
+from tavily_search import TavilyUnavailable, search_tavily
 from providers import ProviderCallError, providers_for_preference, run_with_fallback
 from schemas import FactCheckRequest
 from search import build_search_query, origin_group_for_url, search_sources, source_type_for_url
@@ -54,6 +55,7 @@ class Settings(BaseModel):
     api_key: SecretStr
     gemini_api_key: SecretStr = SecretStr("")
     youtube_api_key: SecretStr = SecretStr("")
+    tavily_api_key: SecretStr = SecretStr("")
     ai_gateway_api_key: SecretStr = SecretStr("")
 
 
@@ -64,11 +66,13 @@ def load_settings(env_path: Path | None = None) -> Settings:
     key = os.environ.get("OPENAI_API_KEY", values.get("OPENAI_API_KEY") or "")
     gemini_key = os.environ.get("GEMINI_API_KEY", values.get("GEMINI_API_KEY") or "")
     youtube_key = os.environ.get("YOUTUBE_API_KEY", values.get("YOUTUBE_API_KEY") or "")
+    tavily_key = os.environ.get("TAVILY_API_KEY", values.get("TAVILY_API_KEY") or "")
     gateway_key = os.environ.get("AI_GATEWAY_API_KEY", values.get("AI_GATEWAY_API_KEY") or "")
     return Settings(
         api_key=SecretStr(key.strip()),
         gemini_api_key=SecretStr(gemini_key.strip()),
         youtube_api_key=SecretStr(youtube_key.strip()),
+        tavily_api_key=SecretStr(tavily_key.strip()),
         ai_gateway_api_key=SecretStr(gateway_key.strip()),
     )
 
@@ -184,6 +188,13 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
         )
 
     async def search(state: FactCheckState):
+        tavily_key = settings.tavily_api_key.get_secret_value()
+        if tavily_key.strip():
+            try:
+                async with httpx.AsyncClient(timeout=30.0, trust_env=False) as client:
+                    return await search_tavily(state, api_key=tavily_key, client=client)
+            except (TavilyUnavailable, ValueError) as exc:
+                _logger.warning("tavily search unavailable reason=%s", type(exc).__name__)
         return await with_fallback(
             state,
             lambda provider, client: search_sources(
@@ -454,13 +465,22 @@ async def run_jev_fast_check(
             except ValueError as exc:
                 raise ProviderCallError(str(exc)) from None
 
-        try:
-            providers = providers_for_preference(settings, "auto")
-            search_result, _ = await run_with_fallback(providers, search_once)
+        search_result = None
+        tavily_key = settings.tavily_api_key.get_secret_value()
+        if tavily_key.strip():
+            try:
+                search_result = await search_tavily(state, api_key=tavily_key, client=client)
+            except (TavilyUnavailable, ValueError) as exc:
+                _logger.warning("Jev Tavily search unavailable reason=%s", type(exc).__name__)
+        if search_result is None:
+            try:
+                providers = providers_for_preference(settings, "auto")
+                search_result, _ = await run_with_fallback(providers, search_once)
+            except (ProviderCallError, ValueError) as exc:
+                _logger.warning("Jev LLM search unavailable reason=%s", type(exc).__name__)
+                search_notice = "LLM_SEARCH_UNAVAILABLE"
+        if search_result is not None:
             sources.extend(search_result.get("sources", []))
-        except (ProviderCallError, ValueError) as exc:
-            _logger.warning("Jev LLM search unavailable reason=%s", type(exc).__name__)
-            search_notice = "LLM_SEARCH_UNAVAILABLE"
     else:
         search_notice = "LLM_SEARCH_UNAVAILABLE"
 

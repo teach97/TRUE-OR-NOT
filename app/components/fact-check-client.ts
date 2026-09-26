@@ -23,7 +23,7 @@ export function faviconUrlFor(value: string): string | null {
   } catch {return null;}
 }
 function validSourceMetadata(source: FactSource): boolean {
-  return (source.searchProvider == null || ['openai_web_search', 'gemini_google_search', 'serpapi_google'].includes(source.searchProvider))
+  return (source.searchProvider == null || ['openai_web_search', 'gemini_google_search', 'tavily_search'].includes(source.searchProvider))
     && (source.searchQuery == null || (typeof source.searchQuery === 'string' && source.searchQuery.length <= 300))
     && (source.candidateOrder == null || (Number.isInteger(source.candidateOrder) && source.candidateOrder >= 1 && source.candidateOrder <= 1000 && source.searchProvider != null));
 }
