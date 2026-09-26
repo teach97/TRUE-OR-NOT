@@ -144,6 +144,7 @@ async def fact_check_jev(payload: FactCheckRequest):
                 client=client,
                 api_key=settings.ai_gateway_api_key.get_secret_value(),
                 settings=settings,
+                model_preference=payload.modelPreference,
             )
     except JevError:
         return JSONResponse(

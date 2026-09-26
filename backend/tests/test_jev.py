@@ -237,6 +237,41 @@ def test_fast_check_searches_with_llm_and_sends_read_source_text_to_jev(monkeypa
     ]
 
 
+def test_fast_check_llm_search_honors_the_selected_model(monkeypatch):
+    import runtime
+    from runtime import Settings
+
+    requested_models = []
+
+    def handler(request):
+        if request.url.host == "api.openai.com":
+            requested_models.append(json.loads(request.content)["model"])
+            return httpx.Response(200, json={"status": "completed", "output": [
+                {"type": "web_search_call", "status": "completed", "action": {"sources": [
+                    {"url": "https://example.org/found", "title": "Found page"},
+                ]}},
+            ]})
+        return jev_response(verdict="mostly_supported", score=3.0, confidence=0.9)
+
+    async def fake_fetch(url):
+        return ("Searched page body text here.", url)
+
+    monkeypatch.setattr(runtime, "fetch_public_text", fake_fetch)
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            return await runtime.run_jev_fast_check(
+                text="Some checkable claim.", focus="",
+                client=client, api_key="k",
+                settings=Settings(api_key=SecretStr("test-openai-key")),
+                model_preference="gpt-6-luna",
+            )
+
+    result = asyncio.run(run())
+    assert requested_models == ["gpt-6-luna"]
+    assert result.claims[0].verdictCode == "mostly_supported"
+
+
 def test_fast_check_skips_search_when_the_link_reads_cleanly(monkeypatch):
     import runtime
     from runtime import Settings

@@ -20,6 +20,7 @@ from contracts import (
 )
 from extraction import extract_claims, extract_image_claims, extract_page_claims
 from jev import JevError
+from schemas import ModelPreference
 from tavily_search import TavilyUnavailable, search_tavily
 from providers import ProviderCallError, providers_for_preference, run_with_fallback
 from schemas import FactCheckRequest
@@ -419,6 +420,7 @@ async def run_jev_fast_check(
     client: httpx.AsyncClient,
     api_key: str | None,
     settings: Settings,
+    model_preference: ModelPreference = "auto",
     consent: bool = True,
 ) -> FactCheckResult:
     """Search and read evidence, then return Jev's score-only claim result."""
@@ -482,7 +484,7 @@ async def run_jev_fast_check(
                     _logger.warning("Jev Tavily search unavailable reason=%s", type(exc).__name__)
             if search_result is None:
                 try:
-                    providers = providers_for_preference(settings, "auto")
+                    providers = providers_for_preference(settings, model_preference)
                     search_result, _ = await run_with_fallback(providers, search_once)
                 except (ProviderCallError, ValueError) as exc:
                     _logger.warning("Jev LLM search unavailable reason=%s", type(exc).__name__)
