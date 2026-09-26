@@ -146,9 +146,18 @@ async def fact_check_jev(payload: FactCheckRequest):
                 settings=settings,
                 model_preference=payload.modelPreference,
             )
-    except JevError:
+    except JevError as exc:
+        messages = {
+            "LOW_CONFIDENCE": "JEV가 확신하지 못했습니다. 증거가 엇갈리거나 부족합니다.",
+            "GATEWAY_ERROR": "JEV 게이트웨이 호출에 실패했습니다. 잠시 후 다시 시도해 주세요.",
+            "NOT_CONFIGURED": "JEV 키 설정이 필요합니다. backend/.env를 확인해 주세요.",
+            "NO_JUDGMENT": "JEV가 판정을 반환하지 않았습니다.",
+            "BAD_RESPONSE": "JEV 응답 형식이 올바르지 않습니다.",
+            "INVALID_REQUEST": "JEV 모드 요청이 아닙니다.",
+        }
+        code = exc.code if isinstance(exc.code, str) else "AGENT_FAILED"
         return JSONResponse(
-            {"code": "AGENT_FAILED", "message": "Jev 판정에 실패했습니다."},
+            {"code": code, "message": messages.get(code, "Jev 판정에 실패했습니다.")},
             status_code=502,
             headers={"Cache-Control": "no-store"},
         )

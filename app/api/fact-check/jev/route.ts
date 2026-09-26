@@ -41,7 +41,11 @@ export async function POST(req: Request) {
     const signal=AbortSignal.any([req.signal,AbortSignal.timeout(90000)]);
     const upstream=await fetch(backend('/api/fact-check/jev'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(input),signal,redirect:'error',cache:'no-store'});
     if(!upstream.ok){
+      const body=await upstream.json().catch(()=>null);
       await upstream.body?.cancel();
+      if(typeof body?.code === 'string' && typeof body?.message === 'string') {
+        return error(upstream.status === 422 ? 422 : 502, body.code, body.message);
+      }
       const mapping:Record<number,[string,string]>={422:['INVALID_REQUEST','검증 입력을 확인해 주세요.'],503:['NOT_CONFIGURED','백엔드 API 설정을 확인해 주세요.']};
       const mapped=mapping[upstream.status];
       return error(mapped?upstream.status:502,...(mapped??['BACKEND_FAILED','백엔드 요청에 실패했습니다.'] as [string,string]));

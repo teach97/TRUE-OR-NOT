@@ -426,7 +426,7 @@ async def run_jev_fast_check(
     """Search and read evidence, then return Jev's score-only claim result."""
     full_text = _truncate_units(text.strip(), 12_000)
     if not full_text:
-        raise JevError("Nothing to judge")
+        raise JevError("Nothing to judge", code="INVALID_REQUEST")
 
     claim = {
         "id": "c1",
@@ -502,7 +502,7 @@ async def run_jev_fast_check(
         api_key=api_key,
     )
     if not judgment_result.get("claims"):
-        raise JevError("Jev returned no judgment")
+        raise JevError("Jev returned no judgment", code="NO_JUDGMENT")
 
     timestamp = datetime.now(timezone.utc).isoformat()
     normalized_sources = [

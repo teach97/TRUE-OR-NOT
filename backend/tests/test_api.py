@@ -191,7 +191,61 @@ def test_jev_endpoint_maps_gateway_failure_to_502(monkeypatch):
             "text": "Water boils at 50C.", "focus": "", "consent": True, "jevMode": True,
         })
         assert response.status_code == 502
-        assert response.json()["code"] == "AGENT_FAILED"
+        assert response.json()["code"] == "GATEWAY_ERROR"
+
+
+def test_jev_endpoint_reports_low_confidence_with_its_own_code(monkeypatch):
+    import main
+    from fastapi.testclient import TestClient
+    from main import app
+    from pydantic import SecretStr
+    from runtime import Settings
+    import runtime
+
+    real_async_client = httpx.AsyncClient
+
+    def handler(request):
+        if request.url.host == "api.openai.com":
+            return httpx.Response(200, json={"status": "completed", "output": [
+                {"type": "web_search_call", "status": "completed", "action": {"sources": [
+                    {"url": "https://example.org/source", "title": "Test source"},
+                ]}},
+            ]})
+        return httpx.Response(200, json={
+            "model": "typesafe-ai/jev",
+            "answers": {
+                "verdict": {"type": "choice", "choice": "partially_supported", "confidence": 0.2},
+                "strength": {"type": "score", "score": 2.0, "confidence": 0.9},
+            },
+        })
+
+    def mock_client(*args, **kwargs):
+        return real_async_client(
+            *args,
+            transport=httpx.MockTransport(handler),
+            **kwargs,
+        )
+
+    async def fake_fetch(url):
+        return "Relevant source text.", url
+
+    monkeypatch.setattr(main.httpx, "AsyncClient", mock_client)
+    monkeypatch.setattr(runtime, "fetch_public_text", fake_fetch)
+    monkeypatch.setattr(
+        main, "load_settings",
+        lambda: Settings(
+            api_key=SecretStr("test-openai-key"),
+            ai_gateway_api_key=SecretStr("gw-test"),
+        ),
+    )
+    with TestClient(app) as client:
+        response = client.post("/api/fact-check/jev", json={
+            "text": "Water boils at 50C.", "focus": "", "consent": True, "jevMode": True,
+        })
+        assert response.status_code == 502
+        body = response.json()
+        assert body["code"] == "LOW_CONFIDENCE"
+        assert "확신" in body["message"]
 
 
 def test_status_reports_ready_for_configured_runtime(monkeypatch):

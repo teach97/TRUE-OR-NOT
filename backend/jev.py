@@ -41,37 +41,41 @@ _STRENGTH_LEVELS = [
 class JevError(RuntimeError):
     """A Jev evaluation failed; the caller escalates to the LLM path."""
 
+    def __init__(self, message: str, *, code: str = "AGENT_FAILED"):
+        super().__init__(message)
+        self.code = code
+
 
 def _require_answer(answers: Any, claim_id: str, question_id: str) -> dict[str, Any]:
     if not isinstance(answers, dict):
-        raise JevError("Jev answers must be a map")
+        raise JevError("Jev answers must be a map", code="BAD_RESPONSE")
     answer = answers.get(question_id)
     if not isinstance(answer, dict):
-        raise JevError(f"Jev answer missing for claim {claim_id}")
+        raise JevError(f"Jev answer missing for claim {claim_id}", code="BAD_RESPONSE")
     return answer
 
 
 def _parse_verdict(answer: dict[str, Any], claim_id: str) -> tuple[str, float]:
     if answer.get("type") != "choice":
-        raise JevError(f"Jev verdict has wrong type for claim {claim_id}")
+        raise JevError(f"Jev verdict has wrong type for claim {claim_id}", code="BAD_RESPONSE")
     choice = answer.get("choice")
     if choice not in _VERDICT_OPTIONS:
-        raise JevError(f"Jev verdict option invalid for claim {claim_id}")
+        raise JevError(f"Jev verdict option invalid for claim {claim_id}", code="BAD_RESPONSE")
     confidence = answer.get("confidence", 1.0)
     if not isinstance(confidence, (int, float)) or not 0.0 <= confidence <= 1.0:
-        raise JevError(f"Jev verdict confidence invalid for claim {claim_id}")
+        raise JevError(f"Jev verdict confidence invalid for claim {claim_id}", code="BAD_RESPONSE")
     return choice, float(confidence)
 
 
 def _parse_strength(answer: dict[str, Any], claim_id: str) -> tuple[int, float]:
     if answer.get("type") != "score":
-        raise JevError(f"Jev strength has wrong type for claim {claim_id}")
+        raise JevError(f"Jev strength has wrong type for claim {claim_id}", code="BAD_RESPONSE")
     score = answer.get("score")
     if not isinstance(score, (int, float)) or not 0.0 <= score <= float(JEV_SCORE_LEVELS - 1):
-        raise JevError(f"Jev strength out of range for claim {claim_id}")
+        raise JevError(f"Jev strength out of range for claim {claim_id}", code="BAD_RESPONSE")
     confidence = answer.get("confidence", 1.0)
     if not isinstance(confidence, (int, float)) or not 0.0 <= confidence <= 1.0:
-        raise JevError(f"Jev strength confidence invalid for claim {claim_id}")
+        raise JevError(f"Jev strength confidence invalid for claim {claim_id}", code="BAD_RESPONSE")
     fact_score = round(score / (JEV_SCORE_LEVELS - 1) * 100)
     return max(0, min(100, fact_score)), float(confidence)
 
@@ -90,7 +94,7 @@ async def evaluate_claims_jev(
     can escalate to the LLM verification path.
     """
     if not api_key or not api_key.strip():
-        raise JevError("Jev gateway key is not configured")
+        raise JevError("Jev gateway key is not configured", code="NOT_CONFIGURED")
     results: list[dict[str, Any]] = []
     for claim in claims:
         claim_id = claim.get("id", "")
@@ -129,13 +133,13 @@ async def evaluate_claims_jev(
                 timeout=JEV_TIMEOUT_SECONDS,
             )
         except (httpx.HTTPError, TimeoutError) as exc:
-            raise JevError(f"Jev transport failed for claim {claim_id}") from exc
+            raise JevError(f"Jev transport failed for claim {claim_id}", code="GATEWAY_ERROR") from exc
         if response.status_code != 200:
-            raise JevError(f"Jev request failed for claim {claim_id}: HTTP {response.status_code}")
+            raise JevError(f"Jev request failed for claim {claim_id}: HTTP {response.status_code}", code="GATEWAY_ERROR")
         try:
             data = response.json()
         except ValueError as exc:
-            raise JevError(f"Jev response is not JSON for claim {claim_id}") from exc
+            raise JevError(f"Jev response is not JSON for claim {claim_id}", code="GATEWAY_ERROR") from exc
         answers = data.get("answers") if isinstance(data, dict) else None
         verdict_code, verdict_conf = _parse_verdict(
             _require_answer(answers, claim_id, "verdict"), claim_id
@@ -144,7 +148,7 @@ async def evaluate_claims_jev(
             _require_answer(answers, claim_id, "strength"), claim_id
         )
         if min(verdict_conf, strength_conf) < JEV_MIN_CONFIDENCE:
-            raise JevError(f"Jev confidence too low for claim {claim_id}")
+            raise JevError(f"Jev confidence too low for claim {claim_id}", code="LOW_CONFIDENCE")
         results.append({
             "claimId": claim_id,
             "verdictCode": verdict_code,
