@@ -259,7 +259,15 @@ button, p, h3, dd { overflow-wrap: anywhere; }
 .donut-chart-center {
   position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
   color: var(--accent); font-size: 39px; font-weight: 650; letter-spacing: -.08em; font-variant-numeric: tabular-nums;
+  transition: color .8s ease;
 }
+.trust-index[data-score-band='verified'] .donut-chart-progress, .trust-index[data-score-band='verified'] .donut-chart-center { color: #34d399; }
+.trust-index[data-score-band='mostly_true'] .donut-chart-progress, .trust-index[data-score-band='mostly_true'] .donut-chart-center { color: #a3e635; }
+.trust-index[data-score-band='neutral'] .donut-chart-progress, .trust-index[data-score-band='neutral'] .donut-chart-center { color: #fbbf24; }
+.trust-index[data-score-band='mostly_false'] .donut-chart-progress, .trust-index[data-score-band='mostly_false'] .donut-chart-center { color: #fb923c; }
+.trust-index[data-score-band='false'] .donut-chart-progress, .trust-index[data-score-band='false'] .donut-chart-center { color: #f87171; }
+.trust-index[data-score-band] .donut-chart-progress { transition: stroke-dashoffset .8s cubic-bezier(.2, .7, .3, 1), color .8s ease; }
+.trust-copy .score-label { margin-bottom: 8px; }
 .donut-chart-empty { color: #76818a; font-size: 18px; font-weight: 500; letter-spacing: -.03em; }
 .trust-copy { min-width: 0; }
 .trust-copy strong { display: block; color: #d7dfdf; font-size: 14px; font-weight: 550; }

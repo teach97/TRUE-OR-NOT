@@ -142,7 +142,6 @@ function TrustIndex({score, claimCount, sourceCount, evidenceCount, warningCount
   return <div className={`trust-index ${score === null ? 'is-empty' : ''}`} data-score-band={band}>
     <div className="trust-index-head">
       <div><span className="metric-label">종합 신뢰지수</span><h3>팩트 점수</h3></div>
-      {score !== null && <span className={`score-label score-${band}`}>{scoreLabel(score)}</span>}
     </div>
     <div className="trust-index-main">
       <DonutChart size={148} progress={score ?? 0} label={score === null ? '검증 대기 중' : `종합 신뢰지수 ${score}점`}>
@@ -151,6 +150,7 @@ function TrustIndex({score, claimCount, sourceCount, evidenceCount, warningCount
           : <CountUp key={`trust-${score}`} from={0} to={score} duration={1.2}/>}
       </DonutChart>
       <div className="trust-copy">
+        {score !== null && <span className={`score-label score-${band}`}>{scoreLabel(score)}</span>}
         <strong>{score === null ? '검증을 시작하면 지수가 표시됩니다.' : '주장별 점수의 평균입니다.'}</strong>
         <p>{score === null ? '원문을 보내면 주장, 출처, 인용을 한 화면에서 연결해 볼 수 있습니다.' : '출처의 개수만으로 점수를 올리지 않고, 확인된 인용과 남은 불확실성을 함께 반영합니다.'}</p>
       </div>
