@@ -8,7 +8,7 @@ ScoreBand = Literal["verified", "mostly_true", "neutral", "mostly_false", "false
 SCORE_LABELS: dict[ScoreBand, str] = {
     "verified": "검증된 사실",
     "mostly_true": "대체적으로 사실",
-    "neutral": "중립(검증되지 않음)",
+    "neutral": "중립",
     "mostly_false": "대체적으로 거짓",
     "false": "거짓",
 }
