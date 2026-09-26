@@ -42,7 +42,6 @@ export async function POST(req: Request) {
     const upstream=await fetch(backend('/api/fact-check/jev'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(input),signal,redirect:'error',cache:'no-store'});
     if(!upstream.ok){
       const body=await upstream.json().catch(()=>null);
-      await upstream.body?.cancel();
       if(typeof body?.code === 'string' && typeof body?.message === 'string') {
         return error(upstream.status === 422 ? 422 : 502, body.code, body.message);
       }
