@@ -22,7 +22,7 @@ import DonutChart from './donut-chart';
 import LatticeLoader from './lattice-loader';
 import BlurText from './blur-text';
 import { useSpotlight } from './spotlight';
-import VectorWordmark from './vector-wordmark';
+import TechText from './tech-text';
 import GlideSelect from './glide-select';
 import type { GlideSelectOption } from './glide-select';
 
@@ -743,28 +743,15 @@ export default function FactCheckDashboard() {
         <section className="composer panel-host chat-hero" aria-labelledby="chat-heading">
           <div className="chat-intro chat-intro--wordmark">
             <h1 id="chat-heading" className="sr-only">True or Not</h1>
-            <VectorWordmark
+            <TechText
               text="True or Not"
-              font={{fontFamily: 'Inter, system-ui, sans-serif', fontWeight: 800, fontSize: '200px', lineHeight: '1em', letterSpacing: '-0.02em', textAlign: 'center'}}
-              background="#00000000"
-              textColor="#FFFFFF"
-              shade="#FFFFFF"
-              accent="#FFFFFF"
-              reach={156}
-              speed={0}
-              damping={100}
-              handles={{size: 54, spread: 29, labels: true}}
-              fontSizeReference="parent"
-              style={{
-                position: 'absolute',
-                left: 'calc(0px - var(--wordmark-effect-bleed-x))',
-                top: 'calc(0px - var(--wordmark-effect-bleed-y))',
-                width: 'calc(100% + var(--wordmark-effect-bleed-x) + var(--wordmark-effect-bleed-x))',
-                height: 'calc(100% + var(--wordmark-effect-bleed-y) + var(--wordmark-effect-bleed-y))',
-                minWidth: 0,
-                minHeight: 0,
-                overflow: 'visible',
-              }}
+              fontSize={145}
+              letterSpacing={-0.02}
+              dashGap={3}
+              specks={48}
+              strokeWidth={1}
+              speed={0.7}
+              reveal="area"
             />
           </div>
           <div className="chat-thread-wrap">
