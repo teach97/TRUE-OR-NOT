@@ -446,6 +446,13 @@ export default function FactCheckDashboard() {
     request.current = null;
   }
 
+  function cancelVerification() {
+    stop();
+    dispatch({type: 'cancel'});
+    setMessages(messages => messages.filter(message => !message.thinking));
+    setNotice('검증을 중단했어.');
+  }
+
   function firstUrl(text: string): string | null {
     const match = text.match(/https?:\/\/[^\s)\]]+/);
     if (!match) return null;
@@ -791,7 +798,9 @@ export default function FactCheckDashboard() {
                   <label className="chat-jev-toggle"><SquishSwitch checked={jevMode} onChange={setJevMode} disabled={busy || jevConfigured !== true || !!image} thumbOnColor="#ffffff" trackOnColor="#65f470" width={46} height={26} ariaLabel="JEV 모드"/><span>JEV</span></label>
                   <div className="chat-model-control"><span className="sr-only">답변 모델</span><GlideSelect options={modelPickerOptions} value={modelSelection} onChange={value => setModelSelection(value as ModelSelection)} disabled={busy} ariaLabel="답변 모델 선택" ariaDescribedBy="model-preference-help" size="md" radius={9} menuWidth={260} placement="top" align="right"/></div>
                   <span id="model-preference-help" className="sr-only">Auto는 설정된 모델을 순서대로 시도합니다. 개별 모델은 단독 사용합니다. JEV 스위치를 켜면 TypeSafe 빠른 판정 점수도 함께 표시하며 이미지는 지원하지 않습니다.</span>
-                  <button type="submit" className="chat-send" disabled={busy || (!draft.trim() && !image)} aria-label={busy ? '검증 진행 중' : sample ? '예시 다시 보기' : '팩트 검증 시작'}><Icon name="arrow" size={19}/></button>
+                  {busy
+                    ? <button type="button" className="chat-send is-stop" onClick={cancelVerification} aria-label="검증 중단"><Icon name="close" size={19}/></button>
+                    : <button type="submit" className="chat-send" disabled={!draft.trim() && !image} aria-label={sample ? '예시 다시 보기' : '팩트 검증 시작'}><Icon name="arrow" size={19}/></button>}
                 </div>
               </div>
             </BorderGlow>

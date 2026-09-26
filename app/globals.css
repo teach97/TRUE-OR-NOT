@@ -206,6 +206,7 @@ button, p, h3, dd { overflow-wrap: anywhere; }
 .chat-model-policy { color: var(--subtle); font-size: 9px; white-space: nowrap; }
 .chat-send { display: grid; place-items: center; width: 42px; height: 42px; min-height: 42px; border-radius: 11px; color: #183236; background: var(--accent); }
 .chat-send:hover:not(:disabled) { color: #10282a; background: var(--accent-strong); transform: translateY(-1px); }
+.chat-send.is-stop { color: #f1f4f4; background: rgb(255 255 255 / .12); }
 .chat-attachments { display: flex; flex-wrap: wrap; gap: 8px; padding: 2px 2px 0; }
 .attach-chip { display: inline-flex; align-items: center; gap: 7px; padding: 4px 6px 4px 4px; border: 1px solid var(--line); border-radius: 9px; color: #c3cdd0; background: #0d1116; font-size: 11px; }
 .attach-chip img { width: 44px; height: 44px; border-radius: 6px; object-fit: cover; }
