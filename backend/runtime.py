@@ -458,34 +458,41 @@ async def run_jev_fast_check(
         })
 
     search_notice = None
-    if consent:
-        async def search_once(provider):
-            try:
-                return await search_sources(state, client=client, provider=provider)
-            except ValueError as exc:
-                raise ProviderCallError(str(exc)) from None
+    read_result = None
+    if consent and link_url and sources:
+        link_read = await read_sources({"sources": sources}, reader=fetch_public_text)
+        if link_read.get("sourceTexts"):
+            read_result = link_read
+    if read_result is None:
+        if not consent:
+            search_notice = "LLM_SEARCH_UNAVAILABLE"
+        else:
+            async def search_once(provider):
+                try:
+                    return await search_sources(state, client=client, provider=provider)
+                except ValueError as exc:
+                    raise ProviderCallError(str(exc)) from None
 
-        search_result = None
-        tavily_key = settings.tavily_api_key.get_secret_value()
-        if tavily_key.strip():
-            try:
-                search_result = await search_tavily(state, api_key=tavily_key, client=client)
-            except (TavilyUnavailable, ValueError) as exc:
-                _logger.warning("Jev Tavily search unavailable reason=%s", type(exc).__name__)
-        if search_result is None:
-            try:
-                providers = providers_for_preference(settings, "auto")
-                search_result, _ = await run_with_fallback(providers, search_once)
-            except (ProviderCallError, ValueError) as exc:
-                _logger.warning("Jev LLM search unavailable reason=%s", type(exc).__name__)
-                search_notice = "LLM_SEARCH_UNAVAILABLE"
-        if search_result is not None:
-            sources.extend(search_result.get("sources", []))
-    else:
-        search_notice = "LLM_SEARCH_UNAVAILABLE"
+            search_result = None
+            tavily_key = settings.tavily_api_key.get_secret_value()
+            if tavily_key.strip():
+                try:
+                    search_result = await search_tavily(state, api_key=tavily_key, client=client)
+                except (TavilyUnavailable, ValueError) as exc:
+                    _logger.warning("Jev Tavily search unavailable reason=%s", type(exc).__name__)
+            if search_result is None:
+                try:
+                    providers = providers_for_preference(settings, "auto")
+                    search_result, _ = await run_with_fallback(providers, search_once)
+                except (ProviderCallError, ValueError) as exc:
+                    _logger.warning("Jev LLM search unavailable reason=%s", type(exc).__name__)
+                    search_notice = "LLM_SEARCH_UNAVAILABLE"
+            if search_result is not None:
+                sources.extend(search_result.get("sources", []))
 
-    state["sources"] = sources[:6]
-    read_result = await read_sources(state, reader=fetch_public_text)
+    if read_result is None:
+        state["sources"] = sources[:6]
+        read_result = await read_sources(state, reader=fetch_public_text)
     state.update(read_result)
     judgment_result = await verify_claims_jev(
         state,

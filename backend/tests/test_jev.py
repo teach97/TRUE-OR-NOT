@@ -237,6 +237,44 @@ def test_fast_check_searches_with_llm_and_sends_read_source_text_to_jev(monkeypa
     ]
 
 
+def test_fast_check_skips_search_when_the_link_reads_cleanly(monkeypatch):
+    import runtime
+    from runtime import Settings
+
+    async def fake_fetch(url):
+        return ("Fetched page body text here.", url)
+
+    def handler(request):
+        raise AssertionError(f"no search or gateway call expected except Jev, got {request.url}")
+
+    async def jev_handler(request):
+        assert "Fetched page body text here." in json.loads(request.content)["state"]["evidence"]
+        return jev_response(verdict="mostly_supported", score=3.0, confidence=0.9)
+
+    def router(request):
+        if request.url.host == "ai-gateway.vercel.sh":
+            return jev_handler(request)
+        return handler(request)
+
+    monkeypatch.setattr(runtime, "fetch_public_text", fake_fetch)
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(router)) as client:
+            return await runtime.run_jev_fast_check(
+                text="Water boils at 50C.", focus="",
+                link_url="https://example.org/article",
+                client=client, api_key="k",
+                settings=Settings(
+                    api_key=SecretStr("test-openai-key"),
+                    tavily_api_key=SecretStr("tvly-test"),
+                ),
+            )
+
+    result = asyncio.run(run())
+    assert [s.id for s in result.sources] == ["s0"]
+    assert result.sources[0].accessStatus == "verified"
+
+
 def test_fast_check_uses_linked_source_as_evidence_without_replacing_claim(monkeypatch):
     import runtime
     from runtime import Settings
