@@ -52,5 +52,5 @@ export async function POST(req: Request) {
     }
     const value=await upstream.json();
     return Response.json(value,{headers});
-  }catch(error){console.error('[jev-proxy] backend fetch failed:', error instanceof Error ? `${error.name}: ${error.message}` : String(error));return error(503,'BACKEND_UNAVAILABLE','검증 백엔드에 연결할 수 없습니다.');}
+  }catch(caught){const detail=caught instanceof Error ? `${caught.name}: ${caught.message}` : typeof caught === 'string' ? caught : 'unknown';console.error('[jev-proxy] backend fetch failed:', detail);return error(503,'BACKEND_UNAVAILABLE','검증 백엔드에 연결할 수 없습니다.');}
 }
