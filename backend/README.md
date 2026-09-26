@@ -21,7 +21,7 @@ Copy-Item .env.example .env
 `backend/.env`를 열어 사용할 키를 설정한 다음 백엔드를 실행합니다.
 
 ```powershell
-uv run uvicorn main:app --host 127.0.0.1 --port 8010
+.\.venv\Scripts\python.exe -m uvicorn main:app --host 127.0.0.1 --port 8010
 ```
 
 백엔드 상태는 `http://127.0.0.1:8010/health`에서 확인할 수 있습니다. 이 경로는 프로세스가 실행 중인지 확인하며, LLM 키나 외부 제공자 응답 가능성까지 검사하지는 않습니다. 프런트엔드 실행법은 저장소 루트의 [README](../README.md)를 참고하세요.
