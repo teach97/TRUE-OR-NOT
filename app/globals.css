@@ -495,6 +495,7 @@ button, p, h3, dd { overflow-wrap: anywhere; }
   .donut-chart svg { width: 128px; height: 128px; }
   .donut-chart-center { font-size: 33px; }
   .claim-card { padding: 12px; }
+  .chat-model-policy { display: none; }
 }
 
 @media (max-width: 960px) {
