@@ -53,7 +53,7 @@ export default function FloatingLinesBackground() {
         enabledWaves={floatingLinesWaves}
         lineCount={floatingLinesCount}
         lineDistance={floatingLinesDistance}
-        animationSpeed={0.38}
+        animationSpeed={1}
         interactive
         bendRadius={5}
         bendStrength={-0.55}
