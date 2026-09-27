@@ -96,12 +96,12 @@ def test_jev_endpoint_returns_scored_result(monkeypatch):
                 ]}},
             ]})
 
-        assert request.url.host == "ai-gateway.vercel.sh"
+        assert request.url.host == "api.typesafe.ai"
         seen.append("jev")
         state = json.loads(request.content)["state"]
         assert "Water boils at 100 degrees Celsius" in state["evidence"]
         return httpx.Response(200, json={
-            "model": "typesafe-ai/jev",
+            "model": "jev-latest",
             "answers": {
                 "verdict": {
                     "type": "choice", "choice": "contradicted",
@@ -130,7 +130,7 @@ def test_jev_endpoint_returns_scored_result(monkeypatch):
         main, "load_settings",
         lambda: Settings(
             api_key=SecretStr("test-openai-key"),
-            ai_gateway_api_key=SecretStr("gw-test"),
+            typesafe_api_key=SecretStr("gw-test"),
         ),
     )
     with TestClient(app) as client:
@@ -139,7 +139,7 @@ def test_jev_endpoint_returns_scored_result(monkeypatch):
         })
         assert response.status_code == 200
         body = response.json()
-        assert body["model"] == "typesafe-ai/jev"
+        assert body["model"] == "jev-latest"
         assert [(c["id"], c["verdictCode"]) for c in body["claims"]] == [("c1", "contradicted")]
         assert body["claims"][0]["evidenceIds"] == []
         assert [source["url"] for source in body["sources"]] == [
@@ -183,7 +183,7 @@ def test_jev_endpoint_maps_gateway_failure_to_502(monkeypatch):
         main, "load_settings",
         lambda: Settings(
             api_key=SecretStr("test-openai-key"),
-            ai_gateway_api_key=SecretStr("gw-test"),
+            typesafe_api_key=SecretStr("gw-test"),
         ),
     )
     with TestClient(app) as client:
@@ -212,7 +212,7 @@ def test_jev_endpoint_reports_low_confidence_with_its_own_code(monkeypatch):
                 ]}},
             ]})
         return httpx.Response(200, json={
-            "model": "typesafe-ai/jev",
+            "model": "jev-latest",
             "answers": {
                 "verdict": {"type": "choice", "choice": "partially_supported", "confidence": 0.2},
                 "strength": {"type": "score", "score": 2.0, "confidence": 0.9},
@@ -235,7 +235,7 @@ def test_jev_endpoint_reports_low_confidence_with_its_own_code(monkeypatch):
         main, "load_settings",
         lambda: Settings(
             api_key=SecretStr("test-openai-key"),
-            ai_gateway_api_key=SecretStr("gw-test"),
+            typesafe_api_key=SecretStr("gw-test"),
         ),
     )
     with TestClient(app) as client:
@@ -326,7 +326,7 @@ def test_status_reports_jev_configuration_without_returning_the_key(monkeypatch)
 
     monkeypatch.setattr(
         main, "load_settings",
-        lambda: Settings(api_key=SecretStr(""), ai_gateway_api_key=SecretStr("gateway-test-only")),
+        lambda: Settings(api_key=SecretStr(""), typesafe_api_key=SecretStr("gateway-test-only")),
     )
     with TestClient(app) as client:
         response = client.get("/api/fact-check")

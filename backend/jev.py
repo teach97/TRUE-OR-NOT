@@ -8,8 +8,8 @@ from typing import Any
 
 import httpx
 
-JEV_MODEL = "typesafe-ai/jev"
-JEV_SYSTEMONE_URL = "https://ai-gateway.vercel.sh/typesafe/v1/systemone"
+JEV_MODEL = "jev-latest"
+JEV_SYSTEMONE_URL = "https://api.typesafe.ai/v1/systemone"
 JEV_TIMEOUT_SECONDS = 60.0
 JEV_MIN_CONFIDENCE = 0.5
 JEV_MAX_EVIDENCE_CHARS = 4_000

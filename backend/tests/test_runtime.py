@@ -56,6 +56,15 @@ def test_youtube_api_key_is_loaded_from_server_environment_and_redacted(monkeypa
     assert "youtube-test-value" not in repr(settings)
 
 
+def test_typesafe_api_key_is_server_only_and_redacted(monkeypatch):
+    from runtime import load_settings
+
+    monkeypatch.setenv("TYPESAFE_API_KEY", "test-typesafe-secret")
+    settings = load_settings(Path("missing-test-env-file"))
+    assert settings.typesafe_api_key.get_secret_value() == "test-typesafe-secret"
+    assert "test-typesafe-secret" not in repr(settings)
+
+
 def test_llm_search_is_used_directly_without_a_search_notice(monkeypatch):
     import runtime
     from runtime import Settings, make_runtime_adapters

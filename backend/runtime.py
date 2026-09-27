@@ -57,7 +57,7 @@ class Settings(BaseModel):
     gemini_api_key: SecretStr = SecretStr("")
     youtube_api_key: SecretStr = SecretStr("")
     tavily_api_key: SecretStr = SecretStr("")
-    ai_gateway_api_key: SecretStr = SecretStr("")
+    typesafe_api_key: SecretStr = SecretStr("")
 
 
 def load_settings(env_path: Path | None = None) -> Settings:
@@ -68,13 +68,13 @@ def load_settings(env_path: Path | None = None) -> Settings:
     gemini_key = os.environ.get("GEMINI_API_KEY", values.get("GEMINI_API_KEY") or "")
     youtube_key = os.environ.get("YOUTUBE_API_KEY", values.get("YOUTUBE_API_KEY") or "")
     tavily_key = os.environ.get("TAVILY_API_KEY", values.get("TAVILY_API_KEY") or "")
-    gateway_key = os.environ.get("AI_GATEWAY_API_KEY", values.get("AI_GATEWAY_API_KEY") or "")
+    gateway_key = os.environ.get("TYPESAFE_API_KEY", values.get("TYPESAFE_API_KEY") or "")
     return Settings(
         api_key=SecretStr(key.strip()),
         gemini_api_key=SecretStr(gemini_key.strip()),
         youtube_api_key=SecretStr(youtube_key.strip()),
         tavily_api_key=SecretStr(tavily_key.strip()),
-        ai_gateway_api_key=SecretStr(gateway_key.strip()),
+        typesafe_api_key=SecretStr(gateway_key.strip()),
     )
 
 
@@ -250,9 +250,9 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
                     update = await verify_claims_jev(
                         state,
                         client=client,
-                        api_key=settings.ai_gateway_api_key.get_secret_value(),
+                        api_key=settings.typesafe_api_key.get_secret_value(),
                     )
-                return {**update, "llmModel": "typesafe-ai/jev"}
+                return {**update, "llmModel": "jev-latest"}
             except JevError as exc:
                 _logger.warning("jev verify failed, escalating to llm: %s", type(exc).__name__)
         return await with_fallback(
@@ -513,7 +513,7 @@ async def run_jev_fast_check(
         "text": full_text,
         "focus": focus,
         "demo": False,
-        "model": "typesafe-ai/jev",
+        "model": "jev-latest",
         "reasoning": "max",
         "checkedAt": timestamp,
         "claims": judgment_result["claims"],

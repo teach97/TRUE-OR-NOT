@@ -68,7 +68,7 @@ async def agent_status(response: Response):
     primary = providers[0] if providers else None
     return AgentStatus(
         configured=configured,
-        jevConfigured=bool(settings.ai_gateway_api_key.get_secret_value().strip()),
+        jevConfigured=bool(settings.typesafe_api_key.get_secret_value().strip()),
         workflowReady=configured,
         engine="langgraph",
         model=primary.model if primary else None,
@@ -142,7 +142,7 @@ async def fact_check_jev(payload: FactCheckRequest):
                 link_url=payload.linkUrl,
                 consent=payload.consent,
                 client=client,
-                api_key=settings.ai_gateway_api_key.get_secret_value(),
+                api_key=settings.typesafe_api_key.get_secret_value(),
                 settings=settings,
                 model_preference=payload.modelPreference,
             )

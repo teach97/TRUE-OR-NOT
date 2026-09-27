@@ -9,12 +9,12 @@ from pydantic import SecretStr
 from jev import JevError, evaluate_claims_jev
 
 
-JEV_URL = "https://ai-gateway.vercel.sh/typesafe/v1/systemone"
+JEV_URL = "https://api.typesafe.ai/v1/systemone"
 
 
 def jev_response(verdict="mostly_supported", score=3.2, confidence=0.9):
     return httpx.Response(200, json={
-        "model": "typesafe-ai/jev",
+        "model": "jev-latest",
         "answers": {
             "verdict": {
                 "type": "choice", "choice": verdict,
@@ -39,7 +39,7 @@ def test_evaluate_maps_verdict_and_strength_to_fact_score():
         assert str(request.url) == JEV_URL
         assert request.headers["authorization"] == "Bearer gw-test-key"
         body = json.loads(request.content)
-        assert body["model"] == "typesafe-ai/jev"
+        assert body["model"] == "jev-latest"
         assert set(body["questions"]) == {"verdict", "strength"}
         assert body["questions"]["verdict"]["type"] == "choice"
         assert body["questions"]["strength"]["type"] == "score"
@@ -199,7 +199,7 @@ def test_fast_check_searches_with_llm_and_sends_read_source_text_to_jev(monkeypa
                 ]}},
             ]})
 
-        assert request.url.host == "ai-gateway.vercel.sh"
+        assert request.url.host == "api.typesafe.ai"
         seen["jev_state"] = json.loads(request.content)["state"]
         return jev_response(verdict="mostly_supported", score=3.0, confidence=0.9)
 
@@ -222,7 +222,7 @@ def test_fast_check_searches_with_llm_and_sends_read_source_text_to_jev(monkeypa
             )
 
     result = asyncio.run(run())
-    assert result.model == "typesafe-ai/jev"
+    assert result.model == "jev-latest"
     assert result.text == claim
     assert [(c.id, c.verdictCode, c.factScore) for c in result.claims] == [
         ("c1", "mostly_supported", 75),
@@ -287,7 +287,7 @@ def test_fast_check_skips_search_when_the_link_reads_cleanly(monkeypatch):
         return jev_response(verdict="mostly_supported", score=3.0, confidence=0.9)
 
     def router(request):
-        if request.url.host == "ai-gateway.vercel.sh":
+        if request.url.host == "api.typesafe.ai":
             return jev_handler(request)
         return handler(request)
 
@@ -409,7 +409,7 @@ def test_runtime_verify_uses_jev_when_mode_on(monkeypatch):
     real_async_client = httpx.AsyncClient
 
     def handler(request):
-        assert request.url.host == "ai-gateway.vercel.sh"
+        assert request.url.host == "api.typesafe.ai"
         return jev_response(verdict="mostly_supported", score=3.6, confidence=0.9)
 
     def mock_client(*args, **kwargs):
@@ -419,13 +419,13 @@ def test_runtime_verify_uses_jev_when_mode_on(monkeypatch):
     settings = Settings(
         api_key=SecretStr(""),
         gemini_api_key=SecretStr(""),
-        ai_gateway_api_key=SecretStr("gw-test-only"),
+        typesafe_api_key=SecretStr("gw-test-only"),
     )
     adapters = make_runtime_adapters(settings)
     update = asyncio.run(adapters.verify(_jev_runtime_state()))
     assert update["claims"][0]["verdictCode"] == "mostly_supported"
     assert update["claims"][0]["factScore"] == 90
-    assert update["llmModel"] == "typesafe-ai/jev"
+    assert update["llmModel"] == "jev-latest"
 
 
 def test_runtime_verify_escales_to_llm_when_jev_fails(monkeypatch):
@@ -435,7 +435,7 @@ def test_runtime_verify_escales_to_llm_when_jev_fails(monkeypatch):
     real_async_client = httpx.AsyncClient
 
     def handler(request):
-        if request.url.host == "ai-gateway.vercel.sh":
+        if request.url.host == "api.typesafe.ai":
             return httpx.Response(500, json={"error": "busy"})
         body = json.loads(request.content)
         assert body["model"] == "gemini-3.8-flash"
@@ -471,7 +471,7 @@ def test_runtime_verify_escales_to_llm_when_jev_fails(monkeypatch):
     settings = Settings(
         api_key=SecretStr(""),
         gemini_api_key=SecretStr("gemini-test-only"),
-        ai_gateway_api_key=SecretStr("gw-test-only"),
+        typesafe_api_key=SecretStr("gw-test-only"),
     )
     adapters = make_runtime_adapters(settings)
     update = asyncio.run(adapters.verify(_jev_runtime_state()))
