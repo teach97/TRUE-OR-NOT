@@ -106,7 +106,8 @@ button, p, h3, dd { overflow-wrap: anywhere; }
 .thread-to-bottom svg { transform: rotate(90deg); }
 .chat-message { display: flex; align-items: flex-start; gap: 10px; max-width: 82%; }
 .chat-message.is-user { align-self: flex-end; justify-content: flex-end; }
-.chat-avatar { display: grid; place-items: center; flex: 0 0 29px; width: 29px; height: 29px; margin-top: 2px; border: 1px solid rgb(155 221 212 / .3); border-radius: 10px; color: var(--accent); background: rgb(155 221 212 / .09); }
+.chat-avatar { display: grid; place-items: center; flex: 0 0 29px; width: 29px; height: 29px; margin-top: 2px; border: 1px solid rgb(155 221 212 / .3); border-radius: 10px; color: var(--accent); background: #000; overflow: hidden; }
+.chat-avatar img { width: 100%; height: 100%; object-fit: cover; }
 .chat-bubble { min-width: 0; padding: 11px 14px; border: 1px solid rgb(255 255 255 / .1); border-radius: 14px 14px 14px 4px; background: rgb(23 27 32 / .95); color: #cfd5d8; }
 .chat-bubble p { font-size: 13px; line-height: 1.75; }
 .chat-bubble small { display: block; margin-top: 6px; color: #a8b2b8; font-size: 10px; }
@@ -181,7 +182,7 @@ button, p, h3, dd { overflow-wrap: anywhere; }
 .jev-source-list a:hover { color: #e0f6f2; text-decoration: underline; }
 .progress-disclaimer { display: block; margin-top: 11px; color: #879298; font-size: 9px; line-height: 1.55; }
 .progress-error { margin-top: 10px; color: #e5acb4; font-size: 10px; line-height: 1.65; }
-.chat-message.is-user .chat-bubble { border-color: rgb(155 221 212 / .22); border-radius: 14px 14px 4px 14px; background: rgb(45 70 72 / .9); color: #e6f2f0; }
+.chat-message.is-user .chat-bubble { border-color: rgb(155 221 212 / .22); border-radius: 14px 14px 4px 14px; background: rgba(50, 98, 187, 0.9); color: #e6f2f0; }
 .chat-message.is-error .chat-bubble { border-color: rgb(232 155 167 / .35); background: rgb(87 39 48 / .28); color: #f0bdc5; }
 .chat-message--loading .chat-bubble { padding: 9px 12px; }
 .chat-loader-row { display: flex; align-items: center; gap: 11px; color: #aabdc1; font-size: 11px; }

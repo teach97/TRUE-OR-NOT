@@ -788,7 +788,7 @@ export default function FactCheckDashboard() {
           <div className="chat-thread-wrap">
           <div className="chat-thread" ref={threadRef} onScroll={handleThreadScroll} aria-live="polite">
             {messages.map(message => <motion.div key={message.id} className={`chat-message ${message.role === 'user' ? 'is-user' : 'is-assistant'} ${message.answer ? 'has-answer' : ''} ${message.factScore !== undefined ? 'has-fact-score' : ''} ${message.progress ? 'has-progress' : ''} ${message.tone === 'error' ? 'is-error' : ''}`} initial={reduce ? false : {opacity: 0, y: 10}} animate={{opacity: 1, y: 0}} transition={{duration: reduce ? 0 : .22}}>
-              {message.role === 'assistant' && <span className="chat-avatar"><Icon name="lens" size={16}/></span>}
+              {message.role === 'assistant' && <span className="chat-avatar"><img src="/logo.png" alt="" width={29} height={29}/></span>}
               <div className={`chat-bubble ${message.answer ? 'chat-bubble--answer' : ''} ${message.factScore !== undefined ? 'chat-bubble--fact-score' : ''}`}>
                 {message.answer ? (message.factScore !== undefined
                   ? <><JevFactScore score={message.factScore} verdict={message.verdict} search={message.search}/><JevSourceList sources={message.sources ?? []}/></>
@@ -796,7 +796,7 @@ export default function FactCheckDashboard() {
                 {message.meta && <small>{message.meta}</small>}
               </div>
             </motion.div>)}
-            {busy && !messages.some(message => message.thinking || (message.progress && !message.progress.completed && !message.progress.error)) && <div className="chat-message is-assistant chat-message--loading" data-testid="verification-loading"><span className="chat-avatar"><Icon name="lens" size={16}/></span><div className="chat-bubble"><div className="chat-loader-row"><LatticeLoader label="검증 중" doneLabel="검증 완료" errorLabel="검증 실패" pattern="orbit" grid={3} shape="round" cellSize={7} gap={3} fontSize={12} step={75} idleOpacity={0.15} glow color="#ffffff" showTimer/><span>{notice || '근거를 모으고 사실 여부를 대조하고 있습니다.'}</span></div></div></div>}
+            {busy && !messages.some(message => message.thinking || (message.progress && !message.progress.completed && !message.progress.error)) && <div className="chat-message is-assistant chat-message--loading" data-testid="verification-loading"><span className="chat-avatar"><img src="/logo.png" alt="" width={29} height={29}/></span><div className="chat-bubble"><div className="chat-loader-row"><LatticeLoader label="검증 중" doneLabel="검증 완료" errorLabel="검증 실패" pattern="orbit" grid={3} shape="round" cellSize={7} gap={3} fontSize={12} step={75} idleOpacity={0.15} glow color="#ffffff" showTimer/><span>{notice || '근거를 모으고 사실 여부를 대조하고 있습니다.'}</span></div></div></div>}
           </div>
           {!atBottom && <button type="button" className="thread-to-bottom" onClick={() => {stickToBottom.current = true; scrollThreadToBottom(); setAtBottom(true);}} aria-label="채팅 맨 아래로 이동"><Icon name="arrow" size={16}/></button>}
           </div>
