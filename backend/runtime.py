@@ -494,7 +494,17 @@ async def run_jev_fast_check(
 
     if read_result is None:
         state["sources"] = sources[:6]
-        read_result = await read_sources(state, reader=fetch_public_text)
+        youtube_key = settings.youtube_api_key.get_secret_value()
+        if youtube_key.strip() and any(
+            isinstance(source, dict) and source.get("sourceType") == "유튜브"
+            for source in sources
+        ):
+            async def youtube_reader(url):
+                return await fetch_youtube_data(url, api_key=youtube_key, client=client)
+
+            read_result = await read_sources(state, reader=fetch_public_text, youtube_reader=youtube_reader)
+        else:
+            read_result = await read_sources(state, reader=fetch_public_text)
     state.update(read_result)
     judgment_result = await verify_claims_jev(
         state,

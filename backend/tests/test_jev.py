@@ -310,6 +310,47 @@ def test_fast_check_skips_search_when_the_link_reads_cleanly(monkeypatch):
     assert result.sources[0].accessStatus == "verified"
 
 
+def test_fast_check_collects_youtube_context_when_the_key_is_configured(monkeypatch):
+    import runtime
+    from runtime import Settings
+
+    async def fake_fetch(url):
+        raise AssertionError(f"web fetch must not run for a YouTube-only check, got {url}")
+
+    seen = {}
+
+    async def fake_youtube(url, api_key, client):
+        seen["key"] = bool(api_key and api_key.strip())
+        return {
+            "title": "Test video",
+            "channelTitle": "Test channel",
+            "publishedAt": None,
+            "viewCount": "1234567",
+            "comments": ["First comment"],
+            "status": "collected",
+        }
+
+    def handler(request):
+        return jev_response(verdict="mostly_supported", score=3.0, confidence=0.9)
+
+    monkeypatch.setattr(runtime, "fetch_public_text", fake_fetch)
+    monkeypatch.setattr(runtime, "fetch_youtube_data", fake_youtube)
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            return await runtime.run_jev_fast_check(
+                text="Check this video.",
+                link_url="https://www.youtube.com/watch?v=aB_12345678",
+                client=client, api_key="k",
+                settings=Settings(api_key=SecretStr(""), youtube_api_key=SecretStr("yt-test")),
+            )
+
+    result = asyncio.run(run())
+    assert seen["key"] is True
+    assert result.sources[0].youtubeDataStatus == "collected"
+    assert result.sources[0].youtubeComments == ["First comment"]
+
+
 def test_fast_check_uses_linked_source_as_evidence_without_replacing_claim(monkeypatch):
     import runtime
     from runtime import Settings
