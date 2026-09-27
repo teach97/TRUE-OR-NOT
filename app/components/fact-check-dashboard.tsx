@@ -25,7 +25,6 @@ import { useSpotlight } from './spotlight';
 import TechText from './tech-text';
 import BorderGlow from './border-glow';
 import BellToggle from './bell-toggle';
-import { LiquidMetal } from '@paper-design/shaders-react';
 import GlideSelect from './glide-select';
 import type { GlideSelectOption } from './glide-select';
 
