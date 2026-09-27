@@ -58,6 +58,7 @@ class Settings(BaseModel):
     youtube_api_key: SecretStr = SecretStr("")
     tavily_api_key: SecretStr = SecretStr("")
     typesafe_api_key: SecretStr = SecretStr("")
+    finnhub_api_key: SecretStr = SecretStr("")
 
 
 def load_settings(env_path: Path | None = None) -> Settings:
@@ -69,12 +70,14 @@ def load_settings(env_path: Path | None = None) -> Settings:
     youtube_key = os.environ.get("YOUTUBE_API_KEY", values.get("YOUTUBE_API_KEY") or "")
     tavily_key = os.environ.get("TAVILY_API_KEY", values.get("TAVILY_API_KEY") or "")
     gateway_key = os.environ.get("TYPESAFE_API_KEY", values.get("TYPESAFE_API_KEY") or "")
+    finnhub_key = os.environ.get("FINNHUB_API_KEY", values.get("FINNHUB_API_KEY") or "")
     return Settings(
         api_key=SecretStr(key.strip()),
         gemini_api_key=SecretStr(gemini_key.strip()),
         youtube_api_key=SecretStr(youtube_key.strip()),
         tavily_api_key=SecretStr(tavily_key.strip()),
         typesafe_api_key=SecretStr(gateway_key.strip()),
+        finnhub_api_key=SecretStr(finnhub_key.strip()),
     )
 
 
