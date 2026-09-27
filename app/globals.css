@@ -55,7 +55,7 @@ button, p, h3, dd { overflow-wrap: anywhere; }
 .sidebar { position: sticky; top: 0; z-index: 3; height: 100dvh; padding: 30px 17px 19px; border-right: 1px solid var(--line); display: flex; flex-direction: column; background: rgb(12 15 19 / .88); backdrop-filter: blur(18px); }
 .brand { display: flex; align-items: center; gap: 10px; padding: 0 10px; font-size: 22px; letter-spacing: -.9px; font-weight: 650; line-height: 1.2; }
 .brand small { display: block; margin-top: 6px; color: var(--muted); font-size: 9px; font-weight: 400; letter-spacing: 1.9px; }
-.brand-symbol { display: grid; place-items: center; width: 36px; height: 40px; color: var(--accent); }
+.brand-symbol { display: grid; place-items: center; width: auto; min-width: 36px; height: 40px; color: var(--accent); }
 .brand-symbol img { display: block; width: 36px; height: auto; }
 .workspace-label { display: flex; align-items: center; gap: 10px; margin: 38px 0 27px; padding: 12px 10px; border: 1px solid var(--line); border-radius: var(--radius-control); background: rgb(255 255 255 / .025); font-size: 12px; }
 .workspace-avatar, .profile-mark { display: grid; place-items: center; flex-shrink: 0; width: 31px; height: 31px; border: 1px solid rgb(184 173 240 / .28); border-radius: 9px; color: #d4c9f0; background: rgb(184 173 240 / .12); font-size: 14px; }

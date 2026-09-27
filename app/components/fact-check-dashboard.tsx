@@ -749,7 +749,7 @@ export default function FactCheckDashboard() {
     <FloatingLinesBackground />
     <a className="skip-link" href="#workspace-main">본문으로 건너뛰기</a>
     <aside className="sidebar">
-      <a className="brand" href="#top" aria-label="True or Not 홈"><span className="brand-symbol"><LiquidMetal speed={0.48} softness={0.22} repetition={2.4} shiftRed={0.3} shiftBlue={0.3} distortion={0.58} contour={0.27} scale={1} rotation={0} shape="diamond" angle={0} image="/logo.png" colorBack="#00000000" colorTint="#FFFFFF" style={{width: '36px', height: '40px'}}/></span><span><ScrambleText>True or Not</ScrambleText><small>팩트체크 에이전트</small></span></a>
+      <a className="brand" href="#top" aria-label="True or Not 홈"><span className="brand-symbol"><LiquidMetal speed={0.48} softness={0.22} repetition={2.4} shiftRed={0.3} shiftBlue={0.3} distortion={0.58} contour={0.27} scale={1} rotation={0} shape="diamond" angle={0} image="/logo.png" colorBack="#00000000" colorTint="#FFFFFF" style={{width: '58px', height: '32px'}}/></span><span><ScrambleText>True or Not</ScrambleText><small>팩트체크 에이전트</small></span></a>
       <div className="workspace-label"><span className="workspace-avatar">F</span><div>나의 워크스페이스<small>프로필</small></div></div>
       <p className="nav-caption">워크스페이스</p>
       <LineSidebar
