@@ -111,6 +111,36 @@ def test_ground_judgments_attaches_only_the_matching_section_not_the_whole_page(
     assert result['evidence'][0]['sectionTruncated'] is False
 
 
+def test_ground_judgments_omits_section_when_quote_matches_multiple_sections():
+    quote = '공통 문장입니다. 여러 곳에 나옵니다.'
+    result = ground_judgments(
+        [claim('c1', '공통 주장이다.', 'fact')],
+        [{
+            'claimId': 'c1',
+            'verdictCode': 'mostly_supported',
+            'factScore': 85,
+            'summary': '두 섹션에 같은 문장이 있습니다.',
+            'confirmed': [],
+            'unresolved': [],
+            'evidence': [{
+                'sourceId': 's1',
+                'quote': quote,
+                'relation': 'supports',
+                'comparison': 'same',
+            }],
+        }],
+        [{'id': 's1', 'url': 'https://example.org/dup', 'accessStatus': 'verified'}],
+        {'s1': '첫 번째 섹션 공통 문장입니다. 여러 곳에 나옵니다. 두 번째 섹션 공통 문장입니다. 여러 곳에 나옵니다.'},
+        source_sections={'s1': [
+            {'level': 2, 'title': '첫 번째', 'text': '첫 번째 섹션 공통 문장입니다. 여러 곳에 나옵니다.', 'truncated': False},
+            {'level': 2, 'title': '두 번째', 'text': '두 번째 섹션 공통 문장입니다. 여러 곳에 나옵니다.', 'truncated': False},
+        ]},
+    )
+
+    assert 'sectionTitle' not in result['evidence'][0]
+    assert 'sectionText' not in result['evidence'][0]
+
+
 def test_ground_judgments_keeps_korean_translation_for_english_quote():
     quote = "A research prototype for a universal AI assistant."
     translation = "범용 AI 비서를 위한 연구용 프로토타입."

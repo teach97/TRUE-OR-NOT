@@ -235,6 +235,9 @@ def _section_for_quote(quote: str, sections: list[dict[str, Any]]) -> dict[str, 
 
     if not matches:
         return None
+    sections = {id(section) for _, _, section, _, _ in matches}
+    if len(sections) > 1:
+        return None
 
     _, _, section, title, text = min(matches, key=lambda match: (match[0], match[1]))
     return {
