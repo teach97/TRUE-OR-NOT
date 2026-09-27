@@ -755,9 +755,9 @@ export default function FactCheckDashboard() {
         className="workspace-nav"
         ariaLabel="주요 메뉴"
         items={[
-          {label: '대화 시작', icon: <Icon name="plus"/>},
-          {label: '검증 대시보드', icon: <Icon name="grid"/>},
-          {label: '검증 원칙', icon: <Icon name="book"/>},
+          {label: <ScrambleText>대화 시작</ScrambleText>, icon: <Icon name="plus"/>},
+          {label: <ScrambleText>검증 대시보드</ScrambleText>, icon: <Icon name="grid"/>},
+          {label: <ScrambleText>검증 원칙</ScrambleText>, icon: <Icon name="book"/>},
         ]}
         defaultActive={0}
         onItemClick={index => {
@@ -834,7 +834,7 @@ export default function FactCheckDashboard() {
         </section>
 
         <section id="review" className="review-section" aria-labelledby="review-heading">
-          <div className="review-heading dashboard-heading"><div><span className="section-kicker">검증 대시보드</span><h2 id="review-heading"><BlurText text="근거와 함께 확인하세요."/></h2><p>주장별 신뢰지수, 확인된 인용, 출처의 관계를 한 흐름으로 살펴보세요.</p></div><button className="secondary-button export-button" disabled={!snapshot || busy} onClick={download}><Icon name="download" size={16}/><span>{snapshot?.demo ? '예시 내보내기' : '결과 내보내기'}</span></button></div>
+          <div className="review-heading dashboard-heading"><div><span className="section-kicker">검증 대시보드</span><h2 id="review-heading"><ScrambleText>근거와 함께 확인하세요.</ScrambleText></h2><p>주장별 신뢰지수, 확인된 인용, 출처의 관계를 한 흐름으로 살펴보세요.</p></div><button className="secondary-button export-button" disabled={!snapshot || busy} onClick={download}><Icon name="download" size={16}/><span>{snapshot?.demo ? '예시 내보내기' : '결과 내보내기'}</span></button></div>
           {snapshot ? <>
             <div className="dashboard-meta"><span className="document-title"><Icon name={snapshot.demo ? 'book' : 'file'} size={16}/>{snapshot.demo ? '합성 예시 · 외부 전송 없음' : '직접 입력한 원문 · 실제 검증'}</span><div><span>{snapshot.claims.length}개 주장</span><span>{sourceCount}개 출처</span><span>{snapshot.demo ? '시연용 데이터' : liveResult?.checkedAt || '검증 시점 기록됨'}</span></div></div>
             <div className="dashboard-top-grid">

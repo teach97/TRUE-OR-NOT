@@ -13,7 +13,7 @@ import {useCallback, useEffect, useRef, useState, type CSSProperties, type Point
 type Falloff = 'linear' | 'smooth' | 'sharp';
 
 export type LineSidebarItem = {
-  label: string;
+  label: ReactNode;
   icon?: ReactNode;
 };
 
@@ -35,7 +35,7 @@ type LineSidebarProps = {
   fontSize?: number;
   smoothing?: number;
   defaultActive?: number | null;
-  onItemClick?: (index: number, label: string) => void;
+  onItemClick?: (index: number, label: ReactNode) => void;
   className?: string;
   ariaLabel?: string;
 };
@@ -140,7 +140,7 @@ export default function LineSidebar({
     startLoop();
   }, [itemCount, startLoop]);
 
-  const handleClick = useCallback((index: number, label: string) => {
+  const handleClick = useCallback((index: number, label: ReactNode) => {
     setActiveIndex(index);
     onItemClick?.(index, label);
   }, [onItemClick]);
@@ -190,7 +190,7 @@ export default function LineSidebar({
       <ul ref={listRef} className="line-sidebar__list" onPointerMove={handlePointerMove} onPointerLeave={handlePointerLeave}>
         {items.map((item, index) => (
           <li
-            key={`${item.label}-${index}`}
+            key={`nav-${index}`}
             ref={element => { itemRefs.current[index] = element; }}
             className="line-sidebar__item"
             aria-current={activeIndex === index ? 'true' : undefined}
