@@ -23,6 +23,7 @@ import LatticeLoader from './lattice-loader';
 import BlurText from './blur-text';
 import { useSpotlight } from './spotlight';
 import TechText from './tech-text';
+import LiquidLogo from './liquid-logo';
 import BorderGlow from './border-glow';
 import BellToggle from './bell-toggle';
 import GlideSelect from './glide-select';
@@ -748,7 +749,7 @@ export default function FactCheckDashboard() {
     <FloatingLinesBackground />
     <a className="skip-link" href="#workspace-main">본문으로 건너뛰기</a>
     <aside className="sidebar">
-      <a className="brand" href="#top" aria-label="True or Not 홈"><span className="brand-symbol"><Icon name="lens" size={25}/></span><span><ScrambleText>True or Not</ScrambleText><small>팩트체크 에이전트</small></span></a>
+      <a className="brand" href="#top" aria-label="True or Not 홈"><span className="brand-symbol"><img src="/true-or-not-logo-04.png" alt="" width={36} height={20}/></span><span><ScrambleText>True or Not</ScrambleText><small>팩트체크 에이전트</small></span></a>
       <div className="workspace-label"><span className="workspace-avatar">F</span><div>나의 워크스페이스<small>프로필</small></div></div>
       <p className="nav-caption">워크스페이스</p>
       <LineSidebar
@@ -769,10 +770,11 @@ export default function FactCheckDashboard() {
       <div className="sidebar-bottom"><div className="principle-card"><Icon name="shield"/><strong>결론보다, 근거를 먼저.</strong><p>확인된 내용과 아직 모르는 내용을 함께 살펴보세요.</p><button onClick={() => setDialog('guide')}>검증 원칙 보기 <Icon name="arrow" size={15}/></button></div><div className="local-status"><span/>{serviceLabel}</div><p className="sidebar-foot">TRUE OR NOT / EVIDENCE WORKSPACE</p></div>
     </aside>
     <div className="main-shell">
-      <header className="topbar"><div className="breadcrumb"><span className="mobile-brand">True or Not</span><strong></strong></div><div className="topbar-actions"><button className="text-button" aria-label="사용 가이드" onClick={() => setDialog('guide')}><Icon name="book"/><span>사용 가이드</span></button><span className="profile-mark" aria-label="로컬 워크스페이스">F</span></div></header>
+      <header className="topbar"><div className="breadcrumb"><span className="mobile-brand"><img src="/true-or-not-logo-04.png" alt="" width={26} height={15}/>True or Not</span><strong></strong></div><div className="topbar-actions"><button className="text-button" aria-label="사용 가이드" onClick={() => setDialog('guide')}><Icon name="book"/><span>사용 가이드</span></button><span className="profile-mark" aria-label="로컬 워크스페이스">F</span></div></header>
       <main id="workspace-main" className="page-content">
         <section className="composer panel-host chat-hero" aria-labelledby="chat-heading">
           <div className="chat-intro chat-intro--wordmark">
+            <LiquidLogo className="hero-liquid-logo" />
             <h1 id="chat-heading" className="sr-only">True or Not</h1>
             <TechText
               text="True or Not"
@@ -788,7 +790,7 @@ export default function FactCheckDashboard() {
           <div className="chat-thread-wrap">
           <div className="chat-thread" ref={threadRef} onScroll={handleThreadScroll} aria-live="polite">
             {messages.map(message => <motion.div key={message.id} className={`chat-message ${message.role === 'user' ? 'is-user' : 'is-assistant'} ${message.answer ? 'has-answer' : ''} ${message.factScore !== undefined ? 'has-fact-score' : ''} ${message.progress ? 'has-progress' : ''} ${message.tone === 'error' ? 'is-error' : ''}`} initial={reduce ? false : {opacity: 0, y: 10}} animate={{opacity: 1, y: 0}} transition={{duration: reduce ? 0 : .22}}>
-              {message.role === 'assistant' && <span className="chat-avatar"><img src="/logo.png" alt="" width={29} height={29}/></span>}
+              {message.role === 'assistant' && <span className="chat-avatar"><img src="/true-or-not-logo-04.png" alt="" width={29} height={29}/></span>}
               <div className={`chat-bubble ${message.answer ? 'chat-bubble--answer' : ''} ${message.factScore !== undefined ? 'chat-bubble--fact-score' : ''}`}>
                 {message.answer ? (message.factScore !== undefined
                   ? <><JevFactScore score={message.factScore} verdict={message.verdict} search={message.search}/><JevSourceList sources={message.sources ?? []}/></>
@@ -796,7 +798,7 @@ export default function FactCheckDashboard() {
                 {message.meta && <small>{message.meta}</small>}
               </div>
             </motion.div>)}
-            {busy && !messages.some(message => message.thinking || (message.progress && !message.progress.completed && !message.progress.error)) && <div className="chat-message is-assistant chat-message--loading" data-testid="verification-loading"><span className="chat-avatar"><img src="/logo.png" alt="" width={29} height={29}/></span><div className="chat-bubble"><div className="chat-loader-row"><LatticeLoader label="검증 중" doneLabel="검증 완료" errorLabel="검증 실패" pattern="orbit" grid={3} shape="round" cellSize={7} gap={3} fontSize={12} step={75} idleOpacity={0.15} glow color="#ffffff" showTimer/><span>{notice || '근거를 모으고 사실 여부를 대조하고 있습니다.'}</span></div></div></div>}
+            {busy && !messages.some(message => message.thinking || (message.progress && !message.progress.completed && !message.progress.error)) && <div className="chat-message is-assistant chat-message--loading" data-testid="verification-loading"><span className="chat-avatar"><img src="/true-or-not-logo-04.png" alt="" width={29} height={29}/></span><div className="chat-bubble"><div className="chat-loader-row"><LatticeLoader label="검증 중" doneLabel="검증 완료" errorLabel="검증 실패" pattern="orbit" grid={3} shape="round" cellSize={7} gap={3} fontSize={12} step={75} idleOpacity={0.15} glow color="#ffffff" showTimer/><span>{notice || '근거를 모으고 사실 여부를 대조하고 있습니다.'}</span></div></div></div>}
           </div>
           {!atBottom && <button type="button" className="thread-to-bottom" onClick={() => {stickToBottom.current = true; scrollThreadToBottom(); setAtBottom(true);}} aria-label="채팅 맨 아래로 이동"><Icon name="arrow" size={16}/></button>}
           </div>

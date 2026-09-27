@@ -56,6 +56,7 @@ button, p, h3, dd { overflow-wrap: anywhere; }
 .brand { display: flex; align-items: center; gap: 10px; padding: 0 10px; font-size: 22px; letter-spacing: -.9px; font-weight: 650; line-height: 1.2; }
 .brand small { display: block; margin-top: 6px; color: var(--muted); font-size: 9px; font-weight: 400; letter-spacing: 1.9px; }
 .brand-symbol { display: grid; place-items: center; width: 36px; height: 40px; color: var(--accent); }
+.brand-symbol img { display: block; width: 36px; height: auto; }
 .workspace-label { display: flex; align-items: center; gap: 10px; margin: 38px 0 27px; padding: 12px 10px; border: 1px solid var(--line); border-radius: var(--radius-control); background: rgb(255 255 255 / .025); font-size: 12px; }
 .workspace-avatar, .profile-mark { display: grid; place-items: center; flex-shrink: 0; width: 31px; height: 31px; border: 1px solid rgb(184 173 240 / .28); border-radius: 9px; color: #d4c9f0; background: rgb(184 173 240 / .12); font-size: 14px; }
 .workspace-label small { display: block; margin-top: 2px; color: var(--muted); font-size: 10px; }
@@ -88,7 +89,12 @@ button, p, h3, dd { overflow-wrap: anywhere; }
 .chat-hero.panel-host { max-width: 980px; margin: 0 auto; padding: 74px 0 20px; border: 0; background: transparent; overflow: visible; }
 .chat-intro { max-width: 760px; margin: 0 auto; text-align: center; }
 .chat-intro--wordmark { --wordmark-effect-bleed-x: 120px; --wordmark-effect-bleed-y: 64px; position: relative; display: block; width: 100%; height: clamp(156px, 18vw, 200px); min-height: clamp(156px, 18vw, 200px); margin-bottom: 80px; overflow: visible; }
-.chat-intro--wordmark > div { width: 100%; min-width: 0; }
+.chat-intro--wordmark > div { width: 100%; min-width: 0; height: clamp(156px, 18vw, 200px); flex: none; }
+.chat-intro--wordmark { display: flex; flex-direction: column; align-items: center; height: auto; min-height: 0; margin-bottom: 48px; }
+.liquid-logo { position: relative; display: block; width: 100%; aspect-ratio: 475 / 260; flex: none; }
+.liquid-logo__fallback, .liquid-logo__canvas { position: absolute; inset: 0; display: block; width: 100%; height: 100%; object-fit: contain; transition: opacity .25s ease; }
+.hero-liquid-logo { width: min(300px, 72vw); margin-top: -18px; }
+.mobile-brand img { display: block; width: 26px; height: auto; }
 @media (min-width: 1121px) {
   .chat-intro--wordmark { --wordmark-effect-bleed-x: clamp(0px, calc(50vw - 536px), 120px); }
 }
@@ -531,7 +537,7 @@ button, p, h3, dd { overflow-wrap: anywhere; }
   .sidebar { display: none; }
   .topbar { height: 63px; padding: 0 20px; }
   .breadcrumb strong { display: none; }
-  .mobile-brand { display: inline; color: #e1ecef; font-size: 18px; font-weight: 650; letter-spacing: -.6px; }
+  .mobile-brand { display: inline-flex; align-items: center; gap: 8px; color: #e1ecef; font-size: 18px; font-weight: 650; letter-spacing: -.6px; }
   .topbar-actions { gap: 8px; }
   .topbar-actions .text-button { width: 44px; }
   .topbar-actions .text-button span, .profile-mark { display: none; }
