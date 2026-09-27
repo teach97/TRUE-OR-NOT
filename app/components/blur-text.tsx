@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from 'react';
+import { Fragment, useEffect, useRef } from 'react';
 import { useReducedMotion } from 'motion/react';
 import type { CSSProperties } from 'react';
 
@@ -28,6 +28,6 @@ export default function BlurText({text, className = ''}: {text: string; classNam
   }, [reduce, text]);
   const words = text.split(' ');
   return <span ref={ref} className={`blur-text ${className}`}>
-    {words.map((word, index) => <span key={index} className="blur-text-word" style={{'--word-i': index} as CSSProperties}>{word}{index < words.length - 1 ? ' ' : ''}</span>)}
+    {words.map((word, index) => <Fragment key={index}>{index > 0 ? ' ' : null}<span className="blur-text-word" style={{'--word-i': index} as CSSProperties}>{word}</span></Fragment>)}
   </span>;
 }
