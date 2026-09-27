@@ -1,5 +1,12 @@
 {
   "plugin": [
     ".opencode/plugins/graphify.js"
-  ]
+  ],
+  "mcp": {
+    "paper": {
+      "type": "local",
+      "command": ["C:/Users/rlagn/.paper/bin/paper", "mcp"],
+      "enabled": true
+    }
+  }
 }
