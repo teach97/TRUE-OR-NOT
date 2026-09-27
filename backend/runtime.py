@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 import logging
 import os
+import re
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -25,7 +26,7 @@ from tavily_search import TavilyUnavailable, search_tavily
 from providers import ProviderCallError, providers_for_preference, run_with_fallback
 from schemas import FactCheckRequest
 from search import build_search_query, origin_group_for_url, search_sources, source_type_for_url
-from sources import fetch_public_text, read_sources
+from sources import SourceReadResult, fetch_public_text, read_sources
 from verification import (
     verify_claims,
     verify_claims_jev,
@@ -235,16 +236,63 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
             # Keep the linked page plus at most five searched candidates.
             sources = [seed, *sources][:6]
         read_state = {**state, "sources": sources}
+        link_cache: dict[str, object] = {}
+
+        async def cached_reader(url):
+            if url not in link_cache:
+                link_cache[url] = await fetch_public_text(url)
+            return link_cache[url]
+
+        if (
+            isinstance(link_url, str) and link_url and state.get("consent") is True
+            and any(isinstance(source, dict) and source.get("id") == "s0" for source in sources)
+        ):
+            try:
+                link_result = await cached_reader(link_url)
+                link_title = link_result.title if isinstance(link_result, SourceReadResult) else ""
+            except Exception:
+                link_title = ""
+            tavily_key = settings.tavily_api_key.get_secret_value()
+            if link_title.strip() and tavily_key.strip():
+                try:
+                    async with httpx.AsyncClient(timeout=30.0, trust_env=False) as search_client:
+                        extra = await search_tavily(
+                            state, api_key=tavily_key, client=search_client,
+                            queries=[build_search_query(link_title)],
+                        )
+                    known = {link_url}
+                    for source in sources:
+                        if isinstance(source, dict):
+                            known.add(source.get("url"))
+                            known.add(source.get("resolvedUrl"))
+                    additions = [
+                        source for source in extra.get("sources", [])
+                        if source.get("url") not in known
+                    ]
+                    if additions:
+                        max_id = 0
+                        for source in sources:
+                            if isinstance(source, dict) and isinstance(source.get("id"), str):
+                                match = re.fullmatch(r"s(\d+)", source["id"])
+                                if match:
+                                    max_id = max(max_id, int(match.group(1)))
+                        for addition in additions:
+                            max_id += 1
+                            addition["id"] = f"s{max_id}"
+                        sources = [sources[0], *additions, *sources[1:]][:6]
+                        read_state = {**state, "sources": sources}
+                except (TavilyUnavailable, ValueError) as exc:
+                    _logger.warning("link-title search unavailable reason=%s", type(exc).__name__)
         youtube_key = settings.youtube_api_key.get_secret_value()
         if not youtube_key or not any(
             source.get("sourceType") == "유튜브" for source in sources if isinstance(source, dict)
         ):
-            return await read_sources(read_state)
+            return await read_sources(read_state, reader=cached_reader)
         async with httpx.AsyncClient(timeout=8.0, trust_env=False) as client:
             async def youtube_reader(url):
                 return await fetch_youtube_data(url, api_key=youtube_key, client=client)
 
-            return await read_sources(read_state, youtube_reader=youtube_reader)
+            return await read_sources(read_state, reader=cached_reader, youtube_reader=youtube_reader)
 
     async def verify(state: FactCheckState):
         if state.get("jevMode"):

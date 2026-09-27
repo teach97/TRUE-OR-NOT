@@ -119,7 +119,7 @@ def test_read_prepends_link_seed_without_network(monkeypatch):
     import runtime
     from runtime import Settings, make_runtime_adapters
 
-    async def fake_read(state, youtube_reader=None):
+    async def fake_read(state, reader=None, youtube_reader=None):
         return {"sources": state["sources"], "sourceTexts": {}, "sourceSections": {}}
 
     monkeypatch.setattr(runtime, "read_sources", fake_read)
@@ -131,6 +131,52 @@ def test_read_prepends_link_seed_without_network(monkeypatch):
     assert update["sources"][0]["id"] == "s0"
     assert update["sources"][0]["url"] == "https://example.com/page"
     assert update["sources"][0]["accessStatus"] == "pending"
+
+
+def test_read_searches_related_coverage_from_the_linked_page_title(monkeypatch):
+    import runtime
+    from sources import SourceReadResult
+    from runtime import Settings, make_runtime_adapters
+
+    async def fake_fetch(url):
+        return SourceReadResult("Linked article body.", url, "Test Title Query")
+
+    seen_queries = []
+
+    real_async_client = httpx.AsyncClient
+
+    def handler(request):
+        seen_queries.append(json.loads(request.content)["query"])
+        return httpx.Response(200, json={
+            "query": "Test Title Query",
+            "results": [{"title": "Related", "url": "https://example.org/related", "content": "Snippet."}],
+        })
+
+    def mock_async_client(**kwargs):
+        return real_async_client(transport=httpx.MockTransport(handler), **kwargs)
+
+    async def fake_read(state, reader=None, youtube_reader=None):
+        assert reader is not None
+        texts = {}
+        for source in state["sources"]:
+            text, _ = await reader(source["url"])
+            texts[source["id"]] = text
+        return {"sources": state["sources"], "sourceTexts": texts, "sourceSections": {}}
+
+    monkeypatch.setattr(runtime, "fetch_public_text", fake_fetch)
+    monkeypatch.setattr(runtime, "read_sources", fake_read)
+    monkeypatch.setattr(runtime.httpx, "AsyncClient", mock_async_client)
+    settings = Settings(
+        api_key=SecretStr(""),
+        tavily_api_key=SecretStr("tvly-test"),
+    )
+    adapters = make_runtime_adapters(settings)
+    update = asyncio.run(adapters.read({
+        "sources": [], "linkUrl": "https://example.com/page", "consent": True,
+    }))
+    assert [s["id"] for s in update["sources"]] == ["s0", "s1"]
+    assert update["sources"][1]["url"] == "https://example.org/related"
+    assert seen_queries == ["Test Title Query"]
 
 
 def test_workflow_preserves_link_and_image_state_keys():

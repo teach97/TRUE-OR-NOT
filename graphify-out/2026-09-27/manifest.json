@@ -42,9 +42,9 @@
     "semantic_hash": ""
   },
   "app/components/fact-check-dashboard.tsx": {
-    "mtime": 1790484202.4421206,
-    "seen": 1790484216.2541056,
-    "ast_hash": "1972b790820a6ffaf913c97f0698ef41",
+    "mtime": 1790477871.1474295,
+    "seen": 1790478369.8353198,
+    "ast_hash": "72c4c20a0562e76a0b4eecfe3d8bf1b3",
     "semantic_hash": ""
   },
   "app/components/fact-check-reply.test.mjs": {
@@ -468,10 +468,10 @@
     "semantic_hash": "9891e26e0b0abae644fc36c7cb348f04"
   },
   "package.json": {
-    "mtime": 1790484167.3951268,
-    "seen": 1790484216.2551675,
-    "ast_hash": "0fadf204beeac9fcc30fbce3dd1f61f4",
-    "semantic_hash": ""
+    "mtime": 1789987850.3992298,
+    "seen": 1790217576.7856452,
+    "ast_hash": "267b8b7c45604c504520e159173f17ab",
+    "semantic_hash": "267b8b7c45604c504520e159173f17ab"
   },
   "postcss.config.mjs": {
     "mtime": 1789698489.869542,
@@ -954,9 +954,9 @@
     "semantic_hash": ""
   },
   ".opencode/opencode.json": {
-    "mtime": 1790483894.0441804,
-    "seen": 1790484216.2541056,
-    "ast_hash": "0484382eb2988d8cabb51be815310c2e",
+    "mtime": 1790325816.9688852,
+    "seen": 1790418387.7885182,
+    "ast_hash": "abcc8b9dcd80bca5f9dde6d9f0c3ae79",
     "semantic_hash": ""
   },
   ".opencode/plugins/graphify.js": {
@@ -1047,36 +1047,6 @@
     "mtime": 1790428908.749871,
     "seen": 1790478369.8353198,
     "ast_hash": "49b5cb1b8a18dd16a126ba4a3ebdf0d9",
-    "semantic_hash": ""
-  },
-  "app/components/liquid-logo-shader.ts": {
-    "mtime": 1789692210.6419015,
-    "seen": 1790484216.2541056,
-    "ast_hash": "97ee2a5dd7b1fe01bf6f9608ffa5cba3",
-    "semantic_hash": ""
-  },
-  "app/components/liquid-logo.tsx": {
-    "mtime": 1790484148.0893593,
-    "seen": 1790484216.2541056,
-    "ast_hash": "096b5848645645a4927f5571b034ed99",
-    "semantic_hash": ""
-  },
-  "third-party/liquid-logo-LICENSE.md": {
-    "mtime": 1789692210.629679,
-    "seen": 1790484216.2551675,
-    "ast_hash": "5c708c642c26b7092984fa0f8eea8545",
-    "semantic_hash": ""
-  },
-  "public/logo.png": {
-    "mtime": 1790483147.641755,
-    "seen": 1790484216.2551675,
-    "ast_hash": "5744e76d5d631ad7257a06fd8825c769",
-    "semantic_hash": ""
-  },
-  "public/true-or-not-logo-04.png": {
-    "mtime": 1790480536.8809302,
-    "seen": 1790484216.2551675,
-    "ast_hash": "d0e84132691a7e91e3013dda11380139",
     "semantic_hash": ""
   }
 }

@@ -54,7 +54,7 @@ export default function FloatingLinesBackground() {
         lineDistance={floatingLinesDistance}
         animationSpeed={1}
         interactive
-        bendRadius={8}
+        bendRadius={15}
         bendStrength={-2}
         mouseDamping={0.06}
         parallax
