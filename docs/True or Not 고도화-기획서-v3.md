@@ -1,4 +1,4 @@
-# True or Not 고도화 기획서 v2
+# True or Not 고도화 기획서 v3
 
 > 문서 상태: v3 확정 (구현 반영)
 > 대상 프로젝트: `C:/Users/rlagn/Desktop/Develop/frontend_tools/React/my-app`
