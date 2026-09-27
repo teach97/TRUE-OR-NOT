@@ -23,10 +23,8 @@ import LatticeLoader from './lattice-loader';
 import BlurText from './blur-text';
 import { useSpotlight } from './spotlight';
 import TechText from './tech-text';
-import LiquidLogo from './liquid-logo';
 import BorderGlow from './border-glow';
 import BellToggle from './bell-toggle';
-import { LiquidMetal } from '@paper-design/shaders-react';
 import GlideSelect from './glide-select';
 import type { GlideSelectOption } from './glide-select';
 
@@ -750,7 +748,7 @@ export default function FactCheckDashboard() {
     <FloatingLinesBackground />
     <a className="skip-link" href="#workspace-main">본문으로 건너뛰기</a>
     <aside className="sidebar">
-      <a className="brand" href="#top" aria-label="True or Not 홈"><span className="brand-symbol"><LiquidMetal speed={0.48} softness={0.22} repetition={2.4} shiftRed={0.3} shiftBlue={0.3} distortion={0.58} contour={0.27} scale={1} rotation={0} shape="diamond" angle={0} image="/logo.png" colorBack="#00000000" colorTint="#FFFFFF" style={{width: '36px', height: '40px'}}/></span><span><ScrambleText>True or Not</ScrambleText><small>팩트체크 에이전트</small></span></a>
+      <a className="brand" href="#top" aria-label="True or Not 홈"><span className="brand-symbol"><Icon name="lens" size={25}/></span><span><ScrambleText>True or Not</ScrambleText><small>팩트체크 에이전트</small></span></a>
       <div className="workspace-label"><span className="workspace-avatar">F</span><div>나의 워크스페이스<small>프로필</small></div></div>
       <p className="nav-caption">워크스페이스</p>
       <LineSidebar
@@ -775,7 +773,6 @@ export default function FactCheckDashboard() {
       <main id="workspace-main" className="page-content">
         <section className="composer panel-host chat-hero" aria-labelledby="chat-heading">
           <div className="chat-intro chat-intro--wordmark">
-            <LiquidLogo className="hero-liquid-logo" />
             <h1 id="chat-heading" className="sr-only">True or Not</h1>
             <TechText
               text="True or Not"
