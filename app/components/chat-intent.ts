@@ -78,8 +78,8 @@ export function describeHistory(
   const past = messages
     .filter(message => message.role === 'user' && message.text && message.text.trim() && message.text.trim() !== demoText.trim())
     .map(message => message.text!.trim().slice(0, 40));
-  if (!past.length && !result) return '아직 검증한 게 없어. 확인할 원문·링크·이미지를 보내면 시작할게.';
-  const lines = [`응, 이 대화는 다 보여. 지금까지 ${past.length}번 검증 요청이 있었어.`];
+  if (!past.length && !result) return '아직 검증한 기록이 없습니다. 확인할 원문·링크·이미지를 보내주시면 시작하겠습니다.';
+  const lines = [`이 대화는 모두 표시됩니다. 지금까지 ${past.length}번 검증 요청이 있었습니다.`];
   for (const item of past.slice(-3)) lines.push(`· "${item}"`);
   if (result && result.claims.length) {
     const verdicts = result.claims.map(claim => `"${claim.quote.slice(0, 30)}" ${claim.verdict}(${claim.factScore}점)`);
@@ -89,11 +89,11 @@ export function describeHistory(
 }
 
 export function metaReply(topic: MetaTopic): string {
-  if (topic === 'greeting') return '안녕! 확인할 주장·원문·링크·이미지를 보내면 근거랑 같이 따져볼게.';
-  if (topic === 'thanks') return '별말씀을요. 또 확인할 거 있으면 보내줘.';
-  if (topic === 'control') return '그건 아직 못 해. 확인할 주장·원문·링크·이미지를 보내주면 검증할게.';
-  if (topic === 'tease') return '악, 찔렸어. 확인할 거 있으면 보내줘, 근거로 제대로 따져볼게.';
-  if (topic === 'smalltalk') return '난 검증 대기 중이야. 확인할 거 보내주면 바로 시작할게.';
-  if (topic === 'help') return '원문·링크·이미지를 주면 주장을 나누고 출처 원문이랑 대조해줘. 짧게 이어서 물어보면 이전 검증을 바탕으로 찾아봐.';
-  return '난 True or Not야. 원문 속 주장을 나누고 출처 원문이랑 대조해서 보여주는 팩트체크 에이전트야. 검증은 원문·링크·이미지를 보내면 시작해.';
+  if (topic === 'greeting') return '안녕하세요. 확인할 주장·원문·링크·이미지를 보내주시면 근거와 함께 검토하겠습니다.';
+  if (topic === 'thanks') return '별말씀을요. 또 확인할 내용이 있으시면 보내주세요.';
+  if (topic === 'control') return '그 기능은 아직 지원하지 않습니다. 확인할 주장·원문·링크·이미지를 보내주시면 검증하겠습니다.';
+  if (topic === 'tease') return '확인할 내용이 있으시면 보내주세요. 근거를 바탕으로 정확히 따져보겠습니다.';
+  if (topic === 'smalltalk') return '검증 대기 중입니다. 확인할 내용을 보내주시면 바로 시작하겠습니다.';
+  if (topic === 'help') return '원문·링크·이미지를 주시면 주장을 나누고 출처 원문과 대조해 드립니다. 짧게 이어서 물어보시면 이전 검증을 바탕으로 찾아드립니다.';
+  return 'True or Not은 원문 속 주장을 나누고 출처 원문과 대조해서 보여주는 팩트체크 에이전트입니다. 검증은 원문·링크·이미지를 보내시면 시작합니다.';
 }

@@ -221,7 +221,7 @@ function AnswerOverview({answer, sources}: {answer: FactCheckAnswer; sources: Fa
   return <section className="ai-answer" aria-label="AI 개요">
     <div className="ai-answer-heading"><span className="answer-spark" aria-hidden="true">✦</span><h3><BlurText text="AI 개요"/></h3></div>
     {answer.status === 'insufficient_evidence'
-      ? <p className="answer-insufficient" role="note">확인된 원문 근거가 부족해 AI 개요를 만들지 않았어. 아래 출처 목록과 주장별 판정에서 확인 가능한 내용을 살펴봐.</p>
+      ? <p className="answer-insufficient" role="note">확인된 원문 근거가 부족해 AI 개요를 만들지 않았습니다. 아래 출처 목록과 주장별 판정에서 확인 가능한 내용을 살펴보세요.</p>
       : <>
           {answer.overview && <div className="answer-overview-block"><AnswerBlockView block={answer.overview} sources={sources} citationState={citationState}/></div>}
           {answer.sections.map((section, sectionIndex) => <section className={`answer-section answer-section--${section.kind}`} key={`${section.kind}-${sectionIndex}`} aria-label={section.title}>
@@ -319,11 +319,11 @@ function ProgressReply({progress}: {progress: ChatProgress}) {
               : <span className="progress-citation-unavailable">인용 출처 확인 필요</span>}</li>;
           })}</ul>}
         </li>)}</ol>
-        : <p className="progress-empty">검증 가능한 주장을 찾지 못했어. 확인할 원문·링크·이미지를 보내주면 검증할게.</p>)}
+        : <p className="progress-empty">검증 가능한 주장을 찾지 못했습니다. 확인할 원문·링크·이미지를 보내주시면 검증하겠습니다.</p>)}
         {claims !== undefined && progress.claimsElapsedSeconds !== undefined && <small className="progress-milestone-time">1차 요약 · {progress.claimsElapsedSeconds}초</small>}
         {progress.error
-          ? <p className="progress-error" role="alert">{progress.error}<br/>위 내용은 최종 답변이 아닌 1차 확인 결과야.</p>
-          : <small className="progress-disclaimer">{progress.completed ? '검증 진행 기록이야. 최종 답변은 아래에 이어져.' : '최종 인용 답변을 만드는 중이야. 이 1차 요약은 완성된 답변이 아니야.'}</small>}
+          ? <p className="progress-error" role="alert">{progress.error}<br/>위 내용은 최종 답변이 아닌 1차 확인 결과입니다.</p>
+          : <small className="progress-disclaimer">{progress.completed ? '검증 진행 기록입니다. 최종 답변은 아래에 이어집니다.' : '최종 인용 답변을 만드는 중입니다. 이 1차 요약은 완성된 답변이 아닙니다.'}</small>}
         </section>;
         }
 
@@ -342,7 +342,7 @@ function ProgressReply({progress}: {progress: ChatProgress}) {
                 : <strong>{source.title}</strong>}</span><small>{source.publisher} · {source.sourceType} · {accessLabel}</small></span>
             </li>;
           })}</ul>
-        : <p className="progress-empty">이 단계에서 확인된 출처가 없어. 다음 검증 단계를 진행하고 있어.</p>}
+        : <p className="progress-empty">이 단계에서 확인된 출처가 없습니다. 다음 검증 단계를 진행하고 있습니다.</p>}
         </div>;
         }
 
@@ -468,7 +468,7 @@ export default function FactCheckDashboard() {
     stop();
     dispatch({type: 'cancel'});
     setMessages(messages => messages.filter(message => !message.thinking));
-    setNotice('검증을 중단했어.');
+    setNotice('검증을 중단했습니다.');
   }
 
   function firstUrl(text: string): string | null {
@@ -530,7 +530,7 @@ export default function FactCheckDashboard() {
     setMessages([
       WELCOME_MESSAGE,
       {id: 'sample-user', role: 'user', text: DEMO_TEXT, meta: `확인 요청: ${DEMO_FOCUS}`},
-      {id: 'sample-assistant', role: 'assistant', text: '합성 예시를 준비했어. 아래 대시보드에서 주장별 점수와 같은 원자료를 공유하는 출처를 확인해봐.', meta: '외부 전송 없음'},
+      {id: 'sample-assistant', role: 'assistant', text: '합성 예시를 준비했습니다. 아래 대시보드에서 주장별 점수와 같은 원자료를 공유하는 출처를 확인해 보세요.', meta: '외부 전송 없음'},
     ]);
     setNotice('가상의 행사 예시를 불러왔습니다. 외부 전송 없이 예시 문서를 비교합니다.');
   }
@@ -582,7 +582,7 @@ export default function FactCheckDashboard() {
     if (!image && !detectedLink && isIdentityQuestion(draft)) {
       removeThinking();
       const label = modelSelection === 'auto' ? 'Auto' : (MODEL_OPTIONS.find(model => model.id === modelSelection)?.label ?? modelSelection);
-      addMessage({role: 'assistant', text: jevMode ? `지금은 ${label} 모드에 JEV를 같이 쓸게. 답변 아래에 Jev 점수도 보여줘.` : `지금은 ${label} 모드야.`});
+      addMessage({role: 'assistant', text: jevMode ? `현재 ${label} 모드에서 JEV를 함께 사용합니다. 답변 아래에 Jev 점수도 표시됩니다.` : `현재 ${label} 모드입니다.`});
       setDraft(''); setFocus(''); setImage(null); release();
       return;
     }
@@ -609,7 +609,7 @@ export default function FactCheckDashboard() {
       }
       if (fallback.kind === 'followup' && !prevHasClaims) {
         removeThinking();
-        addMessage({role: 'assistant', text: '이전 검증에서 검증 가능한 주장을 못 찾았어. 확인할 원문·링크·이미지를 보내주면 바로 검증할게.'});
+        addMessage({role: 'assistant', text: '이전 검증에서 검증 가능한 주장을 찾지 못했습니다. 확인할 원문·링크·이미지를 보내주시면 바로 검증하겠습니다.'});
         setDraft(''); release();
         return;
       }
@@ -643,13 +643,13 @@ export default function FactCheckDashboard() {
               ? {sourcesFound: event.sources, sourcesFoundElapsedSeconds: elapsed}
               : {sourcesRead: event.sources, sourcesReadElapsedSeconds: elapsed});
             setNotice(event.phase === 'found'
-              ? '검색 결과에서 출처 후보를 찾았어. 원문을 읽고 있어.'
-              : '출처 원문을 가져왔어. 주장과 인용을 검증하고 있어.');
+              ? '검색 결과에서 출처 후보를 찾았습니다. 원문을 읽고 있습니다.'
+              : '출처 원문을 가져왔습니다. 주장과 인용을 검증하고 있습니다.');
           },
           onPreview: event => {
             if (generation.current !== current) return;
             updateProgressMessage({claims: event.claims, claimsElapsedSeconds: elapsedSeconds()});
-            setNotice('1차 검증을 마쳤어. 최종 답변과 인용을 정리하고 있어.');
+            setNotice('1차 검증을 마쳤습니다. 최종 답변과 인용을 정리하고 있습니다.');
           },
         },
       );
@@ -679,7 +679,7 @@ export default function FactCheckDashboard() {
       setImage(null);
       setDraft('');
       if (followUp && !result.claims.length) {
-        setNotice('추가로 확인된 게 없어서 이전 결과를 유지할게.');
+        setNotice('추가로 확인된 내용이 없어서 이전 결과를 유지합니다.');
       } else {
         setLiveResult(result);
         dispatch({type: 'load', snapshot: result});
@@ -878,7 +878,7 @@ export default function FactCheckDashboard() {
                         })}</>
                       : <div className="empty-evidence"><Icon name="file" size={27}/><h4>비교할 근거가 없습니다</h4><p>근거 부족은 거짓을 뜻하지 않습니다. 확인 가능한 원문이 없다는 의미입니다.</p></div>}
                 </div>
-                {!snapshot.demo && !selectedEvidence.length && otherSources.length ? <div className="source-candidate-list"><p className="evidence-caution">출처별 검색 경로와 순위를 확인해. Google 자연검색 순위는 그렇게 표시된 출처에만 해당하고, 아직 선택한 주장과 직접 대조된 인용은 아니야.</p>{otherSources.map((source, index) => {const href = safeSourceUrl(source.url); return <article className="source-card" ref={spotlight} key={source.id}><div className="source-card-top"><span className="source-index">{String(index + 1).padStart(2, '0')}</span><span className="source-kind">{source.sourceType || '검색 출처'}</span><span className="source-verified">{source.accessStatus === 'verified' ? '원문 확인' : '접근 불가'}</span></div>{href ? <a className="source-title-link" href={href} target="_blank" rel="noopener noreferrer">{source.title} <Icon name="arrow" size={14}/></a> : <strong>{source.title}</strong>}<span className="source-publisher">{source.publisher} · {source.publishedAt || '발행일 미확인'}</span><p className="source-caption">{sourceDiscoveryLabel(source)} · 원문 인용이 연결되기 전에는 판정 근거로 사용하지 않습니다.</p></article>;})}</div> : null}
+                {!snapshot.demo && !selectedEvidence.length && otherSources.length ? <div className="source-candidate-list"><p className="evidence-caution">출처별 검색 경로와 순위를 확인하세요. Google 자연검색 순위는 그렇게 표시된 출처에만 해당하고, 아직 선택한 주장과 직접 대조된 인용은 아닙니다.</p>{otherSources.map((source, index) => {const href = safeSourceUrl(source.url); return <article className="source-card" ref={spotlight} key={source.id}><div className="source-card-top"><span className="source-index">{String(index + 1).padStart(2, '0')}</span><span className="source-kind">{source.sourceType || '검색 출처'}</span><span className="source-verified">{source.accessStatus === 'verified' ? '원문 확인' : '접근 불가'}</span></div>{href ? <a className="source-title-link" href={href} target="_blank" rel="noopener noreferrer">{source.title} <Icon name="arrow" size={14}/></a> : <strong>{source.title}</strong>}<span className="source-publisher">{source.publisher} · {source.publishedAt || '발행일 미확인'}</span><p className="source-caption">{sourceDiscoveryLabel(source)} · 원문 인용이 연결되기 전에는 판정 근거로 사용하지 않습니다.</p></article>;})}</div> : null}
                 {!snapshot.demo && youtubeSources.length > 0 ? <section className="youtube-context-list" aria-label="유튜브 영상 정보와 공개 댓글"><div className="source-heading"><h4>유튜브 영상 정보·공개 댓글</h4><span>참고 맥락 · 판정 근거 아님</span></div>{youtubeSources.map(source => {const href = safeSourceUrl(source.url); return <article className="youtube-context-card" key={source.id}><div className="youtube-context-header"><YoutubeThumbnail source={source}/><div className="youtube-context-copy">{href ? <a className="source-title-link" href={href} target="_blank" rel="noopener noreferrer">{source.youtubeTitle || source.title} <Icon name="arrow" size={14}/></a> : <strong>{source.youtubeTitle || source.title}</strong>}<YoutubeVideoMetadata source={source}/></div></div><YoutubeCommentContext source={source}/></article>;})}</section> : null}
                 {!snapshot.demo && selectedLiveClaim && <div className="detail-blocks"><div><h4>확인된 내용</h4>{selectedLiveClaim.confirmed.length ? <ul>{selectedLiveClaim.confirmed.map((text, index) => <li key={index}>{text}</li>)}</ul> : <p>직접 확인된 내용이 없습니다.</p>}</div><div><h4>남은 불확실성</h4>{selectedLiveClaim.unresolved.length ? <ul>{selectedLiveClaim.unresolved.map((text, index) => <li key={index}>{text}</li>)}</ul> : <p>현재 기록된 불확실성이 없습니다.</p>}</div>{selectedLiveClaim.warnings.length > 0 && <div><h4>주장별 주의사항</h4><ul>{selectedLiveClaim.warnings.map((text, index) => <li key={index}>{text}</li>)}</ul></div>}</div>}
               </> : <div className="empty-evidence"><Icon name="lens" size={27}/><h4>주장을 선택해 주세요</h4><p>위의 주장 카드를 선택하면 연결된 출처와 인용이 표시됩니다.</p></div>}</motion.div></AnimatePresence></Panel>

@@ -52,7 +52,7 @@ test('keeps substantive inputs and attachments on verification', () => {
 });
 
 test('summarizes visible conversation history without providers', () => {
-  assert.equal(describeHistory([], null), '아직 검증한 게 없어. 확인할 원문·링크·이미지를 보내면 시작할게.');
+  assert.equal(describeHistory([], null), '아직 검증한 기록이 없습니다. 확인할 원문·링크·이미지를 보내주시면 시작하겠습니다.');
   const summary = describeHistory(
     [{role: 'assistant', text: 'welcome'}, {role: 'user', text: '마크저커버그는 뱀파이어인가'}],
     {claims: [{quote: '마크저커버그는 뱀파이어이다', verdict: '근거 부족', factScore: 50}]},
