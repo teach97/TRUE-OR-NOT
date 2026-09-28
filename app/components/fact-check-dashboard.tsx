@@ -374,12 +374,14 @@ export default function FactCheckDashboard() {
   const threadRef = useRef<HTMLDivElement>(null);
   const stickToBottom = useRef(true);
   const [atBottom, setAtBottom] = useState(true);
+  const [scrolled, setScrolled] = useState(false);
   const handleThreadScroll = () => {
     const el = threadRef.current;
     if (!el) return;
     const near = el.scrollHeight - el.scrollTop - el.clientHeight < 48;
     stickToBottom.current = near;
     setAtBottom(near);
+    setScrolled(el.scrollTop > 8);
   };
   const scrollThreadToBottom = () => {
     const el = threadRef.current;
@@ -786,7 +788,7 @@ export default function FactCheckDashboard() {
             />
           </div>
           <div className="chat-thread-wrap">
-          <div className="chat-thread" ref={threadRef} onScroll={handleThreadScroll} aria-live="polite">
+          <div className={`chat-thread${scrolled ? ' is-scrolled' : ''}${atBottom ? ' is-at-bottom' : ''}`} ref={threadRef} onScroll={handleThreadScroll} aria-live="polite">
             {messages.map(message => <motion.div key={message.id} className={`chat-message ${message.role === 'user' ? 'is-user' : 'is-assistant'} ${message.answer ? 'has-answer' : ''} ${message.scoreMode === 'jev' ? 'has-fact-score' : ''} ${message.progress ? 'has-progress' : ''} ${message.tone === 'error' ? 'is-error' : ''}`} initial={reduce ? false : {opacity: 0, y: 10}} animate={{opacity: 1, y: 0}} transition={{duration: reduce ? 0 : .22}}>
               {message.role === 'assistant' && <span className="chat-avatar"><Icon name="lens" size={16}/></span>}
               <div className={`chat-bubble ${message.answer ? 'chat-bubble--answer' : ''} ${message.scoreMode === 'jev' ? 'chat-bubble--fact-score' : ''}`}>
@@ -810,7 +812,7 @@ export default function FactCheckDashboard() {
                 if (!file) return;
                 const attached = await downscaleImage(file);
                 if (attached) attachImage(attached);
-              }} placeholder="확인하고 싶은 주장이나 원문을 입력해 주세요. 이미지는 Ctrl+V로 붙여넣을 수 있습니다." rows={3} maxLength={12000} onKeyDown={event => {if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing) return; event.preventDefault(); event.currentTarget.form?.requestSubmit();}}/>
+              }} placeholder="확인하고 싶은 주장이나 원문을 입력해 주세요. 이미지는 Ctrl+V로 붙여넣을 수 있습니다." rows={1} maxLength={12000} onKeyDown={event => {if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing) return; event.preventDefault(); event.currentTarget.form?.requestSubmit();}}/>
               <div className="chat-input-meta"><span>{draft.length.toLocaleString()} / 12,000</span><span>Shift+Enter로 줄바꾸기</span></div>
               {(image || detectedLink) && <div className="chat-attachments">
                 {image && <span className="attach-chip"><img src={image.preview} alt="첨부 이미지 미리보기"/><button type="button" onClick={() => setImage(null)} aria-label="이미지 제거">×</button></span>}

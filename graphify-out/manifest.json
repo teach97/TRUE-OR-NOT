@@ -42,9 +42,9 @@
     "semantic_hash": ""
   },
   "app/components/fact-check-dashboard.tsx": {
-    "mtime": 1790573955.600154,
-    "seen": 1790579902.790715,
-    "ast_hash": "bd444da620adbafbe4f1bebfcfa4328f",
+    "mtime": 1790583135.1270287,
+    "seen": 1790583430.9971921,
+    "ast_hash": "62f616a1e1a5b427ebd3188bfafe3eb5",
     "semantic_hash": ""
   },
   "app/components/fact-check-reply.test.mjs": {
@@ -569,18 +569,6 @@
     "ast_hash": "41f1380a539a2b784f595b384699192a",
     "semantic_hash": ""
   },
-  ".playwright-cli/page-2026-09-21T12-17-06-786Z.yml": {
-    "mtime": 1790133066.2407525,
-    "seen": 1790579902.790715,
-    "ast_hash": "3bf781bc6f4c988a2e1617fdd41893c3",
-    "semantic_hash": ""
-  },
-  ".playwright-cli/page-2026-09-21T13-03-00-136Z.yml": {
-    "mtime": 1790133066.2417507,
-    "seen": 1790579902.790715,
-    "ast_hash": "4ac99df890893f56541dfab3b0a5eebb",
-    "semantic_hash": ""
-  },
   "AGENTS.md": {
     "mtime": 1790555880.3727336,
     "seen": 1790579902.790715,
@@ -711,30 +699,6 @@
     "mtime": 1790555880.4244251,
     "seen": 1790579902.790715,
     "ast_hash": "edc38347aaeb8976f919a67578007079",
-    "semantic_hash": ""
-  },
-  ".playwright-cli/page-2026-09-21T13-08-35-790Z.yml": {
-    "mtime": 1790133066.2427504,
-    "seen": 1790579902.790715,
-    "ast_hash": "71da4832fa6d2e524bd5fcaa792a7e88",
-    "semantic_hash": ""
-  },
-  ".playwright-cli/page-2026-09-21T13-11-40-817Z.yml": {
-    "mtime": 1790133066.2460237,
-    "seen": 1790579902.790715,
-    "ast_hash": "2eb21553ea73e3e256cd34aef452e7a6",
-    "semantic_hash": ""
-  },
-  ".playwright-cli/page-2026-09-21T13-12-12-137Z.yml": {
-    "mtime": 1790133066.2471046,
-    "seen": 1790579902.790715,
-    "ast_hash": "986b91cd5b9be7933408dfccfafde63f",
-    "semantic_hash": ""
-  },
-  ".playwright-cli/page-2026-09-21T13-14-25-860Z.yml": {
-    "mtime": 1790133066.2482734,
-    "seen": 1790579902.790715,
-    "ast_hash": "5ce08846088d5e09329ac8d71cd79360",
     "semantic_hash": ""
   },
   "app/welcome/logo-light.svg": {
