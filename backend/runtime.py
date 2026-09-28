@@ -164,33 +164,50 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
                 "EXTRACTION_FAILED",
             )
         link_url = state.get("linkUrl")
-        if (
-            isinstance(link_url, str)
-            and link_url
+        has_link = isinstance(link_url, str) and bool(link_url)
+        link_only = (
+            has_link
             and state.get("text", "").strip() == link_url.strip()
-        ):
+        )
+
+        async def extract_from_page(page_text):
+            async def page_operation(provider, client):
+                return await extract_page_claims(
+                    page_text,
+                    focus=state.get("focus", ""),
+                    client=client,
+                    provider=provider,
+                )
+
+            update = await with_fallback(state, page_operation, "EXTRACTION_FAILED")
+            return {**update, "text": page_text}
+
+        async def fetch_page():
             try:
                 page_text, _ = await fetch_public_text(link_url)
             except Exception:
-                page_text = ""
-            if isinstance(page_text, str) and page_text.strip():
-                async def page_operation(provider, client):
-                    return await extract_page_claims(
-                        page_text,
-                        focus=state.get("focus", ""),
-                        client=client,
-                        provider=provider,
-                    )
+                return ""
+            return page_text if isinstance(page_text, str) else ""
 
-                update = await with_fallback(state, page_operation, "EXTRACTION_FAILED")
-                return {**update, "text": page_text}
-        return await with_fallback(
+        if link_only:
+            page_text = await fetch_page()
+            if page_text.strip():
+                return await extract_from_page(page_text)
+        update = await with_fallback(
             state,
             lambda provider, client: extract_claims(
                 state, client=client, provider=provider
             ),
             "EXTRACTION_FAILED",
         )
+        if has_link and not link_only and not update.get("claims"):
+            page_text = await fetch_page()
+            if page_text.strip():
+                try:
+                    return await extract_from_page(page_text)
+                except ValueError:
+                    pass
+        return update
 
     async def search(state: FactCheckState):
         tavily_key = settings.tavily_api_key.get_secret_value()
@@ -636,6 +653,7 @@ def build_progress_preview(state: FactCheckState) -> dict[str, object]:
 
     for claim in result.claims:
         citations: list[dict[str, str]] = []
+        seen_sources: set[str] = set()
         for evidence_id in claim.evidenceIds:
             evidence = evidence_by_id.get(evidence_id)
             source = sources_by_id.get(evidence.sourceId) if evidence else None
@@ -644,8 +662,10 @@ def build_progress_preview(state: FactCheckState) -> dict[str, object]:
                 or source is None
                 or source.accessStatus != "verified"
                 or source.sourceType == "유튜브"
+                or evidence.sourceId in seen_sources
             ):
                 continue
+            seen_sources.add(evidence.sourceId)
             citation = FactCheckProgressCitation.model_validate({
                 "sourceId": evidence.sourceId,
                 "quote": evidence.quote,

@@ -65,6 +65,7 @@ test('Jev score attaches to the model answer when both run', () => {
   assert.equal(reply.factScore, 72);
   assert.equal(reply.verdict, '근거 부족');
   assert.equal(reply.search, 'Tavily 검색');
+  assert.equal(reply.scoreMode, 'jev');
   assert.ok(reply.answer);
   assert.ok(reply.meta.includes('GPT-6 Luna Max'));
 });
@@ -80,6 +81,36 @@ test('missing Jev result leaves a plain model answer', () => {
 
   assert.equal(reply.factScore, undefined);
   assert.equal(reply.search, undefined);
+});
+
+test('LLM single claim attaches its score without Jev', () => {
+  const reply = composeAssistantReply({
+    model:'gpt-6-luna',
+    answer:{status:'grounded',overview:{text:'확인됨.',citations:[{sourceId:'s1',quote:'원문 인용'}]},sections:[],conclusion:{text:'정리.',citations:[{sourceId:'s1',quote:'원문 인용'}]},model:'gpt-6-luna',reasoning:'max'},
+    claims:[{factScore:72, verdict:'근거 부족'}],
+    sources:[],
+    evidence:[],
+  });
+
+  assert.equal(reply.factScore, 72);
+  assert.equal(reply.verdict, '근거 부족');
+  assert.equal(reply.scoreMode, 'claims');
+  assert.equal(reply.scoreEngine, '종합');
+  assert.ok(reply.answer);
+});
+
+test('LLM multiple claims attach a rounded average with no single verdict', () => {
+  const reply = composeAssistantReply({
+    model:'gpt-6-luna',
+    answer:{status:'grounded',overview:{text:'확인됨.',citations:[{sourceId:'s1',quote:'원문 인용'}]},sections:[],conclusion:{text:'정리.',citations:[{sourceId:'s1',quote:'원문 인용'}]},model:'gpt-6-luna',reasoning:'max'},
+    claims:[{factScore:80, verdict:'대체로 확인됨'},{factScore:50, verdict:'근거 부족'}],
+    sources:[],
+    evidence:[],
+  });
+
+  assert.equal(reply.factScore, 65);
+  assert.equal(reply.verdict, null);
+  assert.equal(reply.scoreMode, 'claims');
 });
 
 test('reply meta names the answering model and the search backend', () => {

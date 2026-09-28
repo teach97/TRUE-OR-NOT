@@ -224,3 +224,53 @@ def test_extract_url_only_fetches_page(monkeypatch):
     update = asyncio.run(adapters.extract(state))
     assert update["text"] == "Fetched page body."
     assert update["llmModel"] == "gpt-6-luna"
+
+
+def test_extract_link_with_extra_words_falls_back_to_page(monkeypatch):
+    import runtime
+    from runtime import Settings, make_runtime_adapters
+
+    async def fake_fetch(url):
+        assert url == "https://example.com/page"
+        return ("Fetched page body.", url)
+
+    async def fake_claims(state, **kwargs):
+        return {"claims": []}
+
+    async def fake_page(page_text, **kwargs):
+        assert page_text == "Fetched page body."
+        return {"claims": [{"id": "c1", "quote": "Fetched page", "kind": "fact",
+                            "start": 0, "end": 12}], "text": page_text}
+
+    monkeypatch.setattr(runtime, "fetch_public_text", fake_fetch)
+    monkeypatch.setattr(runtime, "extract_claims", fake_claims)
+    monkeypatch.setattr(runtime, "extract_page_claims", fake_page)
+    settings = Settings(api_key=SecretStr("test-only"))
+    adapters = make_runtime_adapters(settings)
+    state = {"text": "https://example.com/page 팩트체크해줘", "focus": "", "consent": True,
+             "linkUrl": "https://example.com/page"}
+    update = asyncio.run(adapters.extract(state))
+    assert update["text"] == "Fetched page body."
+    assert update["claims"][0]["quote"] == "Fetched page"
+
+
+def test_extract_link_with_real_claims_keeps_draft_text(monkeypatch):
+    import runtime
+    from runtime import Settings, make_runtime_adapters
+
+    async def no_fetch(url):
+        raise AssertionError("page fetch must not run when the draft yields claims")
+
+    async def fake_claims(state, **kwargs):
+        return {"claims": [{"id": "c1", "quote": "Draft claim", "kind": "fact",
+                            "start": 0, "end": 11}]}
+
+    monkeypatch.setattr(runtime, "fetch_public_text", no_fetch)
+    monkeypatch.setattr(runtime, "extract_claims", fake_claims)
+    settings = Settings(api_key=SecretStr("test-only"))
+    adapters = make_runtime_adapters(settings)
+    state = {"text": "Draft claim https://example.com/page", "focus": "", "consent": True,
+             "linkUrl": "https://example.com/page"}
+    update = asyncio.run(adapters.extract(state))
+    assert "text" not in update
+    assert update["claims"][0]["quote"] == "Draft claim"

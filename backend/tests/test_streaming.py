@@ -187,3 +187,36 @@ def test_stream_emits_candidate_sources_and_grounded_preview_before_final_result
     assert events[-1]["type"] == "result"
     assert "PRIVATE_FULL_SOURCE_BODY" not in json.dumps(events, ensure_ascii=False)
     assert "sourceTexts" not in json.dumps(events, ensure_ascii=False)
+
+
+def test_progress_preview_dedupes_citations_by_source():
+    from runtime import build_progress_preview
+
+    quote_one = "The verified source supports this statement once."
+    quote_two = "The verified source supports this statement twice."
+    verified_source = {
+        "id": "s1", "url": "https://example.org/source", "title": "Example source",
+        "publisher": "Example publisher", "publishedAt": None, "accessStatus": "verified",
+        "retrievedAt": "2026-09-24T00:00:00+00:00",
+        "sourceType": "기사", "originGroupId": None,
+    }
+    verified_claim = {
+        "id": "c1", "quote": "Claim", "start": 0, "end": 5, "kind": "fact",
+        "verdictCode": "mostly_supported", "verdict": "대체로 확인됨",
+        "tone": "positive", "summary": "확인된 원문은 주장을 뒷받침합니다.",
+        "confirmed": [], "unresolved": [], "warnings": [],
+        "evidenceIds": ["e1", "e2"],
+    }
+    preview = build_progress_preview({
+        "text": "Claim", "focus": "", "consent": True,
+        "claims": [verified_claim], "sources": [verified_source],
+        "sourceTexts": {"s1": f"BODY {quote_one} {quote_two}"},
+        "evidence": [
+            {"id": "e1", "claimId": "c1", "sourceId": "s1", "quote": quote_one,
+             "quoteVerified": True, "relation": "supports"},
+            {"id": "e2", "claimId": "c1", "sourceId": "s1", "quote": quote_two,
+             "quoteVerified": True, "relation": "supports"},
+        ],
+        "llmModel": "gpt-6-luna", "llmReasoning": "max",
+    })
+    assert preview["claims"][0]["citations"] == [{"sourceId": "s1", "quote": quote_one}]

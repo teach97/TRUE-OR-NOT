@@ -13,6 +13,8 @@ export type AssistantReply = {
   factScore?: number | null;
   verdict?: string | null;
   search?: string | null;
+  scoreMode?: 'jev' | 'claims';
+  scoreEngine?: string | null;
 };
 
 export function modelLabel(model: string | null): string {
@@ -103,6 +105,16 @@ export function composeAssistantReply(result: ReplyResult, jevResult: ReplyResul
     reply.factScore = claim.factScore ?? null;
     reply.verdict = claim.verdict ?? null;
     reply.search = searchBackendLabel(jevResult?.sources ?? []);
+    reply.scoreMode = 'jev';
+    return reply;
+  }
+  const scored = result.claims.filter(item => item && Number.isInteger(item.factScore));
+  if (scored.length) {
+    const total = scored.reduce((sum, item) => sum + item.factScore, 0);
+    reply.factScore = Math.round(total / scored.length);
+    reply.verdict = scored.length === 1 ? (scored[0].verdict ?? null) : null;
+    reply.scoreMode = 'claims';
+    reply.scoreEngine = '종합';
   }
   return reply;
 }

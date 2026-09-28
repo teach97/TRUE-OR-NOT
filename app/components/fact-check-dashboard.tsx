@@ -171,7 +171,7 @@ type ChatProgress = {
   sourcesRead?: ProgressSource[]; sourcesReadElapsedSeconds?: number;
   claims?: ProgressClaim[]; claimsElapsedSeconds?: number; completed?: boolean; error?: string;
 };
-type ChatMessage = {id: string; role: 'assistant' | 'user'; text?: string; answer?: FactCheckAnswer; factScore?: number | null; verdict?: string | null; search?: string | null; sources?: FactSource[]; progress?: ChatProgress; meta?: string; tone?: 'normal' | 'error'; imagePreview?: string; thinking?: boolean};
+type ChatMessage = {id: string; role: 'assistant' | 'user'; text?: string; answer?: FactCheckAnswer; factScore?: number | null; verdict?: string | null; search?: string | null; scoreMode?: 'jev' | 'claims'; scoreEngine?: string | null; sources?: FactSource[]; progress?: ChatProgress; meta?: string; tone?: 'normal' | 'error'; imagePreview?: string; thinking?: boolean};
 type ModelSelection = ModelPreference;
 
 function ThinkingDots() {
@@ -234,10 +234,10 @@ function AnswerOverview({answer, sources}: {answer: FactCheckAnswer; sources: Fa
   </section>;
 }
 
-function JevFactScore({score, verdict, search}: {score: number | null; verdict?: string | null; search?: string | null}) {
-  const engine = search ? `JEV+${search.replace(' 검색', '')}` : 'JEV';
+function JevFactScore({score, verdict, search, engine}: {score: number | null; verdict?: string | null; search?: string | null; engine?: string | null}) {
+  const label = engine ?? (search ? `JEV+${search.replace(' 검색', '')}` : 'JEV');
   return <section className="jev-score-reply" aria-label={score === null ? '팩트 점수 없음' : `팩트 점수 ${score}점${verdict ? `, ${verdict}` : ''}`}>
-    <span className="jev-score-label">{engine}{verdict ? ` · ${verdict}` : ''}</span>
+    <span className="jev-score-label">{label}{verdict ? ` · ${verdict}` : ''}</span>
     <strong className="jev-score-value">{score ?? '—'}<span>점</span></strong>
   </section>;
 }
@@ -787,12 +787,12 @@ export default function FactCheckDashboard() {
           </div>
           <div className="chat-thread-wrap">
           <div className="chat-thread" ref={threadRef} onScroll={handleThreadScroll} aria-live="polite">
-            {messages.map(message => <motion.div key={message.id} className={`chat-message ${message.role === 'user' ? 'is-user' : 'is-assistant'} ${message.answer ? 'has-answer' : ''} ${message.factScore !== undefined ? 'has-fact-score' : ''} ${message.progress ? 'has-progress' : ''} ${message.tone === 'error' ? 'is-error' : ''}`} initial={reduce ? false : {opacity: 0, y: 10}} animate={{opacity: 1, y: 0}} transition={{duration: reduce ? 0 : .22}}>
+            {messages.map(message => <motion.div key={message.id} className={`chat-message ${message.role === 'user' ? 'is-user' : 'is-assistant'} ${message.answer ? 'has-answer' : ''} ${message.scoreMode === 'jev' ? 'has-fact-score' : ''} ${message.progress ? 'has-progress' : ''} ${message.tone === 'error' ? 'is-error' : ''}`} initial={reduce ? false : {opacity: 0, y: 10}} animate={{opacity: 1, y: 0}} transition={{duration: reduce ? 0 : .22}}>
               {message.role === 'assistant' && <span className="chat-avatar"><Icon name="lens" size={16}/></span>}
-              <div className={`chat-bubble ${message.answer ? 'chat-bubble--answer' : ''} ${message.factScore !== undefined ? 'chat-bubble--fact-score' : ''}`}>
-                {message.answer ? (message.factScore !== undefined
+              <div className={`chat-bubble ${message.answer ? 'chat-bubble--answer' : ''} ${message.scoreMode === 'jev' ? 'chat-bubble--fact-score' : ''}`}>
+                {message.answer ? (message.scoreMode === 'jev' && message.factScore !== undefined
                   ? <><JevFactScore score={message.factScore} verdict={message.verdict} search={message.search}/><JevSourceList sources={message.sources ?? []}/></>
-                  : <AnswerOverview answer={message.answer} sources={message.sources ?? []} messageId={message.id}/>) : message.progress ? <ProgressReply progress={message.progress}/> : message.thinking ? <ThinkingDots/> : <>{message.imagePreview && <img className="chat-image-preview" src={message.imagePreview} alt="사용자가 보낸 이미지"/>}{message.text ? <p>{message.text}</p> : null}</>}
+                  : <>{message.factScore !== undefined && <JevFactScore score={message.factScore} verdict={message.verdict} engine={message.scoreEngine ?? '종합'}/>}<AnswerOverview answer={message.answer} sources={message.sources ?? []} messageId={message.id}/></>) : message.progress ? <ProgressReply progress={message.progress}/> : message.thinking ? <ThinkingDots/> : <>{message.imagePreview && <img className="chat-image-preview" src={message.imagePreview} alt="사용자가 보낸 이미지"/>}{message.text ? <p>{message.text}</p> : null}</>}
                 {message.meta && <small>{message.meta}</small>}
               </div>
             </motion.div>)}
