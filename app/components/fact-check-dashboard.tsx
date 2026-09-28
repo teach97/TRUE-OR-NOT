@@ -174,8 +174,8 @@ type ChatProgress = {
 type ChatMessage = {id: string; role: 'assistant' | 'user'; text?: string; answer?: FactCheckAnswer; factScore?: number | null; verdict?: string | null; search?: string | null; scoreMode?: 'jev' | 'claims'; scoreEngine?: string | null; sources?: FactSource[]; progress?: ChatProgress; meta?: string; tone?: 'normal' | 'error'; imagePreview?: string; thinking?: boolean};
 type ModelSelection = ModelPreference;
 
-function ThinkingDots() {
-  return <span className="thinking-dots" role="status" aria-label="답변 준비 중"><span/><span/><span/></span>;
+function ThinkingLoader({label}: {label: string}) {
+  return <span className="chat-loader-row" role="status" aria-label={label}><LatticeLoader label="검증 중" doneLabel="검증 완료" errorLabel="검증 실패" pattern="orbit" grid={3} shape="round" cellSize={7} gap={3} fontSize={12} step={75} idleOpacity={0.15} glow color="#ffffff" showTimer/><span>{label}</span></span>;
 }
 const WELCOME_MESSAGE: ChatMessage = {id: 'welcome', role: 'assistant', text: '확인하고 싶은 주장이나 원문을 보내주세요. 문장을 나누고, 직접 확인할 수 있는 출처와 인용을 연결하겠습니다.'};
 
@@ -794,7 +794,7 @@ export default function FactCheckDashboard() {
               <div className={`chat-bubble ${message.answer ? 'chat-bubble--answer' : ''} ${message.scoreMode === 'jev' ? 'chat-bubble--fact-score' : ''}`}>
                 {message.answer ? (message.scoreMode === 'jev' && message.factScore !== undefined
                   ? <><JevFactScore score={message.factScore} verdict={message.verdict} search={message.search}/><JevSourceList sources={message.sources ?? []}/></>
-                  : <>{message.factScore !== undefined && <JevFactScore score={message.factScore} verdict={message.verdict} engine={message.scoreEngine ?? '종합'}/>}<AnswerOverview answer={message.answer} sources={message.sources ?? []} messageId={message.id}/></>) : message.progress ? <ProgressReply progress={message.progress}/> : message.thinking ? <ThinkingDots/> : <>{message.imagePreview && <img className="chat-image-preview" src={message.imagePreview} alt="사용자가 보낸 이미지"/>}{message.text ? <p>{message.text}</p> : null}</>}
+                  : <>{message.factScore !== undefined && <JevFactScore score={message.factScore} verdict={message.verdict} engine={message.scoreEngine ?? '종합'}/>}<AnswerOverview answer={message.answer} sources={message.sources ?? []} messageId={message.id}/></>) : message.progress ? <ProgressReply progress={message.progress}/> : message.thinking ? <ThinkingLoader label={notice || '근거를 모으고 사실 여부를 대조하고 있습니다.'}/> : <>{message.imagePreview && <img className="chat-image-preview" src={message.imagePreview} alt="사용자가 보낸 이미지"/>}{message.text ? <p>{message.text}</p> : null}</>}
                 {message.meta && <small>{message.meta}</small>}
               </div>
             </motion.div>)}

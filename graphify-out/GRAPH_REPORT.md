@@ -1,17 +1,17 @@
 # Graph Report - grounded-answer-synthesis  (2026-09-28)
 
 ## Corpus Check
-- 148 files · ~104,992 words
+- 148 files · ~105,017 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 21 file(s) not represented in the graph (top: .css 8, (none) 7, .example 2)
 
 ## Summary
-- 1715 nodes · 3362 edges · 134 communities (106 shown, 28 thin omitted)
+- 1715 nodes · 3363 edges · 139 communities (111 shown, 28 thin omitted)
 - Extraction: 90% EXTRACTED · 10% INFERRED · 0% AMBIGUOUS · INFERRED: 351 edges (avg confidence: 0.88)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `8ecd7cda`
+- Built from commit: `6a7208ee`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -45,12 +45,12 @@
 - compilerOptions
 - FactCheckResult
 - recovery_probe_app.py
-- test_jev.py
+- handler
 - fact-check-reply.ts
 - lattice-loader.tsx
 - Next.js Wordmark Logo
 - border-glow.tsx
-- test_runtime.py
+- test_llm_runtime_ignores_environment_proxy_for_provider_connection
 - Backend Environment Keys Configuration
 - Settings
 - tech-text.tsx
@@ -106,6 +106,11 @@
 - extraction.py
 - Next.js Logo (next.svg)
 - factlens-backend
+- test_jev.py
+- test_finnhub.py
+- test_runtime.py
+- test_runtime_verify_escales_to_llm_when_jev_fails
+- test_runtime_stage_keeps_explicit_provider_selection_pinned_after_failure
 - read_sources
 - Globe Components and Clip Container
 - Globe Layout and Meridian Grid
@@ -114,6 +119,7 @@
 - Q: JEV 선택이 안 되고 8010에서 Errno 10048이 발생함
 - Q: 지금 레이아웃이 이상해 애니메이션 위치도 이상한곳에 걸쳐지고
 - Q: 지금 jev가 제대로 작동하지 않아
+- _http_status_from_exception
 - Q: 점수 판정이 이상해
 - _TextParser
 - 12. API 계약 초안
@@ -125,7 +131,6 @@
 - line-sidebar.tsx
 - graphify reference: query, path, explain
 - test_runtime_assembly.py
-- test_extract_link_with_extra_words_falls_back_to_page
 - test_read_searches_related_coverage_from_the_linked_page_title
 - graphify.js
 - graphify reference: add a URL and watch a folder
@@ -191,7 +196,7 @@
 - **public_globe_composition** — public_globe_globe_path, public_globe_clip_path, public_globe_wireframe [INFERRED 0.85]
 - **public_next_composition** — public_next_n_mark, public_next_main_letterforms, public_next_js_suffix [INFERRED 0.85]
 
-## Communities (134 total, 28 thin omitted)
+## Communities (139 total, 28 thin omitted)
 
 ### Community 0 - "contracts.py"
 Cohesion: 0.16
@@ -246,8 +251,8 @@ Cohesion: 0.18
 Nodes (17): _gemini_text(), _openai_text(), ProviderCallError, RuntimeError, Call a provider's structured-output endpoint and return only model text., A provider attempt failed and the next configured provider may retry., Run an operation in priority order and return its result and provider., request_structured() (+9 more)
 
 ### Community 13 - "fetch_youtube_data"
-Cohesion: 0.07
-Nodes (37): fetch_stock_quote(), AsyncClient, Small, read-only adapter for Finnhub stock quotes., Fetch the current quote for a ticker symbol. Returns {"symbol", "current",…, Finnhub quote adapter; no live traffic (all transports mocked)., run(), run_once(), test_finnhub_key_is_server_only_and_redacted() (+29 more)
+Cohesion: 0.12
+Nodes (25): Offline YouTube Data API contract tests; no Google credentials or traffic., test_comments_unavailable_keeps_video_title_without_exposing_provider_error(), run(), test_fetches_official_video_title_and_bounded_plain_text_comments(), handler(), run(), test_ignores_malformed_youtube_metadata_without_rejecting_comments(), run() (+17 more)
 
 ### Community 14 - "ref_node_assert"
 Cohesion: 0.11
@@ -286,8 +291,8 @@ Cohesion: 0.14
 Nodes (13): parametrize, Offline failure, safety and empty-result tests., test_candidates_filter_unsafe_urls_and_limit_results(), run(), test_completed_empty_search_is_not_a_verdict(), run(), test_nonfacts_skip_network(), run() (+5 more)
 
 ### Community 23 - "make_runtime_adapters"
-Cohesion: 0.12
-Nodes (20): _http_status_from_exception(), make_runtime_adapters(), extract(), extract_from_page(), page_operation(), search(), synthesize(), operation() (+12 more)
+Cohesion: 0.19
+Nodes (14): make_runtime_adapters(), extract(), extract_from_page(), page_operation(), search(), synthesize(), operation(), verify() (+6 more)
 
 ### Community 24 - "test_streaming.py"
 Cohesion: 0.09
@@ -309,9 +314,9 @@ Nodes (16): FactCheckResult, grounded_answer(), parametrize, Final Python contra
 Cohesion: 0.22
 Nodes (6): get, post, TEST ONLY deterministic recovery app. Never imported by runtime/main., recover(), status(), verify()
 
-### Community 29 - "test_jev.py"
-Cohesion: 0.05
-Nodes (59): evaluate_claims_jev(), JevError, _parse_strength(), _parse_verdict(), Any, AsyncClient, RuntimeError, Jev (TypeSafe System One) verdicts through Vercel AI Gateway. The gateway API… (+51 more)
+### Community 29 - "handler"
+Cohesion: 0.08
+Nodes (30): jev_response(), handler(), test_fast_check_collects_youtube_context_when_the_key_is_configured(), handler(), run(), test_fast_check_llm_search_honors_the_selected_model(), handler(), run() (+22 more)
 
 ### Community 30 - "fact-check-reply.ts"
 Cohesion: 0.15
@@ -329,9 +334,9 @@ Nodes (15): Geometric Brand Emblem (Red & Black Circles), Light Theme Variant (D
 Cohesion: 0.20
 Nodes (13): AnimateOpts, animateValue(), BorderGlow(), BorderGlowProps, buildGlowVars(), buildGradientVars(), COLOR_MAP, easeInCubic() (+5 more)
 
-### Community 34 - "test_runtime.py"
-Cohesion: 0.11
-Nodes (22): build_extraction_graph(), load_settings(), Stage, Read the backend-local file without mutating process environment., End after extraction; do not simulate search, sources, or judgments., Isolated settings and extraction graph tests; no paid API calls., test_extraction_graph_ends_without_fabricating_verdict(), test_llm_runtime_ignores_environment_proxy_for_provider_connection() (+14 more)
+### Community 34 - "test_llm_runtime_ignores_environment_proxy_for_provider_connection"
+Cohesion: 0.18
+Nodes (11): test_llm_runtime_ignores_environment_proxy_for_provider_connection(), mock_async_client(), test_llm_search_is_used_directly_without_a_search_notice(), handler(), mock_async_client(), test_runtime_read_stage_uses_youtube_adapter_without_adding_comments_to_source_texts(), mock_async_client(), test_tavily_outage_falls_back_to_llm_search() (+3 more)
 
 ### Community 35 - "Backend Environment Keys Configuration"
 Cohesion: 0.18
@@ -493,6 +498,26 @@ Nodes (3): Vercel Brand Mark Purpose for Deployment Branding, White Filled Trian
 Cohesion: 0.22
 Nodes (13): extract_image_claims(), extract_page_claims(), ExtractedClaim, Extraction, ImageObservation, _project_extracted_claims(), AsyncClient, BaseModel (+5 more)
 
+### Community 90 - "test_jev.py"
+Cohesion: 0.13
+Nodes (23): evaluate_claims_jev(), JevError, _parse_strength(), _parse_verdict(), Any, AsyncClient, RuntimeError, Jev (TypeSafe System One) verdicts through Vercel AI Gateway. The gateway API… (+15 more)
+
+### Community 91 - "test_finnhub.py"
+Cohesion: 0.18
+Nodes (12): fetch_stock_quote(), AsyncClient, Small, read-only adapter for Finnhub stock quotes., Fetch the current quote for a ticker symbol. Returns {"symbol", "current",…, Finnhub quote adapter; no live traffic (all transports mocked)., run(), run_once(), test_finnhub_key_is_server_only_and_redacted() (+4 more)
+
+### Community 92 - "test_runtime.py"
+Cohesion: 0.21
+Nodes (11): build_extraction_graph(), load_settings(), Stage, Read the backend-local file without mutating process environment., End after extraction; do not simulate search, sources, or judgments., Isolated settings and extraction graph tests; no paid API calls., test_extraction_graph_ends_without_fabricating_verdict(), test_settings_load_file_without_exposing_key() (+3 more)
+
+### Community 93 - "test_runtime_verify_escales_to_llm_when_jev_fails"
+Cohesion: 0.33
+Nodes (6): _jev_runtime_state(), test_runtime_verify_escales_to_llm_when_jev_fails(), mock_client(), test_runtime_verify_uses_jev_when_mode_on(), handler(), mock_client()
+
+### Community 94 - "test_runtime_stage_keeps_explicit_provider_selection_pinned_after_failure"
+Cohesion: 0.50
+Nodes (3): test_runtime_stage_keeps_explicit_provider_selection_pinned_after_failure(), test_runtime_stage_retries_next_provider_after_adapter_failure(), fake_extract()
+
 ### Community 95 - "read_sources"
 Cohesion: 0.16
 Nodes (12): read_sources(), test_read_node_attempts_all_sources_concurrently_even_after_failure(), reader(), test_read_node_deduplicates_distinct_search_urls_that_resolve_to_the_same_page(), test_read_node_fetches_slow_sources_in_parallel(), test_read_node_keeps_bounded_article_sections_for_the_verified_source(), reader(), test_read_node_keeps_candidate_order_when_slow_sources_finish_first() (+4 more)
@@ -508,6 +533,10 @@ Nodes (4): Answer, Outcome, Q: 지금 레이아웃이 이상해 애니메이션 
 ### Community 102 - "Q: 지금 jev가 제대로 작동하지 않아"
 Cohesion: 0.40
 Nodes (4): Answer, Outcome, Q: 지금 jev가 제대로 작동하지 않아, Source Nodes
+
+### Community 103 - "_http_status_from_exception"
+Cohesion: 0.67
+Nodes (3): _http_status_from_exception(), Return only an upstream HTTP status from an exception chain., BaseException
 
 ### Community 104 - "Q: 점수 판정이 이상해"
 Cohesion: 0.40
@@ -549,13 +578,9 @@ Nodes (5): For /graphify explain, For /graphify path, graphify reference: query,
 Cohesion: 0.23
 Nodes (11): insufficient_answer(), Return a fixed answer that makes no unsupported assertions., build_fact_check_result(), synthesizing(), _normalize_source(), Project internal source state onto the public TypeScript contract., Validate and assemble the only result shape exposed by the API., Runtime assembly tests; explicit adapters keep the five-node graph offline. (+3 more)
 
-### Community 120 - "test_extract_link_with_extra_words_falls_back_to_page"
-Cohesion: 0.20
-Nodes (6): test_extract_link_with_extra_words_falls_back_to_page(), fake_claims(), test_extract_link_with_real_claims_keeps_draft_text(), test_extract_url_only_fetches_page(), fake_page(), fake_fetch()
-
-### Community 121 - "test_read_searches_related_coverage_from_the_linked_page_title"
-Cohesion: 0.33
-Nodes (4): test_read_prepends_link_seed_without_network(), fake_read(), test_read_searches_related_coverage_from_the_linked_page_title(), mock_async_client()
+### Community 120 - "test_read_searches_related_coverage_from_the_linked_page_title"
+Cohesion: 0.12
+Nodes (10): test_extract_link_with_extra_words_falls_back_to_page(), fake_claims(), test_extract_link_with_real_claims_keeps_draft_text(), test_extract_url_only_fetches_page(), fake_page(), test_read_prepends_link_seed_without_network(), fake_read(), test_read_searches_related_coverage_from_the_linked_page_title() (+2 more)
 
 ### Community 122 - "graphify.js"
 Cohesion: 0.40
@@ -632,9 +657,9 @@ Nodes (3): 4.1 3일 MVP 필수 범위, 4.2 MVP 이후, 4. MVP 범위와 단계�
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `Settings` connect `Settings` to `test_runtime.py`, `test_attachments.py`, `test_jev_endpoint_maps_gateway_failure_to_502`, `runtime.py`, `run_jev_fast_check`, `json`, `ProviderCallError`, `test_providers.py`, `test_runtime_assembly.py`, `build_runtime_workflow`, `make_runtime_adapters`, `test_extract_link_with_extra_words_falls_back_to_page`, `test_read_searches_related_coverage_from_the_linked_page_title`, `recovery_probe_app.py`, `test_jev.py`, `test_streaming.py`?**
+- **Why does `Settings` connect `Settings` to `test_attachments.py`, `test_jev_endpoint_maps_gateway_failure_to_502`, `json`, `ProviderCallError`, `test_providers.py`, `make_runtime_adapters`, `test_streaming.py`, `recovery_probe_app.py`, `handler`, `test_llm_runtime_ignores_environment_proxy_for_provider_connection`, `runtime.py`, `run_jev_fast_check`, `build_runtime_workflow`, `test_jev.py`, `test_runtime.py`, `test_runtime_verify_escales_to_llm_when_jev_fails`, `test_runtime_stage_keeps_explicit_provider_selection_pinned_after_failure`, `test_runtime_assembly.py`, `test_read_searches_related_coverage_from_the_linked_page_title`?**
   _High betweenness centrality (0.025) - this node is a cross-community bridge._
-- **Why does `make_runtime_adapters()` connect `make_runtime_adapters` to `synthesize_answer`, `verification.py`, `SourceReadResult`, `sources.py`, `test_attachments.py`, `search_tavily`, `ProviderCallError`, `fetch_youtube_data`, `test_providers.py`, `extract_claims`, `test_search.py`, `test_jev.py`, `test_runtime.py`, `Settings`, `runtime.py`, `search_sources`, `build_runtime_workflow`, `extraction.py`, `read_sources`, `test_runtime_assembly.py`, `test_extract_link_with_extra_words_falls_back_to_page`, `test_read_searches_related_coverage_from_the_linked_page_title`?**
+- **Why does `make_runtime_adapters()` connect `make_runtime_adapters` to `synthesize_answer`, `verification.py`, `SourceReadResult`, `sources.py`, `test_attachments.py`, `search_tavily`, `ProviderCallError`, `fetch_youtube_data`, `test_providers.py`, `extract_claims`, `test_search.py`, `test_llm_runtime_ignores_environment_proxy_for_provider_connection`, `Settings`, `runtime.py`, `search_sources`, `build_runtime_workflow`, `extraction.py`, `test_jev.py`, `test_runtime.py`, `test_runtime_verify_escales_to_llm_when_jev_fails`, `test_runtime_stage_keeps_explicit_provider_selection_pinned_after_failure`, `read_sources`, `test_runtime_assembly.py`, `test_read_searches_related_coverage_from_the_linked_page_title`?**
   _High betweenness centrality (0.025) - this node is a cross-community bridge._
 - **Why does `True or Not 고도화 기획서 v3` connect `True or Not 고도화 기획서 v3` to `12. API 계약 초안`, `19. 소개 문구와 데모 안내`, `9. 화면 설계`, `15. QA와 수용 기준`, `6. 주장 추출과 검증 계획`, `8. 판정 정책`, `14. 보안·개인정보·이용 조건`, `4. MVP 범위와 단계별 확장`, `16. 팀 역할과 3일 실행 계획`, `7. 출처 정책과 독립성`?**
   _High betweenness centrality (0.022) - this node is a cross-community bridge._
