@@ -431,7 +431,7 @@ v3의 `URL_BLOCKED`, `FETCH_DENIED`, `RATE_LIMITED` 등은 공개 코드로 구�
 | 항목 | 결과 |
 |---|---|
 | 백엔드 테스트 | 236 passed (Starlette/AnyIO 경고 1건) |
-| 프론트엔드 Node 테스트 | 17 passed. 2026-09-23 기록은 40 passed였으며 감소 원인은 기록에 없음 (L8) |
+| 프론트엔드 Node 테스트 | 61 passed (`npm test`로 고정, 2026-09-29). 40→17 감소는 glob 범위 차이였음 (L8 해결) |
 | 타입 검사·빌드·`uv lock --check`·`git diff --check` | 통과 |
 | 실제 provider 호출 | 2026-09-23에 SerpApi 검색과 GPT-6 Luna 전체 경로 각 1회 확인 기록. 판정 품질 전체를 보증하지 않음 |
 | 유튜브 실 API | 미검증 (`YOUTUBE_API_KEY` 미설정 기록) |
@@ -457,7 +457,7 @@ v3의 `URL_BLOCKED`, `FETCH_DENIED`, `RATE_LIMITED` 등은 공개 코드로 구�
 | L5 | 중간 | JEV 동작이 두 갈래임. 파이프라인 `jevMode`는 JEV 실패 시 로그만 남기고 조용히 LLM 판정으로 전환하고, `/jev`는 오류를 반환함 | `runtime.py` `verify`, `main.py` | 결과 `warnings`에 판정 경로 표시 |
 | L6 | 중간 | 결과의 `model`·`reasoning`이 값이 없을 때 `gpt-6-luna`·`max`로 대체되어 호출하지 않은 모델이 표시될 수 있음 | `runtime.py` `build_fact_check_result` | 미상이면 `null` 유지 |
 | L7 | 중간 (확인 필요) | `/api/intent`는 프록시·백엔드 모두 동의 검사가 없으며, 입력(최대 2,000자)과 이전 원문(최대 3,000자)이 외부 LLM으로 전송됨 | `main.py`, intent `route.ts` | 프론트가 동의 이후에만 호출하는지 확인하거나 동의 필드 추가 |
-| L8 | 중간 | 문서 정확성: 인계서는 794줄 로그형이며 옛 v1 설명이 남아 있고 상단 요약이 없음. `/jev`·`/intent`·Tavily가 기록에 없고 SerpApi 경로는 코드에서 확인되지 않음. Node 테스트 수 40→17 감소 원인이 없음. 체크리스트의 html2canvas·Anime.js는 `package.json`에 없음 | `HANDOFF.md`, `package.json` | 상단에 현재 상태 1페이지 요약 추가, 테스트 감소 원인은 `git log`와 실행 glob으로 확인 |
+| L8 | 중간 | 문서 정확성: 인계서는 794줄 로그형이며 옛 v1 설명이 남아 있고 상단 요약이 없음. `/jev`·`/intent`·Tavily가 기록에 없고 SerpApi 경로는 코드에서 확인되지 않음. Node 테스트 수 40→17 감소 원인은 glob 범위 차이였음. `npm test`로 고정하여 해결. 체크리스트의 html2canvas·Anime.js는 `package.json`에 없음 | `HANDOFF.md`, `package.json` | 상단에 현재 상태 1페이지 요약 추가, 테스트 감소 원인은 `git log`와 실행 glob으로 확인 |
 | L9 | 낮음 | intent 프록시는 본문 전체를 읽은 뒤 길이를 검사함(chunked 요청은 상한 없음). 메인 프록시는 `limitedText`로 상한 적용 | intent `route.ts` | 동일한 제한 읽기 사용 |
 | L10 | 낮음 | 링크 제목 기반 검색 결과가 기존 검색 결과보다 앞에 배치되어 6개 상한에서 주장 기반 검색 결과가 밀림 | `runtime.py` `read` | 의도 확인 후 순서 조정 |
 | L11 | 낮음 | 도달할 수 없거나 사용하지 않는 코드: `consent=False` 분기(스키마가 `true` 강제), `_IMAGE_MIMES`. 이미지 MIME을 실제 바이트와 대조하지 않음 | `runtime.py`, `schemas.py` | 삭제·수정은 별도 승인 후 진행 |
