@@ -226,6 +226,29 @@ def test_extract_url_only_fetches_page(monkeypatch):
     assert update["llmModel"] == "gpt-6-luna"
 
 
+def test_extract_url_only_truncates_long_pages_to_the_contract_limit(monkeypatch):
+    import runtime
+    from runtime import Settings, make_runtime_adapters
+
+    long_page = '가' * 15000
+
+    async def fake_fetch(url):
+        return (long_page, url)
+
+    async def fake_page(page_text, **kwargs):
+        assert len(page_text.encode('utf-16-le')) // 2 <= 12000
+        return {'claims': [], 'text': page_text}
+
+    monkeypatch.setattr(runtime, 'fetch_public_text', fake_fetch)
+    monkeypatch.setattr(runtime, 'extract_page_claims', fake_page)
+    settings = Settings(api_key=SecretStr('test-only'))
+    adapters = make_runtime_adapters(settings)
+    state = {'text': 'https://example.com/page', 'focus': '', 'consent': True,
+             'linkUrl': 'https://example.com/page'}
+    update = asyncio.run(adapters.extract(state))
+    assert len(update['text'].encode('utf-16-le')) // 2 <= 12000
+
+
 def test_extract_link_with_extra_words_falls_back_to_page(monkeypatch):
     import runtime
     from runtime import Settings, make_runtime_adapters

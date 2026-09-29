@@ -171,6 +171,9 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
         )
 
         async def extract_from_page(page_text):
+            # Keep the stored text inside the 12,000-unit contract so the
+            # final assembly revalidation cannot fail after paid calls.
+            page_text = _truncate_units(page_text.strip(), 12_000)
             async def page_operation(provider, client):
                 return await extract_page_claims(
                     page_text,
