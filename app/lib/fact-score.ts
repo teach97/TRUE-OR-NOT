@@ -4,7 +4,7 @@ export type FactScoreBand = typeof FACT_SCORE_BANDS[number];
 export const FACT_SCORE_LABELS: Record<FactScoreBand, string> = {
   verified: '검증된 사실',
   mostly_true: '대체적으로 사실',
-  neutral: '중립(검증되지 않음)',
+  neutral: '중립',
   mostly_false: '대체적으로 거짓',
   false: '거짓',
 };

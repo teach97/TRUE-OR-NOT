@@ -15,13 +15,13 @@ export default function TermsPage() {
 
     <section>
       <h2>YouTube 기능</h2>
-      <p>YouTube 자료 조회 기능을 사용하는 경우 사용자는 <a href="https://www.youtube.com/t/terms" target="_blank" rel="noopener noreferrer">YouTube 서비스 약관</a>을 확인하고 이에 구속되는 데 동의해야 합니다. 이 기능은 공식 YouTube Data API를 통해 검색된 영상의 제목과 최대 10개의 공개 최상위 댓글만 조회합니다. 자막, 영상, 댓글 답글은 수집하지 않습니다.</p>
-      <p>YouTube 댓글은 영상별로 구분해 참고용 원문으로만 표시합니다. AI 판정 또는 인용 근거로 사용하지 않고, JSON 내보내기에서도 제외합니다. YouTube 자료의 권리와 이용 조건은 해당 서비스 약관 및 <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">Google 개인정보처리방침</a>을 따릅니다.</p>
+      <p>YouTube 자료 조회 기능을 사용하는 경우 사용자는 <a href="https://www.youtube.com/t/terms" target="_blank" rel="noopener noreferrer">YouTube 서비스 약관</a>을 확인하고 이에 구속되는 데 동의해야 합니다. 이 기능은 공식 YouTube Data API를 통해 검색된 영상의 제목·채널명·게시일·조회수와 최대 10개의 공개 최상위 댓글을 조회합니다. 자막, 영상, 댓글 답글은 수집하지 않습니다. 댓글 옆 프로필 그림은 실제 댓글 작성자를 나타내지 않는 임의 생성 이미지입니다.</p>
+      <p>YouTube 댓글은 영상별로 구분해 참고용 원문으로만 표시합니다. AI 판정 또는 인용 근거로 사용하지 않고, YouTube Data API에서 받은 메타데이터와 함께 JSON 내보내기에서도 제외합니다. YouTube 자료의 권리와 이용 조건은 해당 서비스 약관 및 <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">Google 개인정보처리방침</a>을 따릅니다.</p>
     </section>
 
     <section>
       <h2>사용자의 책임</h2>
-      <p>사용자는 제출할 권한이 있는 정보만 입력하고, 법률·안전·재정 등 중요한 판단에는 원자료와 적절한 전문가를 함께 확인해야 합니다. 외부 AI·검색 제공자에게 정보를 전송하는 데 동의하지 않는 경우 해당 검증 기능을 이용하지 마세요.</p>
+      <p>사용자는 제출할 권한이 있는 정보만 입력하고, 법률·안전·재정 등 중요한 판단에는 원자료와 적절한 전문가를 함께 확인해야 합니다. 원문·이미지·링크를 보내면 외부 AI·검색 제공자에게 전송됩니다. 전송에 동의하지 않는 경우 해당 검증 기능을 이용하지 마세요.</p>
     </section>
 
     <section>

@@ -12,6 +12,7 @@ import json
 from typing import Any, Literal
 
 import httpx
+from schemas import MODEL_CATALOG, ModelPreference
 
 
 ProviderKind = Literal["openai", "gemini"]
@@ -57,6 +58,27 @@ def configured_providers(settings: Any) -> tuple[LLMProvider, ...]:
     if openai_key:
         providers.append(LLMProvider("openai", "gpt-6-luna", "max", openai_key))
     return tuple(providers)
+
+
+def providers_for_preference(
+    settings: Any, preference: ModelPreference = "auto"
+) -> tuple[LLMProvider, ...]:
+    """Return the automatic chain or exactly one explicitly selected model."""
+    providers = configured_providers(settings)
+    if preference == "auto":
+        return providers
+    selected = tuple(provider for provider in providers if provider.model == preference)
+    if not selected:
+        raise ValueError("MODEL_UNAVAILABLE")
+    return selected
+
+
+def configured_model_options(settings: Any) -> list[dict[str, Any]]:
+    configured = {provider.model for provider in configured_providers(settings)}
+    return [
+        {"id": model_id, "label": label, "configured": model_id in configured}
+        for model_id, label in MODEL_CATALOG
+    ]
 
 
 async def run_with_fallback(
@@ -185,6 +207,13 @@ def _search_payload(
 ) -> dict[str, Any]:
     serialized_input = json.dumps(input_data, ensure_ascii=False)
     if provider.kind == "openai":
+        web_search: dict[str, Any] = {"type": "web_search", "search_context_size": "medium"}
+        primary_queries = input_data.get("primaryQueries", [])
+        if isinstance(primary_queries, list) and any(
+            isinstance(query, str) and any("가" <= char <= "힣" for char in query)
+            for query in primary_queries
+        ):
+            web_search["user_location"] = {"type": "approximate", "country": "KR"}
         return {
             "model": provider.model,
             "reasoning": {"effort": provider.reasoning},
@@ -192,7 +221,7 @@ def _search_payload(
             "max_output_tokens": 6000,
             "instructions": instructions,
             "input": serialized_input,
-            "tools": [{"type": "web_search", "search_context_size": "low"}],
+            "tools": [web_search],
             "tool_choice": "required",
             # Run several targeted search passes so one publisher cannot fill
             # the entire candidate set before the diversity selector sees it.
@@ -205,11 +234,11 @@ def _search_payload(
         "input": serialized_input,
         "store": False,
         "tools": [{"type": "google_search"}],
-        "tool_choice": "any",
         "generation_config": {
             "max_output_tokens": 6000,
             "thinking_level": provider.reasoning,
             "thinking_summaries": "none",
+            "tool_choice": "any",
         },
     }
 
@@ -292,6 +321,80 @@ async def request_structured(
         raise ProviderCallError("Provider request failed") from exc
 
 
+_IMAGE_MIMES = ("image/jpeg", "image/png", "image/webp")
+_MAX_IMAGE_DATA = 20_000_000
+
+
+def _structured_image_input(
+    provider: LLMProvider,
+    serialized_input: str,
+    image: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """Build the multimodal input parts for each provider's wire format."""
+    if provider.kind == "openai":
+        return [{
+            "role": "user",
+            "content": [
+                {"type": "input_text", "text": serialized_input},
+                {
+                    "type": "input_image",
+                    "image_url": f"data:{image['mime']};base64,{image['data']}",
+                },
+            ],
+        }]
+    return [
+        {"type": "text", "text": serialized_input},
+        {"type": "image", "data": image["data"], "mime_type": image["mime"]},
+    ]
+
+
+async def request_structured_image(
+    provider: LLMProvider,
+    client: httpx.AsyncClient,
+    *,
+    instructions: str,
+    input_data: dict[str, Any],
+    image: dict[str, Any],
+    schema: dict[str, Any],
+    max_output_tokens: int,
+) -> str:
+    """Call a provider's structured-output endpoint with an attached image."""
+    if not provider.api_key.strip():
+        raise ProviderCallError("Missing provider key")
+    if (
+        not isinstance(image, dict)
+        or image.get("mime") not in _IMAGE_MIMES
+        or not isinstance(image.get("data"), str)
+        or not image["data"]
+        or len(image["data"]) > _MAX_IMAGE_DATA
+    ):
+        raise ProviderCallError("Invalid image attachment")
+    endpoint, headers = _endpoint_and_headers(provider)
+    payload = _structured_payload(
+        provider,
+        instructions=instructions,
+        input_data=input_data,
+        schema=schema,
+        max_output_tokens=max_output_tokens,
+    )
+    payload["input"] = _structured_image_input(
+        provider, json.dumps(input_data, ensure_ascii=False), image
+    )
+    try:
+        response = await client.post(
+            endpoint,
+            json=payload,
+            headers=headers,
+            timeout=90,
+        )
+        data = _response_json(response)
+        return _openai_text(data) if provider.kind == "openai" else _gemini_text(data)
+    except ProviderCallError:
+        raise
+    except (httpx.HTTPError, TimeoutError, ValueError, KeyError, TypeError) as exc:
+        raise ProviderCallError("Provider request failed") from exc
+
+
 async def request_search(
     provider: LLMProvider,
     client: httpx.AsyncClient,
@@ -320,7 +423,24 @@ async def request_search(
                 if len(body) > _MAX_RESPONSE_BYTES:
                     raise ProviderCallError("Response too large")
         data = json.loads(body)
-        if not isinstance(data, dict) or data.get("status") != "completed":
+        if not isinstance(data, dict):
+            raise ProviderCallError("Incomplete search response")
+        incomplete_details = data.get("incomplete_details")
+        output = data.get("output")
+        has_completed_search = isinstance(output, list) and any(
+            isinstance(item, dict)
+            and item.get("type") == "web_search_call"
+            and item.get("status") == "completed"
+            for item in output
+        )
+        usable_partial_search = (
+            provider.kind == "openai"
+            and data.get("status") == "incomplete"
+            and isinstance(incomplete_details, dict)
+            and incomplete_details.get("reason") in {"max_output_tokens", "max_tokens"}
+            and has_completed_search
+        )
+        if data.get("status") != "completed" and not usable_partial_search:
             raise ProviderCallError("Incomplete search response")
         return data
     except ProviderCallError:

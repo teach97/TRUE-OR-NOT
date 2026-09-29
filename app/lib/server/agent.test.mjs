@@ -38,14 +38,20 @@ test('real stages search facts with required web tool and never trust generated 
   assert.deepEqual(events.filter(e=>e.type==='stage').map(e=>e.stage),['extracting','searching','reading','verifying']);
   assert.equal(requests.length,3); assert.deepEqual(fetched,['https://example.com/article']);
   const result=events.at(-1).result;
+  assert.deepEqual(result.answer,{status:'insufficient_evidence',overview:null,sections:[],conclusion:null,model:null,reasoning:null});
   assert.equal(result.claims[0].verdictCode,'insufficient_evidence'); assert.deepEqual(result.claims[0].confirmed,[]); assert.deepEqual(result.evidence,[]);
   assert.equal(result.claims[1].verdictCode,'not_checkable'); assert.equal(result.sources[0].originGroupId,null); assert.equal(result.sources[0].publishedAt,null);
 });
 
 test('validates request consent, lengths and unknown fields', async () => {
   const { validateRequest } = await import('./agent.ts');
-  assert.deepEqual(validateRequest({text:'hello',focus:'',consent:true}), {text:'hello',focus:'',consent:true});
-  for (const value of [null, {}, {text:'x',focus:'',consent:false}, {text:'x'.repeat(12001),focus:'',consent:true}, {text:'x',focus:'y'.repeat(501),consent:true}, {text:'x',focus:'',consent:true,apiKey:'bad'}]) {
+  assert.deepEqual(validateRequest({text:'hello',focus:'',consent:true}), {text:'hello',focus:'',consent:true,modelPreference:'auto'});
+  assert.equal(validateRequest({text:'hello',focus:'',consent:true,modelPreference:'gpt-6-luna'}).modelPreference,'gpt-6-luna');
+  assert.deepEqual(validateRequest({text:'https://example.com/a',focus:'',consent:true,linkUrl:'https://example.com/a'}), {text:'https://example.com/a',focus:'',consent:true,modelPreference:'auto',linkUrl:'https://example.com/a'});
+  assert.deepEqual(validateRequest({text:'',focus:'',consent:true,image:{mime:'image/jpeg',data:'eA=='}}), {text:'',focus:'',consent:true,modelPreference:'auto',image:{mime:'image/jpeg',data:'eA=='}});
+  assert.deepEqual(validateRequest({text:'hi',focus:'',consent:true,jevMode:true}), {text:'hi',focus:'',consent:true,modelPreference:'auto',jevMode:true});
+  assert.deepEqual(validateRequest({text:'hi',focus:'',consent:true,jevMode:false}), {text:'hi',focus:'',consent:true,modelPreference:'auto'});
+  for (const value of [null, {}, {text:'x',focus:'',consent:false}, {text:'x'.repeat(12001),focus:'',consent:true}, {text:'x',focus:'y'.repeat(501),consent:true}, {text:'x',focus:'',consent:true,apiKey:'bad'}, {text:'x',focus:'',consent:true,modelPreference:'unlisted'}, {text:'',focus:'',consent:true}, {text:'hi',focus:'',consent:true,linkUrl:'ftp://x/y'}, {text:'hi',focus:'',consent:true,image:{mime:'image/gif',data:'eA=='}}, {text:'hi',focus:'',consent:true,image:{mime:'image/png',data:'!!!'}}, {text:'hi',focus:'',consent:true,image:{mime:'image/png',data:'eA=='.repeat(400000)}}, {text:'hi',focus:'',consent:true,jevMode:'yes'}, {text:'hi',focus:'',consent:true,jevMode:1}]) {
     assert.throws(() => validateRequest(value));
   }
 });

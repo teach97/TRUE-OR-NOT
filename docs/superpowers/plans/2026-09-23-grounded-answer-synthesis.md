@@ -54,6 +54,7 @@ This is one vertical feature plan rather than independent backend/frontend plans
 **Files:**
 - Modify: backend/contracts.py
 - Test: backend/tests/test_contracts.py
+- Test: backend/tests/test_execution.py (assert serialized API fallback contract)
 
 **Interfaces:**
 - Produces AnswerCitation(sourceId: str, quote: str), AnswerBlock(text: str, citations: list[AnswerCitation]), AnswerSection(kind: Literal['supporting','counter','uncertainty','context'], title: str, items: list[AnswerBlock]), and FactCheckAnswer(status: Literal['grounded','insufficient_evidence'], overview: AnswerBlock | None, sections: list[AnswerSection], conclusion: AnswerBlock | None, model: str | None, reasoning: Reasoning | None).
@@ -135,7 +136,7 @@ Expected: all contract tests pass, including the existing claim/evidence cross-r
 
 - [ ] **Step 5: Commit the independently passing contract change**
 
-Commit backend/contracts.py and backend/tests/test_contracts.py as feat: add grounded answer response contract.
+Commit backend/contracts.py and the contract/API response tests as feat: add grounded answer response contract.
 
 ### Task 2: Implement grounded synthesis and provider retry
 

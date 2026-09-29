@@ -6,10 +6,9 @@ import type { ReactNode } from "react";
 
 const FloatingLines = dynamic(() => import("./floating-lines"), {ssr: false});
 
-const floatingLinesGradient = ["#ffffff", "#d7d7d7", "#8f8f8f"];
+const floatingLinesGradient = ["#c5c5c5", "#6f6f6f", "#6a6a6a"];
 const floatingLinesWaves = ["top", "middle", "bottom"] as const;
-const floatingLinesCount = [6, 7, 6];
-const floatingLinesDistance = [5, 5, 5];
+const floatingLinesDistance = [8, 8, 8];
 
 class BackgroundBoundary extends Component<{children: ReactNode}, {failed: boolean}> {
   state = {failed: false};
@@ -51,12 +50,12 @@ export default function FloatingLinesBackground() {
       {active && <BackgroundBoundary><FloatingLines
         linesGradient={floatingLinesGradient}
         enabledWaves={floatingLinesWaves}
-        lineCount={floatingLinesCount}
+        lineCount={8}
         lineDistance={floatingLinesDistance}
-        animationSpeed={0.38}
+        animationSpeed={1}
         interactive
-        bendRadius={5}
-        bendStrength={-0.55}
+        bendRadius={15}
+        bendStrength={-2}
         mouseDamping={0.06}
         parallax
         parallaxStrength={0.18}

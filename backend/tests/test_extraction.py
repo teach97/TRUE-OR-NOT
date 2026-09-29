@@ -15,6 +15,9 @@ def test_extractor_keeps_forecast_and_returns_search_keywords_separately():
     def handler(request):
         body = json.loads(request.content)
         assert "Retain forecast questions" in body["instructions"]
+        assert json.loads(body["input"]) == {
+            "text": question, "focus": "", "consent": True,
+        }
         return httpx.Response(200, json={"status": "completed", "output": [
             {"type": "message", "content": [{"type": "output_text", "text": json.dumps({
                 "claims": [{"quote": question, "kind": "prediction", "searchQuery": "AGI 2030년"}],
@@ -24,7 +27,8 @@ def test_extractor_keeps_forecast_and_returns_search_keywords_separately():
     async def run():
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             return await extract_claims(
-                {"text": question, "focus": "", "consent": True},
+                {"text": question, "focus": "", "consent": True,
+                 "modelPreference": "gpt-6-luna"},
                 api_key="test-only", client=client,
             )
 

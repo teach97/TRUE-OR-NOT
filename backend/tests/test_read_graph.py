@@ -12,5 +12,10 @@ def test_graph_keeps_source_texts_for_verification():
     async def verify(state):
         assert state.get('sourceTexts') == {'s1':'Source body for citation.'}
         return {'result':{'testOnly':True}}
-    graph = build_workflow(extract=extract, search=search, read=read, verify=verify)
+    async def synthesize(state):
+        assert state['sourceTexts'] == {'s1':'Source body for citation.'}
+        return {}
+    graph = build_workflow(
+        extract=extract, search=search, read=read, verify=verify, synthesize=synthesize,
+    )
     asyncio.run(graph.ainvoke({'text':'claim','focus':'','consent':True}))

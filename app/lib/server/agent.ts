@@ -1,4 +1,4 @@
-import type { FactCheckRequest, FactClaim, FactSource, FactEvidence, FactCheckResult, AgentEvent, VerdictCode } from '../fact-check-contract';
+import type { AttachedImage, FactCheckRequest, FactClaim, FactSource, FactEvidence, FactCheckResult, AgentEvent, VerdictCode } from '../fact-check-contract';
 // @ts-ignore -- explicit extension is required by the Node 24 native test runner.
 import { normalizeFactScore, scoreBand, scoreLabel } from '../fact-score.ts';
 
@@ -151,7 +151,7 @@ export async function* runAgent(request: FactCheckRequest, key: string, signal: 
         const id=`s${sources.length+1}`;let body='';
         try {body=await readSource(candidate.url,bounded);} catch {bounded.throwIfAborted();}
         const hostname=new URL(candidate.url).hostname;
-        sources.push({id,url:candidate.url,title:candidate.title,publisher:hostname,publishedAt:null,retrievedAt:new Date().toISOString(),accessStatus:body?'verified':'unavailable',sourceType:'유형 미확인',originGroupId:null,youtubeTitle:null,youtubeComments:[],youtubeDataStatus:'not_applicable'});
+        sources.push({id,url:candidate.url,title:candidate.title,publisher:hostname,publishedAt:null,retrievedAt:new Date().toISOString(),accessStatus:body?'verified':'unavailable',sourceType:'유형 미확인',originGroupId:null,youtubeTitle:null,youtubeChannelTitle:null,youtubePublishedAt:null,youtubeViewCount:null,youtubeComments:[],youtubeDataStatus:'not_applicable'});
         if(body)texts.set(id,body.replace(/\s+/g,' ').trim());
       }
       yield {type:'stage',stage:'verifying',message:'수집 원문과 인용을 대조하고 있습니다.'};
@@ -160,7 +160,7 @@ export async function* runAgent(request: FactCheckRequest, key: string, signal: 
     }
     bounded.throwIfAborted();
     const grounded=groundJudgments(claims,judgments,sources,texts);
-    const result:FactCheckResult={text:request.text,focus:request.focus,demo:false,model:MODEL,reasoning:'max',checkedAt:new Date().toISOString(),...grounded,sources,warnings:['최대 3개 주장·6개 출처를 대상으로 한 제한된 검증입니다.','출처 간 독립성과 원자료 계보는 확인되지 않았습니다.',...(sources.some(s=>s.accessStatus==='unavailable')?['일부 출처 원문에 접근하지 못했습니다. 검색 요약은 직접 인용으로 사용하지 않았습니다.']:[])]};
+    const result:FactCheckResult={text:request.text,focus:request.focus,demo:false,model:MODEL,reasoning:'max',checkedAt:new Date().toISOString(),...grounded,sources,answer:{status:'insufficient_evidence',overview:null,sections:[],conclusion:null,model:null,reasoning:null},warnings:['최대 3개 주장·6개 출처를 대상으로 한 제한된 검증입니다.','출처 간 독립성과 원자료 계보는 확인되지 않았습니다.',...(sources.some(s=>s.accessStatus==='unavailable')?['일부 출처 원문에 접근하지 못했습니다. 검색 요약은 직접 인용으로 사용하지 않았습니다.']:[])]};
     yield {type:'result',result};
   } catch {
     if(signal.aborted)return;
@@ -171,8 +171,30 @@ export async function* runAgent(request: FactCheckRequest, key: string, signal: 
 export function validateRequest(value: unknown): FactCheckRequest {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('INVALID_REQUEST');
   const v = value as Record<string, unknown>;
-  if (Object.keys(v).sort().join(',') !== 'consent,focus,text' || v.consent !== true ||
-      typeof v.text !== 'string' || !v.text.trim() || v.text.length > 12000 ||
+  const keySet = new Set(Object.keys(v));
+  const allowed = new Set(['consent', 'focus', 'text', 'modelPreference', 'linkUrl', 'image', 'jevMode']);
+  if (!keySet.has('consent') || !keySet.has('focus') || !keySet.has('text') || ![...keySet].every(key => allowed.has(key))) throw new Error('INVALID_REQUEST');
+  const modelPreference = v.modelPreference ?? 'auto';
+  const validPreference = modelPreference === 'auto' ||
+    ['gemini-3.8-flash', 'gemini-3.7-flash', 'gpt-6-luna'].includes(modelPreference as string);
+  let linkUrl: string | null = null;
+  if (v.linkUrl !== undefined && v.linkUrl !== null) {
+    if (typeof v.linkUrl !== 'string') throw new Error('INVALID_REQUEST');
+    const normalized = canonical(v.linkUrl);
+    if (!normalized) throw new Error('INVALID_REQUEST');
+    linkUrl = normalized;
+  }
+  let image: FactCheckRequest['image'] = null;
+  if (v.image !== undefined && v.image !== null) {
+    const attachment = v.image as Record<string, unknown>;
+    if (!attachment || typeof attachment !== 'object' || Array.isArray(attachment)) throw new Error('INVALID_REQUEST');
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(attachment.mime as string)) throw new Error('INVALID_REQUEST');
+    if (typeof attachment.data !== 'string' || !attachment.data || attachment.data.length > 1500000 || !/^[A-Za-z0-9+/]*={0,2}$/.test(attachment.data)) throw new Error('INVALID_REQUEST');
+    image = {mime: attachment.mime as AttachedImage['mime'], data: attachment.data};
+  }
+  if (v.jevMode !== undefined && v.jevMode !== null && typeof v.jevMode !== 'boolean') throw new Error('INVALID_REQUEST');
+  if (!validPreference || v.consent !== true ||
+      typeof v.text !== 'string' || v.text.length > 12000 || (!v.text.trim() && !image) ||
       typeof v.focus !== 'string' || v.focus.length > 500) throw new Error('INVALID_REQUEST');
-  return { text: v.text, focus: v.focus, consent: true };
+  return { text: v.text, focus: v.focus, consent: true, modelPreference: modelPreference as FactCheckRequest['modelPreference'], ...(linkUrl ? {linkUrl} : {}), ...(image ? {image} : {}), ...(v.jevMode ? {jevMode: true} : {}) };
 }

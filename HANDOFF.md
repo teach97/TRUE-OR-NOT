@@ -1,5 +1,40 @@
 # 팩트체크 에이전트 UI MVP 작업 인계서
 
+## 2026-09-24 YouTube 영상 메타데이터와 댓글 아바타
+
+- **영상 정보:** YouTube Data API `videos.list` 요청에서 `snippet,statistics`를 받아 영상 제목과 함께 채널명(`snippet.channelTitle`), 게시일(`snippet.publishedAt`), 조회수(`statistics.viewCount`)를 화면에 표시합니다. 조회수는 정수 문자열로 유지해 큰 값도 정밀도 손실 없이 쉼표 서식으로 렌더링합니다. UI의 날짜 라벨은 공식 API의 게시일 의미에 맞춰 `게시일`로 표시합니다.
+- **댓글 아바타:** 각 공개 댓글 왼쪽에 로컬 SVG로 생성한 임의의 회색 프로필 그림을 배치합니다. 실제 댓글 작성자 사진·프로필 URL이나 개인정보는 요청하지 않으며, UI와 개인정보 안내에서 합성 이미지임을 밝힙니다.
+- **계약·개인정보:** `youtubeChannelTitle`, `youtubePublishedAt`, `youtubeViewCount`를 Python/TypeScript 응답 계약까지 전달하고 길이·날짜·숫자 형식을 검증합니다. YouTube Data API에서 받은 제목·채널명·게시일·조회수·댓글은 기존 정책과 같이 JSON 내보내기에서 제외합니다. 동의 문구, 개인정보 처리방침, 이용약관을 갱신했습니다.
+- **회귀 검증:** backend `236 passed` (기존 Starlette/AnyIO deprecation warning 1건), Node `17 passed`, `npm run typecheck`, Turbopack 기반 `npm run build`, `uv lock --check`, `git diff --check` 통과.
+- **실 API:** 서버 환경에 `YOUTUBE_API_KEY`가 없어 Google API live 호출은 확인하지 않았습니다. 실제 사용 전 키를 서버 전용 `backend/.env`에 설정하고 재시작해 채널·게시일·조회수 응답을 확인해야 합니다. API 응답의 게시일은 영상 공개 시점을 나타내며, 비공개 상태로 올린 뒤 공개한 영상은 최초 업로드 시각과 다를 수 있습니다.
+
+## 2026-09-23 중복 링크·일본어 검색 결과 보정
+
+- **원인:** SerpApi 요청은 `gl=kr`, `hl=ko`만 설정해 검색 지역과 화면 언어를 지정했으며, 검색 문서 언어 제한이 없었습니다. URL 중복 제거도 검색 결과 단계에만 적용되어 다른 URL이 같은 최종 기사로 리디렉션되면 중복으로 남았습니다. AI 답변 UI는 문단마다 출처 전체 링크를 반복해서 렌더링했습니다.
+- **검색 언어:** Google 요청에 `lr=lang_ko|lang_en`을 추가하고, 모든 검색 공급자 결과에서 `.jp` 도메인과 제목·요약에 일본어 가나가 있는 결과를 제외합니다. 원문 읽기 후에도 일본어 본문을 판별해 제외합니다. `candidateOrder`는 필터 전 Google 원래 순위를 유지합니다. 영어 페이지가 `.jp` 도메인을 쓰는 경우도 제외될 수 있습니다. SerpApi의 `lr` 언어 제한은 [공식 Google Search API 문서](https://serpapi.com/search-api)에 따릅니다.
+- **중복 제거:** `www`, 끝 슬래시, 추적 매개변수와 쿼리 매개변수 순서를 정규화해 검색 단계에서 합치고, 원문 읽기 뒤 리디렉션 최종 URL도 비교합니다. 같은 페이지면 검색 순위가 높은 첫 항목과 그 원문만 유지합니다.
+- **답변 표시:** AI 개요 안에서 동일한 출처 ID의 외부 링크는 한 번만 표시합니다. 같은 출처를 다시 인용하면 첫 링크를 가리키는 번호 참조로 보여주며, 한 문단 안의 반복 인용은 하나로 합칩니다.
+- **실검색:** 무료 검색 1회로 `AGI 2030년`을 확인했습니다. 6개 출처는 startuprecipe.co.kr, m.joseilbo.com, brunch.co.kr, www.reddit.com, www.aitimes.kr, www.news1.kr이었으며 일본 `.jp` 사이트는 반환되지 않았습니다. 검색 시점·지역 및 Google 결과 개인화에 따라 순위는 달라질 수 있습니다.
+- **회귀 검증:** backend `229 passed`(기존 Starlette/AnyIO deprecation warning 1건), Node `40 passed`, `npm run typecheck`, `npm run build` 통과. 브라우저에서 렌더링된 실제 UI 비교는 실행하지 않았습니다.
+
+## 2026-09-23 무료 Google 자연검색 연동 및 GPT 실검증
+
+- **검색 경로:** `backend/google_serp.py`가 `SERPAPI_API_KEY`가 설정된 경우에만 SerpApi 계정 API로 `Free`/`Free Plan`, 월 요금 0, 추가 크레딧 0, 주장별 검색어 수 이상 남은 무료 쿼터를 확인합니다. 조건을 충족할 때만 한국 설정(`hl=ko`, `gl=kr`)의 Google 자연검색 첫 페이지를 검색합니다. 최대 3개 고유 검색어를 사용하고 순위별 후보를 교차 배치해 전체 최대 6개를 읽습니다. 계정 확인 API는 무료이며 검색 쿼터를 차감하지 않습니다.
+- **안전한 대체:** 계정·쿼터 확인이 안 되거나 SerpApi 검색이 실패하면 Google 순위를 꾸미지 않고 기존 GPT/Gemini 웹검색 후보로 대체하며 결과 경고를 남깁니다. 검색 snippet은 인용 근거로 쓰지 않고, 기존 원문 읽기·인용 검증 단계를 통과한 문구만 답변에 사용합니다. 유료 플랜 업그레이드나 자동 갱신 코드는 없습니다.
+- **계약·UI:** `serpapi_google` 출처에는 해당 검색어의 `position`을 `Google 자연검색 N위`로 표시합니다. 기존 GPT/Gemini 후보 순서는 Google 순위라고 표시하지 않습니다. `aitimes.com`을 한국 기사 출처로 분류합니다.
+- **실검색:** 서버에 설정된 키를 출력하지 않고 `AGI 2030년`으로 1회 연결 검사를 통과했습니다. 한국 설정의 1~6위 후보는 startuprecipe.co.kr, m.joseilbo.com, brunch.co.kr, aitimes.com, news1.kr, aimasterr.tistory.com이었습니다. 개인화·검색 위치·시각 차이로 사용자의 브라우저 순위와 완전히 같다고 보장하지 않습니다.
+- **GPT 끝까지 검증:** `modelPreference=gpt-6-luna`로 같은 질문을 실제 5단계 그래프에 통과시켜 SerpApi 출처 6개, `grounded` 답변과 개요 인용 `s1`, `s4`를 확인했습니다. 개요는 2030년 도래 전망은 있으나 확정할 수 없다는 조건부 답변이었습니다. 처음 두 번의 시도는 PC 프록시 환경변수를 따르는 LLM HTTP 연결 때문에 추출 단계에서 실패했습니다. provider 연결을 `trust_env=False`로 바꾼 뒤 성공했으며, 값을 가진 환경변수나 키 자체는 출력하지 않았습니다.
+- **검증:** backend 224 passed (기존 Starlette/AnyIO deprecation warning 1건), Node 39 passed, TypeScript 검사와 Turbopack 프로덕션 빌드 통과. 실검색 스크립트는 `backend/smoke_google_serp.py`이며 실행 시 무료 검색 1회를 사용할 수 있습니다. 프론트엔드 브라우저 실화면 비교는 이번 단계에서 실행하지 않았습니다.
+- **운영:** `backend/.env.example`의 `SERPAPI_API_KEY`를 서버 전용 `backend/.env`에 설정하고 백엔드를 재시작합니다. GPT 등 LLM API 사용료는 SerpApi 무료 쿼터와 별개입니다. 실제 Google AI 개요와 동일한 답변을 보장하지 않으며, 확인된 원문 범위의 직접 답변만 생성합니다.
+
+## 2026-09-23 검색 후보·답변 표현 보완
+
+- 한국어 질문은 기존 OpenAI 웹검색에 한국 지역 힌트를 전달하고 검색 문맥 크기를 `medium`으로 늘렸습니다. 정확한 핵심 검색어를 먼저 사용하고, 결과가 부족할 때만 확장하도록 검색 지침을 조정했습니다.
+- 검색 공급자가 반환한 후보의 순서·공급자·대표 검색어를 보존하고 출처 목록에 표시합니다. 중복 URL 및 동일 사이트 제한은 유지합니다. 이 순서는 Google 자연검색 순위가 아니며, 공급자가 실제로 어떤 질의를 실행했는지도 확인한 값은 아닙니다.
+- 답변 합성 지침은 확인된 원문과 인용을 바탕으로 질문에 먼저 직접 답하고, 이후 근거와 남은 불확실성을 설명하도록 조정했습니다. 원문이 없거나 인용을 검증할 수 없으면 기존의 근거 부족 처리를 유지합니다.
+- 오프라인 검증: 백엔드 205개, 프론트엔드 36개 테스트, TypeScript 검사와 Next.js Turbopack 프로덕션 빌드 통과. 기존 Starlette/AnyIO deprecation warning 1건이 있습니다. 실제 유료 LLM·검색 호출 및 Google 결과 비교는 하지 않았습니다.
+- Google 상위 자연검색 결과를 그대로 인용하는 기능과 제3자 검색 API 연동은 아직 구현하지 않았습니다. 외부 검색 공급자 사용 여부와 검색어·키 전송에 대한 사용자 결정이 필요합니다.
+
 ## 2026-09-23 5단계 검색 개선 진행 현황
 
 | 단계 | 범위 | 상태 |
@@ -8,7 +43,19 @@
 | 2 | 검색 후보 순서 보존 및 중복 출처 정리 | 완료. 현재 결과는 기존 검색 공급자 후보이며 Google 자연 검색 순위와 동일하다고 보장하지 않음 |
 | 3 | 기사·페이지 본문 추출 및 화면 UI 문구 제거 | 완료 |
 | 4 | YouTube 자막 대신 영상 제목과 공개 댓글(최대 10개) 수집·표시 | 구현·오프라인 검증 완료. `YOUTUBE_API_KEY` 미설정으로 실제 API 호출은 미검증 |
-| 5 | 전망 질문의 찬반·불확실성 종합 및 본문 인라인 출처 표시 | 미착수 |
+| 5 | 전망 질문의 찬반·불확실성 종합 및 본문 인라인 출처 표시 | 완료 (오프라인 모의 검증; 실제 provider 호출 미실행) |
+
+### 5단계 구현 및 검증
+
+- **최종 답변:** 기존 4단계 그래프 뒤에 원문 근거 기반 합성 단계를 추가해 `AI 개요`, 근거 유형별 섹션, 정리를 구조화 응답으로 만듭니다. 예측 claim의 `prediction` / `not_checkable` 판정과 검증기 결과는 합성 단계와 분리해 보존합니다. 검증기 모델은 결과 `model`에, 답변 합성 모델은 `answer.model`에 따로 기록합니다.
+- **인용 경계:** 합성 입력은 원문을 읽은 verified 비-YouTube 출처 최대 6개이며 출처별 텍스트는 6,000자로 제한합니다. 검색 snippet·YouTube 영상 제목·댓글은 답변 근거에 넣지 않습니다. 모든 답변 블록의 출처 ID와 인용 문자열을 허용된 출처 및 원문 부분 문자열에 대조하고, 불일치 시 provider fallback을 시도합니다. 합성이 불가능하면 기존 claim·evidence를 유지하면서 `insufficient_evidence` 답변을 반환합니다.
+- **화면:** AI 개요·조건부 전망·불확실성·정리를 응답 그대로 표시하고 인라인 출처 칩을 연결합니다. verified 비-YouTube 출처이며 안전한 HTTP(S) URL인 경우에만 새 탭 링크를 렌더링합니다. 근거 부족은 AI가 생성한 답처럼 보이지 않도록 고정 안내 문구를 표시합니다.
+- **모델 순서:** 답변 합성도 Gemini 3.8 Flash → Gemini 3.7 Flash → GPT-6 Luna 순서를 사용합니다. 각 실제 provider 접근성과 계정별 호출 성공은 확인하지 않았습니다.
+- **AGI 오프라인 회귀:** `AGI는 2030년 안에 오나?`를 5단계 그래프에 통과시키고, 조기 전망과 불확실성 원문에 정확히 포함되는 인용, 예측의 `not_checkable` 유지, 검증기/합성기 모델 분리, 확률·합의 과장 문구 부재를 고정 mock 응답으로 확인했습니다. 외부 네트워크 및 실제 LLM 호출은 사용하지 않았습니다.
+- **Google 검색 한계:** 기존 검색 provider가 고른 후보와 실제 Google 자연 검색 상위 순위는 동일하다고 보장할 수 없습니다. 실제 Google SERP 순위 수집은 이 단계에서 구현하지 않았습니다. 원문 추출은 기존 공개 페이지 reader를 사용하며, YouTube 자막·트랜스크립트는 수집하지 않습니다.
+- **최종 검증:** backend `uv run --no-sync pytest -q` **194 passed**, `uv lock --check` 통과, Node `node --experimental-strip-types --test` **33 passed**, `npm run typecheck` 통과, `git diff --check` 통과. 기존 Starlette/AnyIO deprecation warning 1건이 남습니다.
+- **프로덕션 빌드:** 기본 `npm run build`의 Turbopack은 격리 worktree의 `node_modules` Junction이 worktree 밖을 가리켜 실패했습니다. 코드나 설정은 바꾸지 않고 `node node_modules/next/dist/bin/next build --webpack`으로 빌드·정적 페이지 생성을 완료했습니다. 따라서 Turbopack 빌드 자체는 미검증입니다.
+- **후속 확인:** 실제 사용 전 비민감 질문으로 Gemini/OpenAI provider 연결과 응답 품질을 별도 확인해야 합니다. 그때도 답변 인용이 화면에 연결된 출처 원문과 일치하는지 확인하고, 실제 Google 상위 순위를 제품 요구로 삼는다면 순위 제공 검색 공급자 연동을 별도 결정해야 합니다.
 
 ### 4단계 구현 및 검증
 

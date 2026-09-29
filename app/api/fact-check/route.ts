@@ -5,6 +5,11 @@ import type { FactCheckRequest } from '../../lib/fact-check-contract';
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 const headers = {'Cache-Control':'no-store'};
+const MODEL_OPTIONS = [
+  {id: 'gemini-3.8-flash', label: 'Gemini 3.8 Flash'},
+  {id: 'gemini-3.7-flash', label: 'Gemini 3.7 Flash'},
+  {id: 'gpt-6-luna', label: 'GPT-6 Luna Max'},
+] as const;
 let active = 0;
 function backend(path: string) {
   const base = new URL(process.env.FACTLENS_BACKEND_URL || 'http://127.0.0.1:8010');
@@ -20,9 +25,16 @@ export async function GET() {
     const response=await fetch(backend('/api/fact-check'),{signal,cache:'no-store',redirect:'error'});
     if(!response.ok) {await response.body?.cancel();throw new Error('BACKEND');}
     const value=JSON.parse(await limitedText(response,16000,signal));
-    if(typeof value.configured!=='boolean' || typeof value.webSearch!=='boolean')throw new Error('PROTOCOL');
+    const jevConfigured=value.jevConfigured===undefined?false:value.jevConfigured;
+    if(typeof value.configured!=='boolean' || typeof jevConfigured!=='boolean' || typeof value.webSearch!=='boolean')throw new Error('PROTOCOL');
+    if(!Array.isArray(value.modelOptions) || value.modelOptions.length !== MODEL_OPTIONS.length)throw new Error('PROTOCOL');
+    const modelOptions=MODEL_OPTIONS.map(model=>{
+      const option=value.modelOptions.find((item:unknown)=>item && typeof item==='object' && 'id' in item && item.id===model.id);
+      if(!option || typeof option.configured!=='boolean')throw new Error('PROTOCOL');
+      return {id:model.id,label:model.label,configured:option.configured};
+    });
     const reasoning=value.reasoning==='max'||value.reasoning==='high'?value.reasoning:null;
-    return Response.json({configured:value.configured,model:typeof value.model==='string'?value.model:null,reasoning,webSearch:value.webSearch},{headers});
+    return Response.json({configured:value.configured,jevConfigured,model:typeof value.model==='string'?value.model:null,reasoning,webSearch:value.webSearch,modelOptions},{headers});
   }catch{return error(503,'BACKEND_UNAVAILABLE','검증 백엔드에 연결할 수 없습니다.');}
 }
 export async function POST(req: Request) {
@@ -49,8 +61,8 @@ export async function POST(req: Request) {
   let input:FactCheckRequest;
   try {
     const signal=AbortSignal.any([req.signal,AbortSignal.timeout(5000)]);
-    if(Number(req.headers.get('content-length'))>80000)throw new Error('BODY_TOO_LARGE');
-    input=validateRequest(JSON.parse(await limitedText(new Response(req.body),80000,signal)));
+    if(Number(req.headers.get('content-length'))>3000000)throw new Error('BODY_TOO_LARGE');
+    input=validateRequest(JSON.parse(await limitedText(new Response(req.body),3000000,signal)));
   }catch{return error(400,'INVALID_REQUEST','본문, 확인 요청 길이 및 외부 전송 동의를 확인해 주세요.');}
   if(active>=1)return error(429,'BUSY','진행 중인 검증이 있습니다. 완료 후 다시 시도해 주세요.');
   if(req.signal.aborted)return error(400,'CANCELLED','요청이 취소되었습니다.');

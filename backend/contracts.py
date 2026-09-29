@@ -2,6 +2,7 @@
 from typing import Annotated, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+from schemas import ModelId
 from scoring import ScoreBand, default_fact_score, score_band, score_label
 
 
@@ -36,7 +37,17 @@ class FactSource(_ContractModel):
     accessStatus: AccessStatus
     sourceType: str = Field(min_length=1, max_length=100)
     originGroupId: str | None
+    searchProvider: Literal["openai_web_search", "gemini_google_search", "tavily_search"] | None = None
+    searchQuery: str | None = Field(default=None, max_length=300)
+    candidateOrder: int | None = Field(default=None, ge=1, le=1000)
     youtubeTitle: str | None = Field(default=None, max_length=300)
+    youtubeChannelTitle: str | None = Field(default=None, max_length=300)
+    youtubePublishedAt: str | None = Field(
+        default=None,
+        max_length=50,
+        pattern=r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$",
+    )
+    youtubeViewCount: str | None = Field(default=None, pattern=r"^\d{1,30}$")
     youtubeComments: list[Annotated[str, Field(max_length=10_000)]] = Field(
         default_factory=list,
         max_length=10,
@@ -44,6 +55,30 @@ class FactSource(_ContractModel):
     youtubeDataStatus: Literal[
         "not_applicable", "not_configured", "collected", "unavailable",
     ] = "not_applicable"
+
+
+class FactCheckProgressSource(_ContractModel):
+    """Small, non-sensitive source projection used while verification is running."""
+
+    id: str = Field(min_length=1, max_length=100)
+    url: str = Field(min_length=1, max_length=2048)
+    title: str = Field(min_length=1, max_length=300)
+    publisher: str = Field(min_length=1, max_length=300)
+    accessStatus: Literal["candidate", "verified", "unavailable"]
+    sourceType: str = Field(min_length=1, max_length=100)
+
+
+class FactCheckProgressCitation(_ContractModel):
+    sourceId: str = Field(min_length=1, max_length=100)
+    quote: str = Field(min_length=1, max_length=2_000)
+
+
+class FactCheckProgressClaim(_ContractModel):
+    id: str = Field(min_length=1, max_length=100)
+    quote: str = Field(min_length=1, max_length=12_000)
+    summary: str = Field(min_length=1, max_length=2_000)
+    verdict: str = Field(min_length=1, max_length=100)
+    citations: list[FactCheckProgressCitation] = Field(max_length=3)
 
 
 class FactEvidence(_ContractModel):
@@ -54,6 +89,17 @@ class FactEvidence(_ContractModel):
     quoteTranslation: str | None = Field(default=None, max_length=2_000)
     quoteVerified: Literal[True]
     relation: EvidenceRelation
+    sectionTitle: str | None = Field(default=None, min_length=1, max_length=300)
+    sectionText: str | None = Field(default=None, min_length=1, max_length=8_000)
+    sectionTruncated: bool = False
+
+    @model_validator(mode="after")
+    def validate_section_details(self):
+        if (self.sectionTitle is None) != (self.sectionText is None):
+            raise ValueError("Section title and text must be provided together")
+        if self.sectionTruncated and self.sectionText is None:
+            raise ValueError("Truncated section details need section text")
+        return self
 
 
 class FactClaim(_ContractModel):
@@ -97,6 +143,46 @@ class FactClaim(_ContractModel):
         return self
 
 
+class AnswerCitation(_ContractModel):
+    sourceId: str = Field(min_length=1, max_length=100)
+    quote: str = Field(min_length=1, max_length=2_000)
+
+
+class AnswerBlock(_ContractModel):
+    text: str = Field(min_length=1, max_length=1_200)
+    citations: list[AnswerCitation] = Field(max_length=3)
+
+
+class AnswerSection(_ContractModel):
+    kind: Literal["supporting", "counter", "uncertainty", "context"]
+    title: str = Field(min_length=1, max_length=120)
+    items: list[AnswerBlock] = Field(min_length=1, max_length=3)
+
+
+class FactCheckAnswer(_ContractModel):
+    status: Literal["grounded", "insufficient_evidence"]
+    overview: AnswerBlock | None
+    sections: list[AnswerSection] = Field(max_length=4)
+    conclusion: AnswerBlock | None
+    model: str | None = Field(max_length=100)
+    reasoning: Reasoning | None
+
+    @model_validator(mode="after")
+    def validate_answer_blocks(self):
+        blocks = [block for block in (self.overview, self.conclusion) if block]
+        blocks.extend(item for section in self.sections for item in section.items)
+
+        if self.status == "grounded" and (
+            self.overview is None
+            or self.conclusion is None
+            or any(not block.citations for block in blocks)
+        ):
+            raise ValueError("Grounded answers need cited overview and conclusion")
+        if self.status == "insufficient_evidence" and self.sections:
+            raise ValueError("Insufficient answers cannot assert evidence sections")
+        return self
+
+
 class FactCheckResult(_ContractModel):
     text: str = Field(min_length=1, max_length=12_000)
     focus: str = Field(max_length=500)
@@ -108,6 +194,14 @@ class FactCheckResult(_ContractModel):
     sources: list[FactSource] = Field(max_length=6)
     evidence: list[FactEvidence] = Field(max_length=18)
     warnings: list[str] = Field(max_length=8)
+    answer: FactCheckAnswer = Field(default_factory=lambda: FactCheckAnswer(
+        status="insufficient_evidence",
+        overview=None,
+        sections=[],
+        conclusion=None,
+        model=None,
+        reasoning=None,
+    ))
 
     @model_validator(mode="after")
     def validate_cross_references(self):
@@ -152,6 +246,18 @@ class FactCheckResult(_ContractModel):
         linked_ids = {evidence_id for claim in self.claims for evidence_id in claim.evidenceIds}
         if linked_ids != set(evidence_by_id):
             raise ValueError("Unlinked evidence is not allowed")
+
+        answer_blocks = [block for block in (self.answer.overview, self.answer.conclusion) if block]
+        answer_blocks.extend(item for section in self.answer.sections for item in section.items)
+        for block in answer_blocks:
+            for citation in block.citations:
+                source = sources.get(citation.sourceId)
+                if (
+                    source is None
+                    or source.accessStatus != "verified"
+                    or source.sourceType == "유튜브"
+                ):
+                    raise ValueError("Answer citation references an ineligible source")
         return self
 
 
@@ -159,11 +265,19 @@ class FactCheckResponse(_ContractModel):
     result: FactCheckResult
 
 
+class ModelOption(_ContractModel):
+    id: ModelId
+    label: str = Field(min_length=1, max_length=50)
+    configured: bool
+
+
 class AgentStatus(_ContractModel):
     configured: bool
+    jevConfigured: bool
     workflowReady: bool
     engine: Literal["langgraph"] = "langgraph"
     model: str | None
     reasoning: Reasoning | None
     webSearch: bool
+    modelOptions: list[ModelOption]
     phase: Literal["api-foundation", "workflow-ready"]

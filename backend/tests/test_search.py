@@ -13,6 +13,8 @@ import pytest
      ["https://dailymotion.com/1", "https://dailymotion.com/2"]),
     (["https://a.example/story?id=1&utm_source=x", "https://a.example/story?id=1&utm_source=y", "https://a.example/story?id=2"],
      ["https://a.example/story?id=1&utm_source=x", "https://a.example/story?id=2"]),
+    (["https://www.a.example/story/?utm_source=x", "https://a.example/story/"],
+     ["https://www.a.example/story/?utm_source=x"]),
 ])
 def test_search_preserves_candidate_order_and_strict_duplicate_limits(urls, expected):
     from search import search_sources
@@ -34,6 +36,41 @@ def test_search_preserves_candidate_order_and_strict_duplicate_limits(urls, expe
     assert [s["id"] for s in result["sources"]] == [f"s{i+1}" for i in range(len(expected))]
 
 
+def test_search_candidates_exclude_japanese_pages_across_providers():
+    from search import _project_candidates
+
+    sources = _project_candidates([
+        {"url": "https://dx.mri.co.jp/agi", "title": "AGI forecast", "searchProvider": "openai_web_search", "searchQuery": "AGI 2030"},
+        {"url": "https://example.com/jp", "title": "AGI ニュース", "searchProvider": "gemini_google_search", "searchQuery": "AGI 2030"},
+        {"url": "https://news.example.kr/agi", "title": "한국 AGI 전망", "searchProvider": "openai_web_search", "searchQuery": "AGI 2030"},
+    ])
+
+    assert [source["url"] for source in sources] == ["https://news.example.kr/agi"]
+
+
+def test_search_candidates_exclude_naver_kin_answers():
+    from search import _project_candidates
+
+    sources = _project_candidates([
+        {"url": "https://kin.naver.com/qna/detail.naver?d1id=1&dirId=1&docId=123", "title": "마크저커버그 뱀파이어인가요", "searchProvider": "serpapi_google", "searchQuery": "마크저커버그"},
+        {"url": "https://m.kin.naver.com/qna/detail.naver?d1id=1&dirId=2&docId=456", "title": "모바일 지식인 답변", "searchProvider": "gemini_google_search", "searchQuery": "마크저커버그"},
+        {"url": "https://namu.wiki/w/reptilian", "title": "렙틸리언", "searchProvider": "serpapi_google", "searchQuery": "마크저커버그"},
+    ])
+
+    assert [source["url"] for source in sources] == ["https://namu.wiki/w/reptilian"]
+
+
+def test_search_candidates_exclude_reported_ad_doorway_hosts():
+    from search import _project_candidates
+
+    sources = _project_candidates([
+        {"url": "https://sziaeletem.hu/cikk/reptilian-zuckerberg", "title": "광고 도어웨이", "searchProvider": "serpapi_google", "searchQuery": "마크저커버그"},
+        {"url": "https://namu.wiki/w/reptilian", "title": "렙틸리언", "searchProvider": "serpapi_google", "searchQuery": "마크저커버그"},
+    ])
+
+    assert [source["url"] for source in sources] == ["https://namu.wiki/w/reptilian"]
+
+
 def test_search_collects_deduplicated_candidates_without_evidence():
     assert importlib.util.find_spec("search") is not None, "Search adapter missing"
     from search import search_sources
@@ -41,6 +78,8 @@ def test_search_collects_deduplicated_candidates_without_evidence():
     def handler(request):
         body = json.loads(request.content)
         assert body["tools"][0]["type"] == "web_search"
+        assert body["tools"][0]["search_context_size"] == "medium"
+        assert "user_location" not in body["tools"][0]
         assert body["include"] == ["web_search_call.action.sources"]
         assert body["max_tool_calls"] == 4
         assert len(body["input"]) > 0
@@ -65,6 +104,9 @@ def test_search_collects_deduplicated_candidates_without_evidence():
         "sourceType": "웹 출처",
         "originGroupId": "example.org",
         "accessStatus": "pending",
+        "searchProvider": "openai_web_search",
+        "searchQuery": "Claim",
+        "candidateOrder": 1,
     }]}
 
 
@@ -96,8 +138,63 @@ def test_search_keeps_completed_sources_when_response_has_nonterminal_search_ite
             "sourceType": "웹 출처",
             "originGroupId": "example.org",
             "accessStatus": "pending",
+            "searchProvider": "openai_web_search",
+            "searchQuery": "Claim",
+            "candidateOrder": 1,
         }]
     }
+
+
+def test_search_keeps_completed_sources_when_response_hits_output_token_limit():
+    from search import search_sources
+
+    def handler(request):
+        return httpx.Response(200, json={
+            "status": "incomplete",
+            "incomplete_details": {"reason": "max_output_tokens"},
+            "output": [
+                {"type": "web_search_call", "status": "completed", "action": {"sources": [
+                    {"url": "https://example.org/primary", "title": "Primary source"},
+                ]}},
+                {"type": "web_search_call", "status": "searching"},
+            ],
+        })
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            return await search_sources(
+                {"claims": [{"id": "c1", "quote": "AGI 2030", "kind": "prediction"}],
+                 "focus": "", "consent": True},
+                api_key="test-only",
+                client=client,
+            )
+
+    assert [source["url"] for source in asyncio.run(run())["sources"]] == [
+        "https://example.org/primary"
+    ]
+
+
+def test_search_still_rejects_token_limited_response_without_completed_search():
+    from search import search_sources
+
+    def handler(request):
+        return httpx.Response(200, json={
+            "status": "incomplete",
+            "incomplete_details": {"reason": "max_output_tokens"},
+            "output": [{"type": "web_search_call", "status": "searching"}],
+        })
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            return await search_sources(
+                {"claims": [{"id": "c1", "quote": "AGI 2030", "kind": "prediction"}],
+                 "focus": "", "consent": True},
+                api_key="test-only",
+                client=client,
+            )
+
+    with pytest.raises(ValueError, match="SEARCH_FAILED"):
+        asyncio.run(run())
 
 
 def test_search_selects_diverse_source_types_instead_of_one_publisher():
@@ -157,6 +254,8 @@ def test_search_supports_gemini_google_search_citations():
         assert body["model"] == "gemini-3.8-flash"
         assert body["tools"] == [{"type": "google_search"}]
         assert body["generation_config"]["thinking_level"] == "high"
+        assert body["generation_config"]["tool_choice"] == "any"
+        assert "tool_choice" not in body
         return httpx.Response(200, json={
             "status": "completed",
             "steps": [
@@ -189,6 +288,9 @@ def test_search_supports_gemini_google_search_citations():
         "sourceType": "웹 출처",
         "originGroupId": "example.org",
         "accessStatus": "pending",
+        "searchProvider": "gemini_google_search",
+        "searchQuery": "Claim",
+        "candidateOrder": 1,
     }]
 
 
@@ -221,6 +323,7 @@ def test_prediction_claims_are_searched_with_primary_query_in_provider_order():
         requested = True
         body = json.loads(request.content)
         search_input = json.loads(body["input"])
+        assert body["tools"][0]["user_location"] == {"type": "approximate", "country": "KR"}
         assert search_input["primaryQueries"] == ["AGI 2030년"]
         assert search_input["claims"][0]["searchQuery"] == "AGI 2030년"
         return httpx.Response(200, json={"status": "completed", "output": [
@@ -248,3 +351,11 @@ def test_prediction_claims_are_searched_with_primary_query_in_provider_order():
         "https://first.example/report",
         "https://second.example/report",
     ]
+    assert [source["candidateOrder"] for source in result["sources"]] == [1, 2]
+    assert {source["searchQuery"] for source in result["sources"]} == {"AGI 2030년"}
+
+
+def test_aitimes_is_classified_as_korean_news_in_google_results():
+    from search import source_type_for_url
+
+    assert source_type_for_url("https://www.aitimes.com/news/articleView.html?idxno=123") == "한국 기사"
