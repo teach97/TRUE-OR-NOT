@@ -34,8 +34,11 @@ Copy-Item .env.example .env
 |---|---|
 | `GEMINI_API_KEY` | Gemini 3.8 Flash 및 Gemini 3.7 Flash 사용에 필요합니다. |
 | `OPENAI_API_KEY` | GPT-6 Luna 사용과 OpenAI 웹 검색 경로에 필요합니다. |
+| `TYPESAFE_API_KEY` | JEV 고속 판정(TypeSafe System One) 사용에 필요합니다. 없으면 JEV 스위치가 비활성화되고 일반 LLM 검증만 동작합니다. |
+| `TAVILY_API_KEY` | 선택 사항입니다. 설정하면 Tavily 검색을 LLM 검색과 함께 사용합니다. |
 | `SERPAPI_API_KEY` | 선택 사항입니다. 무료 요금제 조건이 확인되면 Google 자연검색을 사용합니다. |
 | `YOUTUBE_API_KEY` | 선택 사항입니다. 검색 결과에 YouTube 영상이 있을 때 영상 정보와 공개 댓글을 가져오는 데 사용합니다. |
+| `FINNHUB_API_KEY` | 선택 사항입니다. 주가 조회 어댑터에 사용합니다. |
 
 Gemini 또는 OpenAI 키 중 하나 이상을 설정해야 LLM 검증을 시작할 수 있습니다. 두 제공자 키를 모두 설정하고 모델을 `auto`로 선택하면 다음 순서로 시도합니다.
 

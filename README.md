@@ -4,7 +4,7 @@ FactLens는 Next.js App Router, TypeScript, Tailwind CSS로 만든 팩트체크 
 
 ## 개발 환경 시작
 
-Node.js와 npm을 설치한 뒤 저장소 루트에서 실행합니다.
+Node.js 20 이상과 npm을 설치한 뒤 저장소 루트에서 실행합니다.
 
 ```bash
 npm ci
