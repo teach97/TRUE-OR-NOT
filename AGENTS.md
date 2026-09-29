@@ -11,3 +11,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 ## Verification cleanup
 
 - After browser or build verification, stop temporary development/test servers and close test browser windows unless the user explicitly requests that they remain open.
+
+## LLM Wiki
+
+- 세션에서 재사용 가치가 있는 교훈(삽질, 결정, 공식 문서 확인 결과)이 나오면 `llm-wiki` 스킬 절차로 위키 반영을 제안해.
