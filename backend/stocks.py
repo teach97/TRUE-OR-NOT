@@ -125,6 +125,10 @@ def build_market_context(
     if not isinstance(current, (int, float)):
         current = points[-1].get("close")
     previous_close = quote.get("previousClose")
+    if not isinstance(previous_close, (int, float)) and len(points) >= 2:
+        previous_close = points[-2].get("close")
+        if not isinstance(previous_close, (int, float)):
+            previous_close = None
     change_percent = None
     if isinstance(current, (int, float)) and isinstance(previous_close, (int, float)) and previous_close:
         change_percent = round((current - previous_close) / previous_close * 100, 2)

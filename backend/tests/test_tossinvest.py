@@ -91,6 +91,33 @@ def test_candles_sorted_oldest_first_and_capped(monkeypatch):
     assert result["points"][0]["time"] < result["points"][1]["time"]
 
 
+def test_candles_unwraps_nested_result_object(monkeypatch):
+    import httpx
+
+    import tossinvest
+
+    tossinvest._token_cache.update({"token": None, "expires_at": 0.0})
+
+    def handler(request):
+        if request.url.path == "/oauth2/token":
+            return httpx.Response(200, json={
+                "access_token": "tok-nested", "token_type": "Bearer", "expires_in": 3600})
+        assert request.url.path == "/api/v1/candles"
+        return httpx.Response(200, json={"result": {"candles": [
+            {"timestamp": "2026-09-30T00:00:00+09:00", "openPrice": "2", "highPrice": "3",
+             "lowPrice": "1.5", "closePrice": "2.2", "volume": "20"},
+        ]}})
+
+    async def run():
+        transport = httpx.MockTransport(handler)
+        async with httpx.AsyncClient(transport=transport) as client:
+            return await tossinvest.fetch_candles(
+                "005930", client_id="id", client_secret="secret", client=client)
+
+    result = _run(run())
+    assert [point["close"] for point in result["points"]] == [2.2]
+
+
 def test_missing_credentials_and_bad_symbol():
     import asyncio
 

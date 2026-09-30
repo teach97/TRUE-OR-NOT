@@ -212,6 +212,8 @@ async def fetch_candles(
     if data is None:
         return {"symbol": cleaned, "error": "upstream_unavailable"}
     results = data.get("result")
+    if isinstance(results, dict):
+        results = results.get("candles")
     if not isinstance(results, list):
         return {"symbol": cleaned, "error": "unknown_symbol"}
     points = []
