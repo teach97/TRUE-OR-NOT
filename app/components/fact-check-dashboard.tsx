@@ -297,6 +297,7 @@ function ProgressReply({progress}: {progress: ChatProgress}) {
   const heading = claims !== undefined ? '1차 검증 요약' : '검증 진행 상황';
   return <section className="progress-reply" data-testid="progress-reply" aria-label="검증 진행 결과">
     <div className="progress-reply-heading"><span aria-hidden="true">✦</span><h3><BlurText text={heading}/></h3><span className="progress-reply-status">{progress.error ? '중단' : progress.completed ? '완료' : '중간 업데이트'}</span></div>
+    {!progress.completed && !progress.error && <ThinkingLoader label={progress.status ?? '최종 답변을 만드는 중입니다.'}/>}
     <VerifyTimeline progress={progress}/>
     {progress.status && <p className="progress-current-stage" data-testid="progress-stage">
       <span>{progress.status}</span><time>{progress.statusElapsedSeconds ?? 0}초 경과</time>
