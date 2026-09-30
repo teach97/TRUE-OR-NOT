@@ -18,9 +18,9 @@ def test_configured_provider_chain_is_ordered_and_skips_missing_keys():
     )
 
     assert [(provider.kind, provider.model, provider.reasoning) for provider in providers] == [
+        ("openai", "gpt-6-luna", "max"),
         ("gemini", "gemini-3.8-flash", "high"),
         ("gemini", "gemini-3.7-flash", "high"),
-        ("openai", "gpt-6-luna", "max"),
     ]
 
     only_gemini = configured_providers(
@@ -150,7 +150,7 @@ def test_runtime_stage_retries_next_provider_after_adapter_failure(monkeypatch):
 
     async def fake_extract(state, *, client, provider):
         attempts.append(provider.model)
-        if provider.model == "gemini-3.8-flash":
+        if provider.model == "gpt-6-luna":
             raise ValueError("EXTRACTION_FAILED")
         return {"claims": [], "llmModel": provider.model}
 
@@ -166,8 +166,8 @@ def test_runtime_stage_retries_next_provider_after_adapter_failure(monkeypatch):
         adapters.extract({"text": "claim", "focus": "", "consent": True})
     )
 
-    assert attempts == ["gemini-3.8-flash", "gemini-3.7-flash"]
-    assert result["llmModel"] == "gemini-3.7-flash"
+    assert attempts == ["gpt-6-luna", "gemini-3.8-flash"]
+    assert result["llmModel"] == "gemini-3.8-flash"
 
 
 def test_runtime_stage_keeps_explicit_provider_selection_pinned_after_failure(monkeypatch):

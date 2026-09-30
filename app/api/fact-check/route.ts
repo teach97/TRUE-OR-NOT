@@ -6,9 +6,9 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 const headers = {'Cache-Control':'no-store'};
 const MODEL_OPTIONS = [
+  {id: 'gpt-6-luna', label: 'GPT-6 Luna Max · Fast'},
   {id: 'gemini-3.8-flash', label: 'Gemini 3.8 Flash'},
   {id: 'gemini-3.7-flash', label: 'Gemini 3.7 Flash'},
-  {id: 'gpt-6-luna', label: 'GPT-6 Luna Max · Fast'},
 ] as const;
 let active = 0;
 function backend(path: string) {

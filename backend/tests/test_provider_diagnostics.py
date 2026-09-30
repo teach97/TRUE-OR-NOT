@@ -35,7 +35,7 @@ def test_provider_fallback_logs_model_stage_and_status_without_secrets(monkeypat
         asyncio.run(run())
 
     logs = "\n".join(record.getMessage() for record in caplog.records)
-    assert attempted_models == ["gemini-3.8-flash", "gemini-3.7-flash", "gpt-6-luna"]
+    assert attempted_models == ["gpt-6-luna", "gemini-3.8-flash", "gemini-3.7-flash"]
     assert logs.count("provider attempt failed") == 3
     assert "stage=EXTRACTION_FAILED" in logs
     assert "provider=gemini-3.8-flash" in logs

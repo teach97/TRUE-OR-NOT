@@ -30,9 +30,9 @@ def test_health_and_status_do_not_claim_provider_readiness(monkeypatch):
             "engine": "langgraph", "model": None, "reasoning": None,
             "webSearch": False, "phase": "api-foundation",
             "modelOptions": [
+                {"id": "gpt-6-luna", "label": "GPT-6 Luna Max", "configured": False},
                 {"id": "gemini-3.8-flash", "label": "Gemini 3.8 Flash", "configured": False},
                 {"id": "gemini-3.7-flash", "label": "Gemini 3.7 Flash", "configured": False},
-                {"id": "gpt-6-luna", "label": "GPT-6 Luna Max", "configured": False},
             ],
         }
         assert client.post("/api/fact-check", json={
@@ -287,12 +287,12 @@ def test_status_reports_ready_for_configured_runtime(monkeypatch):
     with TestClient(app) as client:
         assert client.get("/api/fact-check").json() == {
             "configured": True, "jevConfigured": False, "workflowReady": True,
-            "engine": "langgraph", "model": "gemini-3.8-flash", "reasoning": "high",
+            "engine": "langgraph", "model": "gpt-6-luna", "reasoning": "max",
             "webSearch": True, "phase": "workflow-ready",
             "modelOptions": [
+                {"id": "gpt-6-luna", "label": "GPT-6 Luna Max", "configured": True},
                 {"id": "gemini-3.8-flash", "label": "Gemini 3.8 Flash", "configured": True},
                 {"id": "gemini-3.7-flash", "label": "Gemini 3.7 Flash", "configured": True},
-                {"id": "gpt-6-luna", "label": "GPT-6 Luna Max", "configured": True},
             ],
         }
 
@@ -330,9 +330,9 @@ def test_status_reports_gemini_fallback_when_openai_is_missing(monkeypatch):
             "engine": "langgraph", "model": "gemini-3.8-flash", "reasoning": "high",
             "webSearch": True, "phase": "workflow-ready",
             "modelOptions": [
+                {"id": "gpt-6-luna", "label": "GPT-6 Luna Max", "configured": False},
                 {"id": "gemini-3.8-flash", "label": "Gemini 3.8 Flash", "configured": True},
                 {"id": "gemini-3.7-flash", "label": "Gemini 3.7 Flash", "configured": True},
-                {"id": "gpt-6-luna", "label": "GPT-6 Luna Max", "configured": False},
             ],
         }
 

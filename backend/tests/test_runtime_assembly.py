@@ -217,7 +217,7 @@ def test_forecast_synthesis_preserves_prediction_and_citations(monkeypatch):
     def provider_response(request):
         body = json.loads(request.content)
         attempted_models.append(body["model"])
-        assert body["model"] == "gemini-3.8-flash"
+        assert body["model"] in {"gpt-6-luna", "gemini-3.8-flash"}
         synthesis_input = json.loads(body["input"])
         assert synthesis_input["question"] == question
         assert {item["id"]: item["text"] for item in synthesis_input["sources"]} == source_texts
@@ -275,7 +275,7 @@ def test_forecast_synthesis_preserves_prediction_and_citations(monkeypatch):
     state = asyncio.run(graph.ainvoke({"text": question, "focus": "", "consent": True}))
     result = FactCheckResponse.model_validate({"result": state["result"]}).result
 
-    assert attempted_models == ["gemini-3.8-flash"]
+    assert attempted_models == ["gpt-6-luna", "gemini-3.8-flash"]
     assert result.claims[0].kind == "prediction"
     assert result.claims[0].verdictCode == "not_checkable"
     assert result.claims[0].summary == "미래 예측은 현재 사실처럼 확정할 수 없습니다."
@@ -427,7 +427,7 @@ def test_all_synthesis_providers_failing_preserves_verified_result(monkeypatch):
     state = asyncio.run(graph.ainvoke({"text": "Claim", "focus": "", "consent": True}))
     result = FactCheckResponse.model_validate({"result": state["result"]}).result
 
-    assert attempted_models == ["gemini-3.8-flash", "gemini-3.7-flash", "gpt-6-luna"]
+    assert attempted_models == ["gpt-6-luna", "gemini-3.8-flash", "gemini-3.7-flash"]
     assert [claim.id for claim in result.claims] == ["c1"]
     assert [evidence.id for evidence in result.evidence] == ["e1"]
     assert result.model == "gpt-6-luna"

@@ -43,9 +43,9 @@ Copy-Item .env.example .env
 
 Gemini 또는 OpenAI 키 중 하나 이상을 설정해야 LLM 검증을 시작할 수 있습니다. 두 제공자 키를 모두 설정하고 모델을 `auto`로 선택하면 다음 순서로 시도합니다.
 
-1. Gemini 3.8 Flash (`high`)
-2. Gemini 3.7 Flash (`high`)
-3. GPT-6 Luna (`max`)
+1. GPT-6 Luna (`max`, Fast 처리)
+2. Gemini 3.8 Flash (`high`)
+3. Gemini 3.7 Flash (`high`)
 
 `auto`가 아닌 특정 모델을 선택하면 그 모델만 호출합니다. 선택한 모델이 설정되어 있지 않거나 응답하지 않으면 다른 모델로 자동 전환하지 않습니다.
 

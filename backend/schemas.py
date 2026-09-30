@@ -9,9 +9,9 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 ModelId = Literal["gemini-3.8-flash", "gemini-3.7-flash", "gpt-6-luna"]
 ModelPreference = Literal["auto", "gemini-3.8-flash", "gemini-3.7-flash", "gpt-6-luna"]
 MODEL_CATALOG: tuple[tuple[ModelId, str], ...] = (
+    ("gpt-6-luna", "GPT-6 Luna Max"),
     ("gemini-3.8-flash", "Gemini 3.8 Flash"),
     ("gemini-3.7-flash", "Gemini 3.7 Flash"),
-    ("gpt-6-luna", "GPT-6 Luna Max"),
 )
 
 _IMAGE_MIMES = ("image/jpeg", "image/png", "image/webp")

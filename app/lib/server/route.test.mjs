@@ -78,7 +78,7 @@ test('production remains blocked for both local authorities',async()=>{
 test('status uses backend configuration and projects only safe fields',async()=>{
  const {GET}=await import('../../api/fact-check/route.ts');
  const saved=globalThis.fetch;
- const modelOptions=[{id:'gemini-3.8-flash',label:'Gemini 3.8 Flash',configured:true},{id:'gemini-3.7-flash',label:'Gemini 3.7 Flash',configured:true},{id:'gpt-6-luna',label:'GPT-6 Luna Max · Fast',configured:false}];
+ const modelOptions=[{id:'gpt-6-luna',label:'GPT-6 Luna Max · Fast',configured:false},{id:'gemini-3.8-flash',label:'Gemini 3.8 Flash',configured:true},{id:'gemini-3.7-flash',label:'Gemini 3.7 Flash',configured:true}];
  globalThis.fetch=async(url)=>{assert.equal(String(url),'http://127.0.0.1:8010/api/fact-check');return Response.json({configured:true,jevConfigured:true,workflowReady:true,model:'gemini-3.8-flash',reasoning:'high',webSearch:true,modelOptions,private:'SECRET'});};
  try { const r=await GET();const body=await r.json();assert.equal(body.configured,true);assert.equal(body.jevConfigured,true);assert.deepEqual(body.modelOptions,modelOptions);assert.equal(body.private,undefined);assert.equal(r.headers.get('cache-control'),'no-store'); }
  finally{globalThis.fetch=saved;}
@@ -88,9 +88,9 @@ test('legacy backend status keeps all model options when Jev status is absent',a
  const {GET}=await import('../../api/fact-check/route.ts');
  const saved=globalThis.fetch;
  const modelOptions=[
+  {id:'gpt-6-luna',label:'GPT-6 Luna Max · Fast',configured:true},
   {id:'gemini-3.8-flash',label:'Gemini 3.8 Flash',configured:true},
   {id:'gemini-3.7-flash',label:'Gemini 3.7 Flash',configured:true},
-  {id:'gpt-6-luna',label:'GPT-6 Luna Max · Fast',configured:true},
  ];
  globalThis.fetch=async()=>Response.json({configured:true,workflowReady:true,model:'gemini-3.8-flash',reasoning:'high',webSearch:true,modelOptions});
  try {
