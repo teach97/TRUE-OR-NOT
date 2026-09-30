@@ -102,7 +102,7 @@ button, p, h3, dd { overflow-wrap: anywhere; }
 .chat-kicker svg { color: var(--accent); }
 .chat-intro h1 { margin-top: 20px; color: #f3f4f4; font-size: clamp(38px, 5.2vw, 66px); line-height: 1.04; letter-spacing: -.075em; }
 .chat-intro p { max-width: 510px; margin: 18px auto 0; color: #aab2b9; font-size: 15px; line-height: 1.75; }
-.chat-thread { display: flex; flex-direction: column; gap: 13px; max-width: 820px; min-height: 72px; max-height: min(680px, 70dvh); margin: 36px auto 17px; overflow-y: auto; overscroll-behavior: contain; padding-right: 6px; scrollbar-width: thin; scrollbar-color: rgb(155 221 212 / .35) transparent; }
+.chat-thread { display: flex; flex-direction: column; gap: 13px; max-width: 820px; min-height: 72px; max-height: min(680px, 70dvh); margin: 36px auto 17px; overflow-y: auto; overscroll-behavior: contain; padding-right: 6px; scrollbar-width: thin; scrollbar-color: rgb(155 221 212 / .35) transparent; scroll-behavior: smooth; }
 .chat-thread.is-scrolled { -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 30px, #000 100%); mask-image: linear-gradient(to bottom, transparent 0, #000 30px, #000 100%); }
 .chat-thread.is-scrolled:not(.is-at-bottom) { -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 30px, #000 calc(100% - 24px), transparent 100%); mask-image: linear-gradient(to bottom, transparent 0, #000 30px, #000 calc(100% - 24px), transparent 100%); }
 .chat-thread:not(.is-at-bottom):not(.is-scrolled) { -webkit-mask-image: linear-gradient(to bottom, #000 calc(100% - 24px), transparent 100%); mask-image: linear-gradient(to bottom, #000 calc(100% - 24px), transparent 100%); }
@@ -740,6 +740,6 @@ button, p, h3, dd { overflow-wrap: anywhere; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  html { scroll-behavior: auto; }
+  html, .chat-thread { scroll-behavior: auto; }
   *, *::before, *::after { animation: none !important; transition: none !important; }
 }
