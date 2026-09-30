@@ -19,6 +19,9 @@ ProviderKind = Literal["openai", "gemini"]
 Reasoning = Literal["max", "high"]
 _MAX_RESPONSE_BYTES = 1_000_000
 _SEARCH_TIMEOUT_SECONDS = 120
+# OpenAI Fast-mode processing tier (service_tier). Priority-priced at 2x
+# standard rates; the project must allow it or the API returns 400.
+_SERVICE_TIER = "fast"
 
 
 @dataclass(frozen=True, slots=True)
@@ -168,6 +171,7 @@ def _structured_payload(
         return {
             "model": provider.model,
             "reasoning": {"effort": provider.reasoning},
+            "service_tier": _SERVICE_TIER,
             "store": False,
             "max_output_tokens": max_output_tokens,
             "instructions": instructions,
@@ -217,6 +221,7 @@ def _search_payload(
         return {
             "model": provider.model,
             "reasoning": {"effort": provider.reasoning},
+            "service_tier": _SERVICE_TIER,
             "store": False,
             "max_output_tokens": 6000,
             "instructions": instructions,

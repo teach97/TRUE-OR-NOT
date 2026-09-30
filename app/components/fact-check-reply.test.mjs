@@ -114,7 +114,7 @@ test('LLM multiple claims attach a rounded average with no single verdict', () =
 });
 
 test('reply meta names the answering model and the search backend', () => {
-  assert.equal(modelLabel('gpt-6-luna'), 'GPT-6 Luna Max');
+  assert.equal(modelLabel('gpt-6-luna'), 'GPT-6 Luna Max · Fast');
   assert.equal(modelLabel('unknown-model'), 'unknown-model');
   assert.equal(modelLabel(null), '모델 미확인');
   assert.equal(searchBackendLabel([{searchProvider:'tavily_search'}]), 'Tavily 검색');

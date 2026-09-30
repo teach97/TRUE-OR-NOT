@@ -123,6 +123,25 @@ def test_openai_structured_schema_requires_defaulted_properties_too():
     assert "default" not in judgment_schema["properties"]["factScore"]
 
 
+def test_openai_payloads_request_fast_service_tier():
+    from providers import LLMProvider, _search_payload, _structured_payload
+    from verification import JudgmentResponse
+
+    provider = LLMProvider("openai", "gpt-6-luna", "max", "test-only")
+    structured = _structured_payload(
+        provider,
+        instructions="test",
+        input_data={},
+        schema=JudgmentResponse.model_json_schema(),
+        max_output_tokens=100,
+    )
+    search = _search_payload(
+        provider, instructions="test", input_data={"primaryQueries": []}
+    )
+    assert structured["service_tier"] == "fast"
+    assert search["service_tier"] == "fast"
+
+
 def test_runtime_stage_retries_next_provider_after_adapter_failure(monkeypatch):
     import runtime
     from runtime import Settings, make_runtime_adapters
