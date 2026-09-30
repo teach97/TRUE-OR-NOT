@@ -101,7 +101,7 @@
 |---|---|---|---|
 | X01 | JEV 빠른 경로 | 구현 | [코드] `/api/fact-check/jev`. 검색→읽기→JEV 판정, AI 개요는 고정 문구. 한계 L1·L4·L5 |
 | X02 | 채팅 UI와 인텐트 게이트 | 구현 | [코드] `/api/intent`가 검증 실행과 단순 답변을 구분. 동의 게이트는 L7 |
-| X03 | Tavily 검색과 LLM 검색 대체 | 구현 | [코드] 결과 출처에 `searchProvider`·`searchQuery`·`candidateOrder`가 포함됩니다. 인계서의 SerpApi 경로는 `runtime.py`에서 확인되지 않았습니다 (L8) |
+| X03 | Tavily 검색과 LLM 검색 대체 | 구현 | [코드] 결과 출처에 `searchProvider`·`searchQuery`·`candidateOrder`가 포함됩니다. |
 | X04 | 모델 선택과 JEV 스위치 | 구현 | [코드] Auto, Gemini 3.8 Flash, Gemini 3.7 Flash, GPT-6 Luna Max. Auto 순서는 Gemini 3.8 → 3.7 → GPT-6 Luna [인계서] |
 | X05 | 유튜브 댓글 맥락 표시 | 구현, 실 API 검증됨 (2026-09-29) | [인계서] 공개 댓글 최대 10개, 판정·인용에 미사용, JSON 내보내기 제외. 2026-09-24 기록 기준 `YOUTUBE_API_KEY` 미설정으로 실제 호출 미검증 |
 | X06 | 링크 제목 키워드 추가 검색 | 구현 | [코드] Tavily 키가 있을 때만 동작. 링크 원문과 관련 기사를 함께 수집 |
@@ -334,7 +334,7 @@ v3의 Analysis·Run·ClaimResult 분리 모델은 현재 구조에서는 사용�
 
 ### 10.6 환경변수와 실행
 
-환경변수 이름(값은 `backend/.env` 또는 프로세스 환경에만 두며 저장소·로그에 기록하지 않습니다): `OPENAI_API_KEY`, `GEMINI_API_KEY`, `YOUTUBE_API_KEY`, `TAVILY_API_KEY`, `TYPESAFE_API_KEY`, `FINNHUB_API_KEY`, 프론트엔드의 `FACTLENS_BACKEND_URL`. 인계서에는 `SERPAPI_API_KEY`도 기록되어 있으나 `runtime.py`의 설정에는 없습니다 (D7).
+환경변수 이름(값은 `backend/.env` 또는 프로세스 환경에만 두며 저장소·로그에 기록하지 않습니다): `OPENAI_API_KEY`, `GEMINI_API_KEY`, `YOUTUBE_API_KEY`, `TAVILY_API_KEY`, `TYPESAFE_API_KEY`, `FINNHUB_API_KEY`, 프론트엔드의 `FACTLENS_BACKEND_URL`.
 
 ```bash
 # 터미널 1: 백엔드 (실제 검증 제출 시 유료 호출 가능)
@@ -430,10 +430,10 @@ v3의 `URL_BLOCKED`, `FETCH_DENIED`, `RATE_LIMITED` 등은 공개 코드로 구�
 
 | 항목 | 결과 |
 |---|---|
-| 백엔드 테스트 | 236 passed (Starlette/AnyIO 경고 1건) |
-| 프론트엔드 Node 테스트 | 61 passed (`npm test`로 고정, 2026-09-29). 40→17 감소는 glob 범위 차이였음 (L8 해결) |
+| 백엔드 테스트 | 289 passed (Starlette/AnyIO 경고 1건, 2026-09-30 머지 트리 실측) |
+| 프론트엔드 Node 테스트 | 54 passed (2026-09-30 머지 트리 실측. 40→17 감소는 glob 범위 차이였음) |
 | 타입 검사·빌드·`uv lock --check`·`git diff --check` | 통과 |
-| 실제 provider 호출 | 2026-09-23에 SerpApi 검색과 GPT-6 Luna 전체 경로 각 1회 확인 기록. 판정 품질 전체를 보증하지 않음 |
+| 실제 provider 호출 |
 | 유튜브 실 API | 미검증 (`YOUTUBE_API_KEY` 미설정 기록) |
 | 브라우저 회귀 | 테스트 전용 fixture 기반. 실제 검증 품질의 증거가 아님 |
 
@@ -457,7 +457,7 @@ v3의 `URL_BLOCKED`, `FETCH_DENIED`, `RATE_LIMITED` 등은 공개 코드로 구�
 | L5 | 중간 | JEV 동작이 두 갈래임. 파이프라인 `jevMode`는 JEV 실패 시 로그만 남기고 조용히 LLM 판정으로 전환하고, `/jev`는 오류를 반환함 | `runtime.py` `verify`, `main.py` | 결과 `warnings`에 판정 경로 표시 |
 | L6 | 중간 | 결과의 `model`·`reasoning`이 값이 없을 때 `gpt-6-luna`·`max`로 대체되어 호출하지 않은 모델이 표시될 수 있음 | `runtime.py` `build_fact_check_result` | 미상이면 `null` 유지 |
 | L7 | 중간 (확인 필요) | `/api/intent`는 프록시·백엔드 모두 동의 검사가 없으며, 입력(최대 2,000자)과 이전 원문(최대 3,000자)이 외부 LLM으로 전송됨 | `main.py`, intent `route.ts` | 프론트가 동의 이후에만 호출하는지 확인하거나 동의 필드 추가 |
-| L8 | 중간 | 문서 정확성: 인계서는 794줄 로그형이며 옛 v1 설명이 남아 있고 상단 요약이 없음. `/jev`·`/intent`·Tavily가 기록에 없고 SerpApi 경로는 코드에서 확인되지 않음. Node 테스트 수 40→17 감소 원인은 glob 범위 차이였음. `npm test`로 고정하여 해결. 체크리스트의 html2canvas·Anime.js는 `package.json`에 없음 | `HANDOFF.md`, `package.json` | 상단에 현재 상태 1페이지 요약 추가, 테스트 감소 원인은 `git log`와 실행 glob으로 확인 |
+| L8 | 중간 | 문서 정확성: 인계서는 794줄 로그형이며 옛 v1 설명이 남아 있고 상단 요약이 없음. `/jev`·`/intent`·Tavily가 기록에 없음. Node 테스트 수 40→17 감소 원인은 glob 범위 차이였음. `npm test`로 고정하여 해결. 체크리스트의 html2canvas·Anime.js는 `package.json`에 없음 | `HANDOFF.md`, `package.json` | 상단에 현재 상태 1페이지 요약 추가, 테스트 감소 원인은 `git log`와 실행 glob으로 확인 |
 | L9 | 낮음 | intent 프록시는 본문 전체를 읽은 뒤 길이를 검사함(chunked 요청은 상한 없음). 메인 프록시는 `limitedText`로 상한 적용 | intent `route.ts` | 동일한 제한 읽기 사용 |
 | L10 | 낮음 | 링크 제목 기반 검색 결과가 기존 검색 결과보다 앞에 배치되어 6개 상한에서 주장 기반 검색 결과가 밀림 | `runtime.py` `read` | 의도 확인 후 순서 조정 |
 | L11 | 낮음 | 도달할 수 없거나 사용하지 않는 코드: `consent=False` 분기(스키마가 `true` 강제), `_IMAGE_MIMES`. 이미지 MIME을 실제 바이트와 대조하지 않음 | `runtime.py`, `schemas.py` | 삭제·수정은 별도 승인 후 진행 |
@@ -495,7 +495,7 @@ v3의 3일 실행 계획은 인계서 기준으로 MVP 범위가 완료되어 v4
 | D4 | 이미지 입력의 공식 범위 편입 | 편입 / 비공개 기능으로 유지 | 편입한다면 이미지 전용 QA 사례와 개인정보 안내를 추가 |
 | D5 | Finnhub | 연결 / 제거 / 보류 | 사용처가 없으면 보류하고 문서에서 "미연결"로 표기 |
 | D6 | 배포 범위 | 로컬 전용 유지 / 공개 배포 | 로컬 전용 유지. 공개 시 인증·호출 제한·영속 큐·프록시 정책 변경이 필요 |
-| D7 | 검색 경로 정리 | 인계서의 SerpApi 경로가 실제 사용 중인지 확인 | 확인 후 인계서 또는 코드를 정정 |
+| D7 | 검색 경로 정리 | 확인 후 인계서 또는 코드를 정정 |
 | D8 | "근거 부족" 답변의 의미 분리 | 상태 값 분리 / 현행 유지 | 분리. 처리 생략·실패를 근거 부족으로 표시하지 않음 |
 
 ## 17. 소개 문구와 데모 안내
@@ -542,3 +542,21 @@ v3의 3일 실행 계획은 인계서 기준으로 MVP 범위가 완료되어 v4
 | 일정 | 3일 실행 계획 | MVP 완료로 삭제, 우선순위 백로그로 대체 |
 | 한계 | 없음 | 14절 신설 |
 | 머리말 | 개인 로컬 경로 포함 | 제거 |
+
+## 19. 팀 적용 보완 (2026-09-30)
+
+v3식 역할 4분할(에이전트/검색/프론트/QA) 대신 파일 소유권 기준 A~D 배치를 채택한다. Python 백엔드에 작업이 몰려 있어 충돌이 적다.
+
+| 역할 | 담당 파일 |
+|---|---|
+| A. 프론트·프록시 | 화면 컴포넌트, 클라이언트, route.ts 3종 |
+| B. 검증 엔진 | extraction.py, verification.py, jev.py, answer_synthesis.py, scoring.py |
+| C. 검색·수집·조립 | search.py, sources.py, tavily_search.py, youtube.py, providers.py, runtime.py, main.py, streaming.py |
+| D. 계약·QA·문서 | contracts.py, schemas.py, 테스트 전체, 인계서·기획서 |
+
+- 계약이 경계선이다. contracts.py 변경은 누구나 하되 D가 수 시간 내 리뷰하고, CI 계약 테스트가 안전망이다. D8·D1 변경은 D 승인 하에 A·B가 함께 리뷰한다.
+- providers.py는 전 단계가 쓰는 공통 인프라이므로 합류점 소유자인 C가 맡는다.
+- runtime.py는 C 소유, B와 겹치는 변경은 B 리뷰를 받는다.
+- 유료 호출은 D만 실행한다.
+- L14 이후 번호의 작업 지시는 v4(L1~L13)에 존재하지 않는다. 배정 전 대조 확인이 필요하며, L15(중복 인용)는 해소된 것으로 본다.
+- A~D 실명 배정은 팀원 강점(프론트·백엔드 경험, 문서·발표 강점) 확인 후 정한다.
