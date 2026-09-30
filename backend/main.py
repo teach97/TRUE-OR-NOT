@@ -1,10 +1,12 @@
 """Local True or Not API backed by the assembled LangGraph workflow."""
+import hmac
+import os
 import subprocess
 from pathlib import Path
 from typing import Literal
 
 import httpx
-from fastapi import Depends, FastAPI, Response
+from fastapi import Depends, FastAPI, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, StreamingResponse
 from streaming import stream_events
@@ -44,6 +46,26 @@ def _code_revision() -> str:
 
 
 _CODE_REVISION = _code_revision()
+
+
+@app.middleware("http")
+async def _shared_secret_gate(request: Request, call_next):
+    """Require the proxy secret on API routes when one is configured.
+
+    Unset (local default) means open on loopback. /health always stays open
+    so hosting health checks keep working.
+    """
+    if request.url.path != "/health":
+        expected = os.environ.get("BACKEND_SHARED_SECRET", "")
+        if expected:
+            provided = request.headers.get("x-factlens-secret", "")
+            if not hmac.compare_digest(provided, expected):
+                return JSONResponse(
+                    {"code": "FORBIDDEN", "message": "백엔드 접근이 거부되었습니다."},
+                    status_code=403,
+                    headers={"Cache-Control": "no-store"},
+                )
+    return await call_next(request)
 
 
 class HealthStatus(BaseModel):

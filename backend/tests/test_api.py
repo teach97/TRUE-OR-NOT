@@ -41,6 +41,27 @@ def test_health_and_status_do_not_claim_provider_readiness(monkeypatch):
         assert client.get("/openapi.json").status_code == 200
 
 
+def test_shared_secret_gate_is_open_by_default_but_enforced_when_set(monkeypatch):
+    import os
+
+    from fastapi.testclient import TestClient
+    from main import app
+
+    monkeypatch.delenv("BACKEND_SHARED_SECRET", raising=False)
+    with TestClient(app) as client:
+        assert client.get("/api/fact-check").status_code == 200
+
+    monkeypatch.setenv("BACKEND_SHARED_SECRET", "test-secret")
+    with TestClient(app) as client:
+        assert client.get("/health").status_code == 200
+        denied = client.get("/api/fact-check")
+        assert denied.status_code == 403
+        assert denied.json()["code"] == "FORBIDDEN"
+        allowed = client.get("/api/fact-check", headers={"x-factlens-secret": "test-secret"})
+        assert allowed.status_code == 200
+        assert client.get("/api/fact-check", headers={"x-factlens-secret": "wrong"}).status_code == 403
+
+
 def test_stream_rejects_bad_link_and_image_attachments():
     from fastapi.testclient import TestClient
     from main import app

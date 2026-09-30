@@ -1,0 +1,44 @@
+# Render blueprint (https://render.com/docs/blueprint-spec). NOT active until
+# applied from the dashboard. Secrets below must be filled per environment;
+# the frontend/backend shared secret has to match on both services.
+services:
+  - type: web
+    name: true-or-not-backend
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /health
+    envVars:
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: TAVILY_API_KEY
+        sync: false
+      - key: TYPESAFE_API_KEY
+        sync: false
+      - key: YOUTUBE_API_KEY
+        sync: false
+      - key: FINNHUB_API_KEY
+        sync: false
+      - key: TOSS_CLIENT_ID
+        sync: false
+      - key: TOSS_CLIENT_SECRET
+        sync: false
+      - key: BACKEND_SHARED_SECRET
+        sync: false
+
+  - type: web
+    name: true-or-not-frontend
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    envVars:
+      - key: FACTLENS_BACKEND_URL
+        value: https://true-or-not-backend.onrender.com
+      - key: FACTLENS_PUBLIC_DEPLOY
+        value: "1"
+      - key: FACTLENS_ALLOW_REMOTE_BACKEND
+        value: "1"
+      - key: FACTLENS_BACKEND_SECRET
+        sync: false

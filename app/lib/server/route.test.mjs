@@ -43,6 +43,30 @@ test('local Host does not relax same-origin or hostile forwarding restrictions',
  }finally{globalThis.fetch=saved;}
 });
 
+test('public deploy flag lifts the local-only guard and forwards the backend secret',async()=>{
+  const {POST}=await import('../../api/fact-check/route.ts');
+  const savedEnv={node:process.env.NODE_ENV,deploy:process.env.FACTLENS_PUBLIC_DEPLOY,secret:process.env.FACTLENS_BACKEND_SECRET,backend:process.env.FACTLENS_BACKEND_URL,remote:process.env.FACTLENS_ALLOW_REMOTE_BACKEND};
+  const savedFetch=globalThis.fetch;
+  const seen={url:null,headers:null};
+  globalThis.fetch=async(url,options)=>{seen.url=String(url);seen.headers=options?.headers;return {ok:false,status:500,body:{cancel(){}}}};
+  try {
+    process.env.NODE_ENV='production';
+    process.env.FACTLENS_PUBLIC_DEPLOY='1';
+    process.env.FACTLENS_BACKEND_SECRET='test-secret';
+    process.env.FACTLENS_BACKEND_URL='https://backend.example.test';
+    process.env.FACTLENS_ALLOW_REMOTE_BACKEND='1';
+    const response=await POST(make({...input},{host:'app.example.test',origin:'https://app.example.test'}));
+    assert.equal(response.status,502);
+    assert.ok(String(seen.url).startsWith('https://backend.example.test/api/fact-check/stream'));
+    assert.equal(seen.headers['x-factlens-secret'],'test-secret');
+  } finally {
+    process.env.NODE_ENV=savedEnv.node;globalThis.fetch=savedFetch;
+    for(const [key,value] of [['FACTLENS_PUBLIC_DEPLOY',savedEnv.deploy],['FACTLENS_BACKEND_SECRET',savedEnv.secret],['FACTLENS_BACKEND_URL',savedEnv.backend],['FACTLENS_ALLOW_REMOTE_BACKEND',savedEnv.remote]]) {
+      if(value===undefined)delete process.env[key];else process.env[key]=value;
+    }
+  }
+});
+
 test('production remains blocked for both local authorities',async()=>{
  const {POST}=await import('../../api/fact-check/route.ts');const saved=process.env.NODE_ENV;
  try {

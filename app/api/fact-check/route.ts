@@ -13,8 +13,14 @@ const MODEL_OPTIONS = [
 let active = 0;
 function backend(path: string) {
   const base = new URL(process.env.FACTLENS_BACKEND_URL || 'http://127.0.0.1:8010');
-  if (base.protocol !== 'http:' || !['127.0.0.1','[::1]'].includes(base.hostname) || base.username || base.password || base.pathname !== '/' || base.search || base.hash) throw new Error('INVALID_BACKEND');
+  if (process.env.FACTLENS_ALLOW_REMOTE_BACKEND === '1') {
+    if (base.protocol !== 'https:' || base.username || base.password || base.pathname !== '/' || base.search || base.hash) throw new Error('INVALID_BACKEND');
+  } else if (base.protocol !== 'http:' || !['127.0.0.1','[::1]'].includes(base.hostname) || base.username || base.password || base.pathname !== '/' || base.search || base.hash) throw new Error('INVALID_BACKEND');
   return new URL(path, base).href;
+}
+function backendHeaders(extra: Record<string,string> = {}) {
+  const secret = process.env.FACTLENS_BACKEND_SECRET;
+  return secret ? {...extra, 'x-factlens-secret': secret} : extra;
 }
 function error(status: number, code: string, message: string) {
   return Response.json({code,message},{status,headers});
@@ -22,7 +28,7 @@ function error(status: number, code: string, message: string) {
 export async function GET() {
   try {
     const signal=AbortSignal.timeout(5000);
-    const response=await fetch(backend('/api/fact-check'),{signal,cache:'no-store',redirect:'error'});
+    const response=await fetch(backend('/api/fact-check'),{signal,cache:'no-store',redirect:'error',headers:backendHeaders()});
     if(!response.ok) {await response.body?.cancel();throw new Error('BACKEND');}
     const value=JSON.parse(await limitedText(response,16000,signal));
     const jevConfigured=value.jevConfigured===undefined?false:value.jevConfigured;
@@ -52,9 +58,9 @@ export async function POST(req: Request) {
     (req.headers.has('x-forwarded-host') && req.headers.get('x-forwarded-host') !== host) ||
     (req.headers.has('x-forwarded-proto') && req.headers.get('x-forwarded-proto') !== 'http') ||
     (req.headers.has('x-forwarded-port') && req.headers.get('x-forwarded-port') !== (host.match(/:([0-9]+)$/)?.[1] ?? '80'));
-  if(process.env.NODE_ENV==='production' || url.protocol!=='http:' || !['localhost','127.0.0.1','[::1]'].includes(url.hostname) || !localHost ||
+  if(process.env.FACTLENS_PUBLIC_DEPLOY!=='1' && (process.env.NODE_ENV==='production' || url.protocol!=='http:' || !['localhost','127.0.0.1','[::1]'].includes(url.hostname) || !localHost ||
     req.headers.get('origin')!==`http://${host}` || req.headers.has('forwarded') || unsafeForwarding || unsafeForwardedAuthority ||
-    (req.headers.get('sec-fetch-site') && !['same-origin','none'].includes(req.headers.get('sec-fetch-site')!))) {
+    (req.headers.get('sec-fetch-site') && !['same-origin','none'].includes(req.headers.get('sec-fetch-site')!)))) {
     return error(403,'LOCAL_ONLY','로컬 개발 환경의 동일 출처 요청만 허용됩니다.');
   }
   if(req.headers.get('content-type')?.split(';')[0].trim()!=='application/json')return error(400,'INVALID_REQUEST','JSON 입력이 필요합니다.');
@@ -76,7 +82,7 @@ export async function POST(req: Request) {
   req.signal.addEventListener('abort',abort,{once:true});
   if(req.signal.aborted)abort();
   try {
-    const upstream=await fetch(backend('/api/fact-check/stream'),{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/x-ndjson'},body:JSON.stringify(input),signal:controller.signal,redirect:'error',cache:'no-store'});
+    const upstream=await fetch(backend('/api/fact-check/stream'),{method:'POST',headers:backendHeaders({'Content-Type':'application/json','Accept':'application/x-ndjson'}),body:JSON.stringify(input),signal:controller.signal,redirect:'error',cache:'no-store'});
     if(!upstream.ok){
       await upstream.body?.cancel();release();
       const mapping:Record<number,[string,string]>={422:['INVALID_REQUEST','검증 입력을 확인해 주세요.'],429:['BUSY','검증이 진행 중입니다.'],503:['NOT_CONFIGURED','백엔드 API 설정을 확인해 주세요.']};

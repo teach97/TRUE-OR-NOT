@@ -44,3 +44,15 @@ npm run start
 ```
 
 프로덕션 환경에서도 백엔드가 실행 중이어야 하며, LLM 제공자 키는 백엔드에만 설정해야 합니다. 브라우저에 비밀 키를 노출하거나 `NEXT_PUBLIC_` 변수로 설정하지 마세요.
+
+## Render 배포 준비 (미실행)
+
+코드는 배포 가능 상태로 준비되어 있으나 실제 배포는 보류 중입니다.
+
+- 프론트/백엔드 Docker 이미지: 루트 `Dockerfile`, `backend/Dockerfile`
+- Render 블루프린트: `render.yaml` (대시보드에서 적용, 시크릿 9종 입력 필요)
+- 공개 배포용 환경변수 (기본값은 로컬 동작, 설정해야만 열림):
+  - 프론트: `FACTLENS_PUBLIC_DEPLOY=1`, `FACTLENS_ALLOW_REMOTE_BACKEND=1`,
+    `FACTLENS_BACKEND_URL=https://<백엔드>` , `FACTLENS_BACKEND_SECRET=<공유 시크릿>`
+  - 백엔드: `BACKEND_SHARED_SECRET=<공유 시크릿, 프론트와 동일>`
+- 유료 Starter 이상 권장 (무료 티어 슬립으로 장시간 검증이 중단될 수 있음)

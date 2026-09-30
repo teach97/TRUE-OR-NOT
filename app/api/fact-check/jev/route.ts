@@ -6,8 +6,14 @@ export const dynamic = 'force-dynamic';
 const headers = {'Cache-Control':'no-store'};
 function backend(path: string) {
   const base = new URL(process.env.FACTLENS_BACKEND_URL || 'http://127.0.0.1:8010');
-  if (base.protocol !== 'http:' || !['127.0.0.1','[::1]'].includes(base.hostname) || base.username || base.password || base.pathname !== '/' || base.search || base.hash) throw new Error('INVALID_BACKEND');
+  if (process.env.FACTLENS_ALLOW_REMOTE_BACKEND === '1') {
+    if (base.protocol !== 'https:' || base.username || base.password || base.pathname !== '/' || base.search || base.hash) throw new Error('INVALID_BACKEND');
+  } else if (base.protocol !== 'http:' || !['127.0.0.1','[::1]'].includes(base.hostname) || base.username || base.password || base.pathname !== '/' || base.search || base.hash) throw new Error('INVALID_BACKEND');
   return new URL(path, base).href;
+}
+function backendHeaders(extra: Record<string,string> = {}) {
+  const secret = process.env.FACTLENS_BACKEND_SECRET;
+  return secret ? {...extra, 'x-factlens-secret': secret} : extra;
 }
 function error(status: number, code: string, message: string) {
   return Response.json({code,message},{status,headers});
@@ -22,9 +28,9 @@ export async function POST(req: Request) {
     (req.headers.has('x-forwarded-host') && req.headers.get('x-forwarded-host') !== host) ||
     (req.headers.has('x-forwarded-proto') && req.headers.get('x-forwarded-proto') !== 'http') ||
     (req.headers.has('x-forwarded-port') && req.headers.get('x-forwarded-port') !== (host.match(/:([0-9]+)$/)?.[1] ?? '80'));
-  if(process.env.NODE_ENV==='production' || url.protocol!=='http:' || !['localhost','127.0.0.1','[::1]'].includes(url.hostname) || !localHost ||
+  if(process.env.FACTLENS_PUBLIC_DEPLOY!=='1' && (process.env.NODE_ENV==='production' || url.protocol!=='http:' || !['localhost','127.0.0.1','[::1]'].includes(url.hostname) || !localHost ||
     req.headers.get('origin')!==`http://${host}` || req.headers.has('forwarded') || unsafeForwarding || unsafeForwardedAuthority ||
-    (req.headers.get('sec-fetch-site') && !['same-origin','none'].includes(req.headers.get('sec-fetch-site')!))) {
+    (req.headers.get('sec-fetch-site') && !['same-origin','none'].includes(req.headers.get('sec-fetch-site')!)))) {
     return error(403,'LOCAL_ONLY','로컬 개발 환경의 동일 출처 요청만 허용됩니다.');
   }
   if(req.headers.get('content-type')?.split(';')[0].trim()!=='application/json')return error(400,'INVALID_REQUEST','JSON 입력이 필요합니다.');
@@ -39,7 +45,7 @@ export async function POST(req: Request) {
   if(req.signal.aborted)return error(400,'CANCELLED','요청이 취소되었습니다.');
   try {
     const signal=AbortSignal.any([req.signal,AbortSignal.timeout(180000)]);
-    const upstream=await fetch(backend('/api/fact-check/jev'),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(input),signal,redirect:'error',cache:'no-store'});
+    const upstream=await fetch(backend('/api/fact-check/jev'),{method:'POST',headers:backendHeaders({'Content-Type':'application/json'}),body:JSON.stringify(input),signal,redirect:'error',cache:'no-store'});
     if(!upstream.ok){
       const body=await upstream.json().catch(()=>null);
       if(typeof body?.code === 'string' && typeof body?.message === 'string') {

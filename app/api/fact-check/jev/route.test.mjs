@@ -30,3 +30,27 @@ test('jev route forwards to the backend fast endpoint and returns JSON',async()=
   assert.equal(response.headers.get('cache-control'),'no-store');
  }finally{globalThis.fetch=saved;}
 });
+
+test('jev route honors public deploy and secret forwarding',async()=>{
+ const {POST}=await import('./route.ts');
+ const savedEnv={node:process.env.NODE_ENV,deploy:process.env.FACTLENS_PUBLIC_DEPLOY,secret:process.env.FACTLENS_BACKEND_SECRET,backend:process.env.FACTLENS_BACKEND_URL,remote:process.env.FACTLENS_ALLOW_REMOTE_BACKEND};
+ const savedFetch=globalThis.fetch;
+ const seen={url:null,headers:null};
+ globalThis.fetch=async(url,init)=>{seen.url=String(url);seen.headers=init?.headers;return Response.json({model:'typesafe-ai/jev',claims:[]});};
+ try {
+  process.env.NODE_ENV='production';
+  process.env.FACTLENS_PUBLIC_DEPLOY='1';
+  process.env.FACTLENS_BACKEND_SECRET='test-secret';
+  process.env.FACTLENS_BACKEND_URL='https://backend.example.test';
+  process.env.FACTLENS_ALLOW_REMOTE_BACKEND='1';
+  const response=await POST(make({...input},{host:'app.example.test',origin:'https://app.example.test'}));
+  assert.equal(response.status,200);
+  assert.ok(String(seen.url).startsWith('https://backend.example.test/api/fact-check/jev'));
+  assert.equal(seen.headers['x-factlens-secret'],'test-secret');
+ } finally {
+  process.env.NODE_ENV=savedEnv.node;globalThis.fetch=savedFetch;
+  for(const [key,value] of [['FACTLENS_PUBLIC_DEPLOY',savedEnv.deploy],['FACTLENS_BACKEND_SECRET',savedEnv.secret],['FACTLENS_BACKEND_URL',savedEnv.backend],['FACTLENS_ALLOW_REMOTE_BACKEND',savedEnv.remote]]) {
+   if(value===undefined)delete process.env[key];else process.env[key]=value;
+  }
+ }
+});
