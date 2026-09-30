@@ -1,9 +1,20 @@
 "use client";
 
 import { useEffect, useRef } from 'react';
-import { AreaSeries, HistogramSeries, createChart } from 'lightweight-charts';
+import { CandlestickSeries, HistogramSeries, LineSeries, createChart } from 'lightweight-charts';
 import type { UTCTimestamp } from 'lightweight-charts';
 import type { MarketContext } from '../lib/fact-check-contract';
+
+function movingAverage(values: Array<{time: UTCTimestamp; value: number}>, period: number) {
+  const out: Array<{time: UTCTimestamp; value: number}> = [];
+  let sum = 0;
+  for (let index = 0; index < values.length; index++) {
+    sum += values[index].value;
+    if (index >= period) sum -= values[index - period].value;
+    if (index >= period - 1) out.push({time: values[index].time, value: sum / period});
+  }
+  return out;
+}
 
 export default function StockChart({market}: {market: MarketContext}) {
   const hostRef = useRef<HTMLDivElement>(null);
@@ -11,11 +22,9 @@ export default function StockChart({market}: {market: MarketContext}) {
   useEffect(() => {
     const host = hostRef.current;
     if (!host || market.candles.length === 0) return;
-    const rising = (market.changePercent ?? 0) >= 0;
-    const line = rising ? '#34d399' : '#f87171';
     const chart = createChart(host, {
       width: host.clientWidth,
-      height: 220,
+      height: 260,
       layout: {
         background: {color: 'transparent'},
         textColor: '#8b959e',
@@ -28,15 +37,39 @@ export default function StockChart({market}: {market: MarketContext}) {
       rightPriceScale: {borderVisible: false},
       timeScale: {borderVisible: false},
     });
-    const trend = chart.addSeries(AreaSeries, {
-      lineColor: line,
-      topColor: rising ? 'rgba(52, 211, 153, .28)' : 'rgba(248, 113, 113, .28)',
-      bottomColor: 'rgba(52, 211, 153, 0)',
+    const candles = chart.addSeries(CandlestickSeries, {
+      upColor: '#ef5350',
+      downColor: '#2962ff',
+      wickUpColor: '#ef5350',
+      wickDownColor: '#2962ff',
+      borderVisible: false,
       priceLineVisible: false,
     });
-    trend.setData(market.candles.map(candle => ({time: candle.time as UTCTimestamp, value: candle.close})));
+    candles.setData(market.candles.map(candle => ({
+      time: candle.time as UTCTimestamp,
+      open: candle.open,
+      high: candle.high,
+      low: candle.low,
+      close: candle.close,
+    })));
+    const closes = market.candles.map(candle => ({time: candle.time as UTCTimestamp, value: candle.close}));
+    const maColors = ['#f5c518', '#9c27b0', '#26a69a'];
+    [5, 20, 60].forEach((period, index) => {
+      const line = chart.addSeries(LineSeries, {
+        color: maColors[index],
+        lineWidth: 1,
+        priceLineVisible: false,
+        lastValueVisible: false,
+        crosshairMarkerVisible: false,
+      });
+      line.setData(movingAverage(closes, period));
+    });
     const volume = chart.addSeries(HistogramSeries, {priceScaleId: 'vol'});
-    volume.setData(market.candles.map(candle => ({time: candle.time as UTCTimestamp, value: candle.volume ?? 0})));
+    volume.setData(market.candles.map(candle => ({
+      time: candle.time as UTCTimestamp,
+      value: candle.volume ?? 0,
+      color: candle.close >= candle.open ? 'rgba(239, 83, 80, .5)' : 'rgba(41, 98, 255, .5)',
+    })));
     chart.priceScale('vol').applyOptions({scaleMargins: {top: 0.85, bottom: 0}});
     const observer = new ResizeObserver(() => chart.applyOptions({width: host.clientWidth}));
     observer.observe(host);
