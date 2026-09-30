@@ -126,6 +126,22 @@ def _normalized_host(raw_url: str) -> str:
     return (urlsplit(raw_url).hostname or "").lower().removeprefix("www.")
 
 
+# Finance questions prefer fast, high-reliability financial press. Applied
+# only as an ordering boost inside the existing diversity selection.
+TRUSTED_FINANCE_HOSTS = frozenset({
+    "investing.com",
+    "reuters.com",
+    "wsj.com",
+    "bloomberg.com",
+})
+
+
+def is_trusted_finance_host(raw_url: str) -> bool:
+    """Match a host or any of its subdomains against the trusted list."""
+    host = _normalized_host(raw_url or "")
+    return any(host == trusted or host.endswith("." + trusted) for trusted in TRUSTED_FINANCE_HOSTS)
+
+
 def source_type_for_url(raw_url: str) -> str:
     """Classify a URL for display and diversity selection, not truth scoring."""
     host = _normalized_host(raw_url)
@@ -209,13 +225,22 @@ def is_unreliable_candidate(candidate: dict) -> bool:
     return any(fragment in host for fragment in _UNRELIABLE_HOST_FRAGMENTS)
 
 
-def _select_diverse_sources(candidates: list[dict], limit: int = 6) -> list[dict]:
-    """Preserve provider order with a strict site cap, not a Google rank claim."""
+def _select_diverse_sources(
+    candidates: list[dict], limit: int = 6, prefer_trusted: bool = False
+) -> list[dict]:
+    """Preserve provider order with a strict site cap, not a Google rank claim.
+
+    When prefer_trusted is set, trusted finance hosts move first as a stable
+    reorder; dedupe and site caps still apply to every candidate.
+    """
+    ordered = list(candidates)
+    if prefer_trusted:
+        ordered.sort(key=lambda source: 0 if is_trusted_finance_host(source.get("url", "")) else 1)
     selected: list[dict] = []
     selected_urls: set[str] = set()
     group_counts: Counter[str] = Counter()
 
-    for source in candidates:
+    for source in ordered:
         if len(selected) >= limit:
             return selected
         key = _source_identity(source["url"])
@@ -240,7 +265,8 @@ def _source_identity(url: str) -> str:
     return urlunsplit((parts.scheme.lower(), host, path, urlencode(query), ""))
 
 
-def _project_candidates(candidates: list[dict]) -> list[dict]:
+def _project_candidates(candidates: list[dict], prefer_trusted: bool = False) -> list[dict]:
+    """Preserve the provider's candidate order and its origin, not a SERP rank."""
     """Preserve the provider's candidate order and its origin, not a SERP rank."""
     found: dict[str, dict] = {}
     for position, candidate in enumerate(candidates, 1):
@@ -269,7 +295,7 @@ def _project_candidates(candidates: list[dict]) -> list[dict]:
             "searchQuery": candidate["searchQuery"],
             "candidateOrder": candidate.get("googlePosition", position),
         }
-    return _select_diverse_sources(list(found.values()))
+    return _select_diverse_sources(list(found.values()), prefer_trusted=prefer_trusted)
 
 
 def build_search_query(text: str) -> str:
@@ -342,7 +368,9 @@ async def search_sources(
             {**candidate, "searchProvider": provider_name, "searchQuery": candidate_query}
             for candidate in search_candidates(data, active)
         ]
-        selected = _project_candidates(candidates)
+        selected = _project_candidates(
+            candidates, prefer_trusted=bool(state.get("stockSymbols"))
+        )
         return {"sources": [{"id": f"s{i+1}", **source} for i, source in enumerate(selected)]}
     except (ProviderCallError, httpx.HTTPError, TimeoutError, ValueError, KeyError, TypeError, AttributeError):
         raise ValueError("SEARCH_FAILED") from None

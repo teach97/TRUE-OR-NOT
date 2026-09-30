@@ -302,6 +302,16 @@ button, p, h3, dd { overflow-wrap: anywhere; }
 .panel-top h3 { display: flex; align-items: center; gap: 9px; font-size: 13px; font-weight: 550; }
 .panel-top h3 svg { color: var(--accent); }
 .panel-top > span { color: var(--subtle); font-size: 10px; }
+.market-panel { margin-top: 16px; }
+.market-chart { padding: 16px 20px 14px; }
+.market-chart-head { display: flex; align-items: baseline; gap: 10px; }
+.market-chart-head strong { font-size: 15px; }
+.market-chart-symbol { color: var(--subtle); font-size: 11px; }
+.market-change { font-size: 13px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.market-change.is-up { color: #34d399; }
+.market-change.is-down { color: #f87171; }
+.market-chart-body { margin-top: 10px; }
+.market-chart-body canvas { max-width: 100%; }
 .claim-selector { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 9px; padding: 16px; }
 .claim-card { display: flex; flex-direction: column; min-width: 0; min-height: 198px; padding: 14px; border: 1px solid var(--line); border-radius: 13px; text-align: left; background: rgb(255 255 255 / .025); }
 .claim-card:hover { border-color: rgb(155 221 212 / .4); background: rgb(155 221 212 / .05); }

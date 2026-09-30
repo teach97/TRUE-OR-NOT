@@ -81,6 +81,26 @@ class FactCheckProgressClaim(_ContractModel):
     citations: list[FactCheckProgressCitation] = Field(max_length=3)
 
 
+class MarketCandle(_ContractModel):
+    time: int = Field(ge=0)
+    open: float
+    high: float
+    low: float
+    close: float
+    volume: float = 0.0
+
+
+class MarketContext(_ContractModel):
+    source: Literal["tossinvest", "finnhub", "krx"] = "tossinvest"
+    symbol: str = Field(min_length=1, max_length=16)
+    displayName: str | None = Field(default=None, max_length=100)
+    current: float | None = None
+    previousClose: float | None = None
+    changePercent: float | None = None
+    dataAsOf: str | None = Field(default=None, max_length=100)
+    candles: list[MarketCandle] = Field(max_length=90)
+
+
 class FactEvidence(_ContractModel):
     id: str = Field(min_length=1, max_length=100)
     claimId: str = Field(min_length=1, max_length=100)
@@ -194,6 +214,7 @@ class FactCheckResult(_ContractModel):
     sources: list[FactSource] = Field(max_length=6)
     evidence: list[FactEvidence] = Field(max_length=18)
     warnings: list[str] = Field(max_length=8)
+    market: MarketContext | None = None
     answer: FactCheckAnswer = Field(default_factory=lambda: FactCheckAnswer(
         status="insufficient_evidence",
         overview=None,

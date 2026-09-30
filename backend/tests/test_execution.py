@@ -78,6 +78,7 @@ def test_post_runs_graph_and_returns_only_result():
         "model": "gpt-6-luna", "reasoning": "max",
         "checkedAt": "2026-09-20T00:00:00+00:00",
         "claims": [], "sources": [], "evidence": [], "warnings": [],
+        "market": None,
         "answer": {
             "status": "insufficient_evidence", "overview": None, "sections": [],
             "conclusion": None, "model": None, "reasoning": None,

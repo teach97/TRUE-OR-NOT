@@ -95,5 +95,7 @@ async def search_tavily(
             if isinstance(result, dict)
         ])
     candidates = [candidate for group in candidate_groups for candidate in group if candidate]
-    selected = _project_candidates(candidates)
+    selected = _project_candidates(
+        candidates, prefer_trusted=bool(state.get("stockSymbols"))
+    )
     return {"sources": [{"id": f"s{i+1}", **source} for i, source in enumerate(selected)]}

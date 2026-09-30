@@ -56,9 +56,18 @@ export type FactCheckAnswer = {
   model: string | null;
   reasoning: Reasoning | null;
 };
+export type MarketCandle = {
+  time: number; open: number; high: number; low: number; close: number; volume?: number | null;
+};
+export type MarketContext = {
+  source: 'tossinvest' | 'finnhub' | 'krx'; symbol: string; displayName?: string | null;
+  current?: number | null; previousClose?: number | null; changePercent?: number | null;
+  dataAsOf?: string | null; candles: MarketCandle[];
+};
 export type FactCheckResult = {
   text: string; focus: string; demo: false; model: string; reasoning: Reasoning; checkedAt: string;
   claims: FactClaim[]; sources: FactSource[]; evidence: FactEvidence[]; warnings: string[]; answer: FactCheckAnswer;
+  market?: MarketContext | null;
 };
 export type ProgressSource = {
   id: string; url: string; title: string; publisher: string;

@@ -20,6 +20,8 @@ class FactCheckState(TypedDict, total=False):
     claims: list[dict[str, Any]]
     searchQueries: dict[str, str]
     searchNotice: str
+    stockSymbols: list[str]
+    market: dict[str, Any] | None
     sources: list[dict[str, Any]]
     sourceTexts: dict[str, str]
     sourceSections: dict[str, list[dict[str, Any]]]

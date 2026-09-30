@@ -70,6 +70,37 @@ def test_final_contract_accepts_frontend_shape_and_wrapper():
     assert parsed.model_dump(mode="json")["result"]["sources"][0]["publishedAt"] is None
 
 
+def test_market_context_is_optional_but_validated():
+    from pydantic import ValidationError
+
+    from contracts import FactCheckResult
+
+    base = result_payload()
+    assert FactCheckResult.model_validate(base).market is None
+
+    market = {
+        "source": "finnhub",
+        "symbol": "TSLA",
+        "displayName": None,
+        "current": 250.0,
+        "previousClose": 200.0,
+        "changePercent": 25.0,
+        "dataAsOf": "2026-09-30T00:00:00+00:00",
+        "candles": [
+            {"time": 1, "open": 1.0, "high": 2.0, "low": 0.5, "close": 1.2, "volume": 10.0},
+        ],
+    }
+    assert FactCheckResult.model_validate({**base, "market": market}).market.symbol == "TSLA"
+
+    oversized = {**market, "candles": [market["candles"][0]] * 91}
+    try:
+        FactCheckResult.model_validate({**base, "market": oversized})
+    except ValidationError:
+        pass
+    else:
+        raise AssertionError("oversized candles must be rejected")
+
+
 def test_evidence_may_expose_only_a_bounded_matching_article_section():
     payload = result_payload()
     payload["evidence"][0].update({

@@ -71,6 +71,52 @@ def test_search_candidates_exclude_reported_ad_doorway_hosts():
     assert [source["url"] for source in sources] == ["https://namu.wiki/w/reptilian"]
 
 
+def _finance_candidate(url, title="t"):
+    return {"url": url, "title": title, "searchProvider": "openai_web_search",
+            "searchQuery": "테슬라 실적", "originGroupId": url,
+            "accessStatus": "pending"}
+
+
+def test_trusted_finance_hosts_move_first_for_stock_questions():
+    from search import _select_diverse_sources
+
+    candidates = [
+        _finance_candidate("https://blog.example.com/tesla"),
+        _finance_candidate("https://www.bloomberg.com/tesla-earnings"),
+        _finance_candidate("https://news.example.kr/tesla"),
+        _finance_candidate("https://www.reuters.com/tesla-results"),
+    ]
+    selected = _select_diverse_sources(candidates, prefer_trusted=True)
+    assert [s["url"] for s in selected[:2]] == [
+        "https://www.bloomberg.com/tesla-earnings",
+        "https://www.reuters.com/tesla-results",
+    ]
+    assert len(selected) == 4
+
+
+def test_trusted_boost_off_preserves_provider_order():
+    from search import _select_diverse_sources
+
+    candidates = [
+        _finance_candidate("https://blog.example.com/tesla"),
+        _finance_candidate("https://www.bloomberg.com/tesla-earnings"),
+    ]
+    selected = _select_diverse_sources(candidates)
+    assert [s["url"] for s in selected] == [
+        "https://blog.example.com/tesla",
+        "https://www.bloomberg.com/tesla-earnings",
+    ]
+
+
+def test_trusted_match_covers_subdomains():
+    from search import is_trusted_finance_host
+
+    assert is_trusted_finance_host("https://kr.reuters.com/article") is True
+    assert is_trusted_finance_host("https://www.investing.com/equities/tesla") is True
+    assert is_trusted_finance_host("https://fakeinvesting.com/x") is False
+    assert is_trusted_finance_host("not a url") is False
+
+
 def test_search_collects_deduplicated_candidates_without_evidence():
     assert importlib.util.find_spec("search") is not None, "Search adapter missing"
     from search import search_sources

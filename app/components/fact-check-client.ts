@@ -1,4 +1,4 @@
-import type { AgentEvent, AnswerBlock, FactCheckAnswer, FactCheckResult, FactSource, ProgressClaim, ProgressSource } from '../lib/fact-check-contract';
+import type { AgentEvent, AnswerBlock, FactCheckAnswer, FactCheckResult, FactSource, MarketContext, ProgressClaim, ProgressSource } from '../lib/fact-check-contract';
 // @ts-ignore -- explicit extension is required by the Node 24 native test runner.
 import { FACT_SCORE_BANDS, scoreBand, scoreLabel } from '../lib/fact-score.ts';
 
@@ -78,6 +78,21 @@ function validEvidenceSection(value: unknown): boolean {
     && hasTitle === hasText
     && (truncated !== true || hasText);
 }
+function validMarket(value: unknown): value is MarketContext {
+  if (value == null) return true;
+  if (typeof value !== 'object') return false;
+  const market = value as MarketContext;
+  const numberOrNull = (n: unknown) => n == null || (typeof n === 'number' && Number.isFinite(n));
+  return (market.source === 'tossinvest' || market.source === 'finnhub' || market.source === 'krx')
+    && typeof market.symbol === 'string' && market.symbol.length >= 1 && market.symbol.length <= 16
+    && (market.displayName == null || (typeof market.displayName === 'string' && market.displayName.length <= 100))
+    && numberOrNull(market.current) && numberOrNull(market.previousClose) && numberOrNull(market.changePercent)
+    && (market.dataAsOf == null || typeof market.dataAsOf === 'string')
+    && Array.isArray(market.candles) && market.candles.length <= 90
+    && market.candles.every(candle => candle && typeof candle.time === 'number' && Number.isFinite(candle.time) && candle.time >= 0
+      && [candle.open, candle.high, candle.low, candle.close].every(n => typeof n === 'number' && Number.isFinite(n))
+      && (candle.volume == null || (typeof candle.volume === 'number' && Number.isFinite(candle.volume))));
+}
 export function validResult(value: unknown): value is FactCheckResult {
   if (!value || typeof value !== 'object') return false;
   const r = value as FactCheckResult;
@@ -87,7 +102,8 @@ export function validResult(value: unknown): value is FactCheckResult {
     && r.sources.every(validSourceMetadata)
     && r.sources.every(validYoutubeMetadata)
     && Array.isArray(r.evidence) && r.evidence.every(e=>['id','claimId','sourceId','quote'].every(k=>typeof e[k as keyof typeof e]==='string') && (e.quoteTranslation === undefined || e.quoteTranslation === null || typeof e.quoteTranslation === 'string') && typeof e.quoteVerified === 'boolean' && validEvidenceSection(e))
-    && Array.isArray(r.warnings) && r.warnings.every(w=>typeof w==='string') && validAnswer(r.answer,r.sources);
+    && Array.isArray(r.warnings) && r.warnings.every(w=>typeof w==='string') && validAnswer(r.answer,r.sources)
+    && validMarket((r as Record<string, unknown>).market);
 }
 function validProgressSource(value: unknown): value is ProgressSource {
   if (!value || typeof value !== 'object') return false;

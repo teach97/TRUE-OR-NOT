@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {faviconUrlFor, readFactCheckStream, safeSourceUrl} from './fact-check-client.ts';
+import {faviconUrlFor, readFactCheckStream, safeSourceUrl, validResult} from './fact-check-client.ts';
 
 const insufficientAnswer = {status:'insufficient_evidence',overview:null,sections:[],conclusion:null,model:null,reasoning:null};
 const result = {text:'한글 원문',focus:'',demo:false,model:'gpt-6-luna',reasoning:'max',checkedAt:'2026-09-19',claims:[],sources:[],evidence:[],warnings:[],answer:insufficientAnswer};
@@ -14,6 +14,13 @@ test('decodes fragmented UTF-8, CRLF and final unterminated result', async () =>
  const stages=[];
  const actual=await readFactCheckStream(response(JSON.stringify({type:'stage',stage:'reading',message:'읽는 중'})+'\r\n\n'+JSON.stringify({type:'result',result})), {onStage:event=>stages.push(event.message)});
  assert.deepEqual(actual,result); assert.deepEqual(stages,['읽는 중']);
+});
+test('accepts a well-formed market context and rejects malformed ones', () => {
+  const market = {source:'finnhub', symbol:'TSLA', current:250, previousClose:200, changePercent:25, dataAsOf:'2026-09-30', candles:[{time:1, open:1, high:2, low:0.5, close:1.2, volume:10}]};
+  assert.equal(validResult({...result, market}), true);
+  assert.equal(validResult({...result, market:{...market, source:'yahoo'}}), false);
+  assert.equal(validResult({...result, market:{...market, candles:[market.candles[0]].map(c => ({...c})).concat(new Array(90).fill(market.candles[0]))}}), false);
+  assert.equal(validResult(result), true);
 });
 test('accepts a Gemini fallback result with high reasoning', async () => {
  const fallback = {...result, model:'gemini-3.8-flash', reasoning:'high'};

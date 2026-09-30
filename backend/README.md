@@ -39,6 +39,7 @@ Copy-Item .env.example .env
 | `SERPAPI_API_KEY` | 선택 사항입니다. 무료 요금제 조건이 확인되면 Google 자연검색을 사용합니다. |
 | `YOUTUBE_API_KEY` | 선택 사항입니다. 검색 결과에 YouTube 영상이 있을 때 영상 정보와 공개 댓글을 가져오는 데 사용합니다. |
 | `FINNHUB_API_KEY` | 선택 사항입니다. 주가 조회 어댑터에 사용합니다. |
+| `TOSS_CLIENT_ID` / `TOSS_CLIENT_SECRET` | 선택 사항입니다. 토스증권 Open API(국내·미국 시세·캔들) 사용에 필요합니다. WTS에서 발급받고 허용 IP를 등록해야 합니다. Finnhub보다 우선하며, 없으면 Finnhub으로 대체합니다. |
 
 Gemini 또는 OpenAI 키 중 하나 이상을 설정해야 LLM 검증을 시작할 수 있습니다. 두 제공자 키를 모두 설정하고 모델을 `auto`로 선택하면 다음 순서로 시도합니다.
 
