@@ -28,6 +28,8 @@ from schemas import FactCheckRequest
 from search import build_search_query, origin_group_for_url, search_sources, source_type_for_url
 from sources import SourceReadResult, fetch_public_text, read_sources
 from verification import (
+    _empty_judgments,
+    ground_judgments,
     verify_claims,
     verify_claims_jev,
 )
@@ -566,8 +568,8 @@ async def run_jev_fast_check(
     consent: bool = True,
 ) -> FactCheckResult:
     """Search and read evidence, then return Jev's score-only claim result."""
-    full_text = _truncate_units(text.strip(), 12_000)
-    if not full_text:
+    full_text = _truncate_units(text, 12_000)
+    if not full_text.strip():
         raise JevError("Nothing to judge", code="INVALID_REQUEST")
 
     claim = {
@@ -648,11 +650,24 @@ async def run_jev_fast_check(
         else:
             read_result = await read_sources(state, reader=fetch_public_text)
     state.update(read_result)
-    judgment_result = await verify_claims_jev(
-        state,
-        client=client,
-        api_key=api_key,
-    )
+    try:
+        judgment_result = await verify_claims_jev(
+            state,
+            client=client,
+            api_key=api_key,
+        )
+    except JevError as exc:
+        if exc.code != "LOW_CONFIDENCE":
+            raise
+        # Low confidence is deterministic: retrying the same evidence cannot
+        # help, so conclude with insufficient evidence instead of failing.
+        judgment_result = ground_judgments(
+            [claim],
+            _empty_judgments([claim]),
+            state.get("sources", []),
+            state.get("sourceTexts", {}),
+            source_sections=state.get("sourceSections", {}),
+        )
     if not judgment_result.get("claims"):
         raise JevError("Jev returned no judgment", code="NO_JUDGMENT")
 

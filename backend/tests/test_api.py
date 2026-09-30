@@ -215,7 +215,7 @@ def test_jev_endpoint_maps_gateway_failure_to_502(monkeypatch):
         assert response.json()["code"] == "GATEWAY_ERROR"
 
 
-def test_jev_endpoint_reports_low_confidence_with_its_own_code(monkeypatch):
+def test_jev_endpoint_concludes_insufficient_evidence_on_low_confidence(monkeypatch):
     import main
     from fastapi.testclient import TestClient
     from main import app
@@ -263,10 +263,10 @@ def test_jev_endpoint_reports_low_confidence_with_its_own_code(monkeypatch):
         response = client.post("/api/fact-check/jev", json={
             "text": "Water boils at 50C.", "focus": "", "consent": True, "jevMode": True,
         })
-        assert response.status_code == 502
+        assert response.status_code == 200
         body = response.json()
-        assert body["code"] == "LOW_CONFIDENCE"
-        assert "확신" in body["message"]
+        assert body["claims"][0]["verdictCode"] == "insufficient_evidence"
+        assert body["answer"]["status"] == "insufficient_evidence"
 
 
 def test_status_reports_ready_for_configured_runtime(monkeypatch):

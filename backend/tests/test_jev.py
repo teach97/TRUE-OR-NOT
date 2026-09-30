@@ -430,6 +430,56 @@ def test_fast_check_propagates_jev_failure_without_llm_fallback(monkeypatch):
         asyncio.run(run())
 
 
+def test_fast_check_preserves_input_whitespace_for_result_echo(monkeypatch):
+    import runtime
+    from runtime import Settings
+
+    async def fake_fetch(url):
+        return ("Relevant source text.", url)
+
+    monkeypatch.setattr(runtime, "fetch_public_text", fake_fetch)
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(
+            lambda request: jev_response()
+        )) as client:
+            return await runtime.run_jev_fast_check(
+                text="  padded claim  ", focus="",
+                link_url="https://example.org/source",
+                client=client, api_key="k",
+                settings=Settings(api_key=SecretStr("")),
+            )
+
+    result = asyncio.run(run())
+    assert result.text == "  padded claim  "
+    assert result.claims[0].quote == "  padded claim  "
+
+
+def test_fast_check_low_confidence_concludes_insufficient_evidence(monkeypatch):
+    import runtime
+    from runtime import Settings
+
+    async def fake_fetch(url):
+        return ("Relevant source text.", url)
+
+    monkeypatch.setattr(runtime, "fetch_public_text", fake_fetch)
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(
+            lambda request: jev_response(confidence=0.2)
+        )) as client:
+            return await runtime.run_jev_fast_check(
+                text="Some unverifiable claim.", focus="",
+                link_url="https://example.org/source",
+                client=client, api_key="k",
+                settings=Settings(api_key=SecretStr("")),
+            )
+
+    result = asyncio.run(run())
+    assert result.claims[0].verdictCode == "insufficient_evidence"
+    assert result.answer.status == "insufficient_evidence"
+
+
 def _jev_runtime_state():
     quote = "Water boils at 100C."
     return {
