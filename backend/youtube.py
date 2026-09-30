@@ -10,6 +10,8 @@ import httpx
 API_ROOT = "https://www.googleapis.com/youtube/v3"
 MAX_COMMENT_COUNT = 10
 MAX_RESPONSE_BYTES = 256_000
+MAX_TRANSCRIPT_SECONDS = 1800
+MAX_TRANSCRIPT_CHARS = 20_000
 MIN_YOUTUBE_VIEWS = 10_000
 _VIDEO_ID = re.compile(r"^[A-Za-z0-9_-]{11}$")
 _VIEW_COUNT = re.compile(r"^\d{1,30}$")
@@ -119,6 +121,52 @@ def _unavailable(
     }
 
 
+async def fetch_transcript_text(video_id: str) -> dict:
+    """Fetch caption text for grounding; 30-minute videos and over are blocked.
+
+    Returns {"text": str | None, "status": "collected" | "too_long" | "unavailable"}.
+    The unofficial caption endpoint runs in a thread and never spends API quota.
+    """
+    if not isinstance(video_id, str) or not _VIDEO_ID.fullmatch(video_id):
+        return {"text": None, "status": "unavailable"}
+    import asyncio
+
+    def _load():
+        from youtube_transcript_api import YouTubeTranscriptApi
+
+        api = YouTubeTranscriptApi()
+        last_error: Exception | None = None
+        for languages in (["ko"], ["en"]):
+            try:
+                fetched = api.fetch(video_id, languages=languages)
+                return list(fetched.snippets)
+            except Exception as exc:  # noqa: BLE001 - any fetch failure means no captions
+                last_error = exc
+        raise last_error if last_error is not None else ValueError("NO_TRANSCRIPT")
+
+    try:
+        snippets = await asyncio.to_thread(_load)
+    except Exception:
+        return {"text": None, "status": "unavailable"}
+    if not snippets:
+        return {"text": None, "status": "unavailable"}
+    try:
+        last = snippets[-1]
+        duration = float(last.start) + float(last.duration)
+    except (AttributeError, TypeError, ValueError):
+        return {"text": None, "status": "unavailable"}
+    if duration >= MAX_TRANSCRIPT_SECONDS:
+        return {"text": None, "status": "too_long"}
+    text = " ".join(
+        snippet.text for snippet in snippets
+        if isinstance(getattr(snippet, "text", None), str)
+    )
+    text = " ".join(text.split())
+    if not text:
+        return {"text": None, "status": "unavailable"}
+    return {"text": text[:MAX_TRANSCRIPT_CHARS], "status": "collected"}
+
+
 async def fetch_youtube_data(
     raw_url: str,
     *,
@@ -189,6 +237,7 @@ async def fetch_youtube_data(
         comment_text = comment_snippet.get("textDisplay") if isinstance(comment_snippet, dict) else None
         if isinstance(comment_text, str) and comment_text.strip():
             comments.append(comment_text)
+    transcript = await fetch_transcript_text(video_id)
     return {
         "title": title,
         "channelTitle": channel_title,
@@ -196,4 +245,6 @@ async def fetch_youtube_data(
         "viewCount": view_count,
         "comments": comments,
         "status": "collected",
+        "transcript": transcript["text"],
+        "transcriptStatus": transcript["status"],
     }

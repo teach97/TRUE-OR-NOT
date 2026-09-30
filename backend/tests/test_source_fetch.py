@@ -258,6 +258,30 @@ def test_youtube_comments_are_context_only_and_never_become_source_text():
     assert state['sourceTexts'] == {}
 
 
+def test_youtube_transcript_becomes_verified_source_text():
+    async def youtube_reader(url):
+        return {
+            'title': 'AGI 전망 인터뷰',
+            'comments': [],
+            'status': 'collected',
+            'transcript': '영상에서 AGI에 대해 설명합니다.',
+            'transcriptStatus': 'collected',
+        }
+
+    state = asyncio.run(sources.read_sources({
+        'sources': [{
+            'id': 's1',
+            'url': 'https://www.youtube.com/watch?v=aB_12345678',
+            'title': '검색 결과 제목',
+            'sourceType': '유튜브',
+        }],
+    }, youtube_reader=youtube_reader))
+
+    assert state['sources'][0]['accessStatus'] == 'verified'
+    assert state['sources'][0]['youtubeDataStatus'] == 'collected'
+    assert state['sourceTexts'] == {'s1': '영상에서 AGI에 대해 설명합니다.'}
+
+
 def test_youtube_without_api_reader_is_marked_not_configured():
     state = asyncio.run(sources.read_sources({
         'sources': [{

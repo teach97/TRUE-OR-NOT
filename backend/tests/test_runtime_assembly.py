@@ -515,3 +515,14 @@ def test_result_exposes_youtube_comments_only_as_context_not_verified_content():
     assert parsed.sources[0].youtubeComments == ["Raw public comment"]
     assert parsed.sources[0].accessStatus == "unavailable"
     assert any("유튜브 공개 댓글" in warning for warning in parsed.warnings)
+
+
+def test_youtube_comment_warning_skipped_for_transcript_sources():
+    from runtime import _result_warnings
+
+    youtube = [{"sourceType": "유튜브"}]
+    assert any("댓글" in warning for warning in _result_warnings(youtube))
+    assert not any(
+        "댓글" in warning
+        for warning in _result_warnings(youtube, youtube_transcript_verified=True)
+    )

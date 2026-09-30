@@ -16,7 +16,9 @@ def test_youtube_video_id_accepts_video_urls_and_rejects_lookalikes():
     assert youtube_video_id("https://www.youtube.com/channel/not-a-video") is None
 
 
-def test_fetches_official_video_title_and_bounded_plain_text_comments():
+def test_fetches_official_video_title_and_bounded_plain_text_comments(monkeypatch):
+    import youtube
+
     requests = []
     metadata = {
         "title": "AGI 전망 인터뷰",
@@ -41,6 +43,12 @@ def test_fetches_official_video_title_and_bounded_plain_text_comments():
             for index in range(20)
         ]})
 
+    async def fake_transcript(video_id):
+        assert video_id == "aB_12345678"
+        return {"text": "자막 본문입니다.", "status": "collected"}
+
+    monkeypatch.setattr(youtube, "fetch_transcript_text", fake_transcript)
+
     async def run():
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
             return await fetch_youtube_data(
@@ -54,6 +62,8 @@ def test_fetches_official_video_title_and_bounded_plain_text_comments():
         **metadata,
         "comments": [f"댓글 {index}" for index in range(MAX_COMMENT_COUNT)],
         "status": "collected",
+        "transcript": "자막 본문입니다.",
+        "transcriptStatus": "collected",
     }
     assert len(requests) == 2
     video_request, comments_request = requests
@@ -208,3 +218,55 @@ def test_ignores_malformed_youtube_metadata_without_rejecting_comments():
     assert result["viewCount"] is None
     assert result["comments"] == []
     assert result["status"] == "collected"
+
+import sys
+import types
+
+
+def _stub_transcript_api(monkeypatch, snippets=None, error=None):
+    snippets = snippets if snippets is not None else []
+
+    class Fakeapi:
+        def fetch(self, video_id, languages=("en",)):
+            if error is not None:
+                raise error
+            return types.SimpleNamespace(snippets=[
+                types.SimpleNamespace(text=text, start=start, duration=duration)
+                for text, start, duration in snippets
+            ])
+
+    module = types.ModuleType("youtube_transcript_api")
+    module.YouTubeTranscriptApi = Fakeapi
+    monkeypatch.setitem(sys.modules, "youtube_transcript_api", module)
+
+
+def test_transcript_prefers_korean_and_blocks_long_videos(monkeypatch):
+    import asyncio
+
+    import youtube
+
+    _stub_transcript_api(monkeypatch, snippets=[
+        ("첫 문장", 0.0, 2.0),
+        ("둘째 문장", 2.0, 1799.0),
+    ])
+    long_video = asyncio.run(youtube.fetch_transcript_text("aB_12345678"))
+    assert long_video == {"text": None, "status": "too_long"}
+
+    _stub_transcript_api(monkeypatch, snippets=[
+        ("첫 문장", 0.0, 2.0),
+        ("둘째 문장", 2.0, 3.0),
+    ])
+    short_video = asyncio.run(youtube.fetch_transcript_text("aB_12345678"))
+    assert short_video == {"text": "첫 문장 둘째 문장", "status": "collected"}
+
+
+def test_transcript_failure_stays_unavailable(monkeypatch):
+    import asyncio
+
+    import youtube
+
+    _stub_transcript_api(monkeypatch, error=ValueError("NO_TRANSCRIPT"))
+    assert asyncio.run(youtube.fetch_transcript_text("aB_12345678")) == {
+        "text": None, "status": "unavailable"}
+    assert asyncio.run(youtube.fetch_transcript_text("not-an-id!!")) == {
+        "text": None, "status": "unavailable"}

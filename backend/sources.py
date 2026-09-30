@@ -446,6 +446,12 @@ async def _read_candidate(source, *, reader, youtube_reader):
                 view_count = data.get('viewCount') if isinstance(data, dict) else None
                 comments = data.get('comments') if isinstance(data, dict) else None
                 status = data.get('status') if isinstance(data, dict) else None
+                transcript = data.get('transcript') if isinstance(data, dict) else None
+                if status == 'collected' and isinstance(transcript, str) and transcript.strip():
+                    item['youtubeTranscript'] = True
+                    item['youtubeDataStatus'] = 'collected'
+                    item.update(accessStatus='verified', resolvedUrl=source['url'])
+                    return item, transcript, None
                 if isinstance(title, str) and title.strip():
                     item['youtubeTitle'] = title.strip()[:300]
                 if isinstance(channel_title, str) and channel_title.strip() and len(channel_title) <= 300:

@@ -477,7 +477,11 @@ async def _fetch_market(symbols: list[str], settings: Settings) -> dict | None:
         return None
 
 
-def _result_warnings(sources: list[dict], search_notice: str | None = None) -> list[str]:
+def _result_warnings(
+    sources: list[dict],
+    search_notice: str | None = None,
+    youtube_transcript_verified: bool = False,
+) -> list[str]:
     warnings = [
         "최대 3개 주장·6개 출처를 대상으로 한 제한된 검증입니다.",
         "출처 간 독립성과 원자료 계보는 확인되지 않았습니다.",
@@ -486,7 +490,10 @@ def _result_warnings(sources: list[dict], search_notice: str | None = None) -> l
         warnings.append(
             "일부 출처 원문에 접근하지 못했습니다. 검색 요약은 직접 인용으로 사용하지 않았습니다."
         )
-    if any(source.get("sourceType") == "유튜브" for source in sources):
+    youtube_sources = [
+        source for source in sources if source.get("sourceType") == "유튜브"
+    ]
+    if youtube_sources and not youtube_transcript_verified:
         warnings.append(
             "유튜브 공개 댓글은 영상별 의견 맥락으로만 표시하며 판정과 인용 근거에는 사용하지 않았습니다."
         )
@@ -538,7 +545,14 @@ def build_fact_check_result(
         "claims": claims,
         "sources": sources,
         "evidence": evidence,
-        "warnings": _result_warnings(sources, merged_state.get("searchNotice")),
+        "warnings": _result_warnings(
+            sources,
+            merged_state.get("searchNotice"),
+            youtube_transcript_verified=any(
+                isinstance(raw, dict) and raw.get("youtubeTranscript")
+                for raw in raw_sources
+            ),
+        ),
         "market": merged_state.get("market"),
         "answer": answer,
     })
@@ -675,7 +689,14 @@ async def run_jev_fast_check(
     normalized_sources = [
         _normalize_source(source, timestamp) for source in read_result.get("sources", [])
     ]
-    warnings = _result_warnings(normalized_sources, search_notice)
+    warnings = _result_warnings(
+        normalized_sources,
+        search_notice,
+        youtube_transcript_verified=any(
+            isinstance(raw, dict) and raw.get("youtubeTranscript")
+            for raw in read_result.get("sources", [])
+        ),
+    )
     return FactCheckResult.model_validate({
         "text": full_text,
         "focus": focus,
