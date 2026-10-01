@@ -58,7 +58,18 @@ def run_case(case, outdir, repeats):
         time.sleep(3)
 
 
+def check_server():
+    try:
+        with urllib.request.urlopen(BASE + "/health", timeout=10) as resp:
+            return resp.status == 200
+    except Exception:  # noqa: BLE001
+        return False
+
+
 def main():
+    if not check_server():
+        print("ABORT: backend %s is not reachable. Start it first." % BASE, flush=True)
+        raise SystemExit(1)
     repeats = int(sys.argv[1]) if len(sys.argv) > 1 else 3
     stamp = sys.argv[2] if len(sys.argv) > 2 else datetime.datetime.now().strftime("%Y%m%d-%H%M")
     wanted = sys.argv[3:]
