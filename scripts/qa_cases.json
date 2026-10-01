@@ -1,0 +1,22 @@
+[
+  {"id": "E01", "text": "대한민국의 수도는 서울이다.", "focus": "지리적 사실 확인", "expect": "mostly_supported"},
+  {"id": "E02", "text": "아폴로 11호는 1969년에 화성에 착륙했다.", "focus": "착륙 천체 확인", "expect": "contradicted"},
+  {"id": "E03", "text": "물의 화학식은 CO2이다.", "focus": "화학식 확인", "expect": "contradicted"},
+  {"id": "E04", "text": "타이타닉호는 1912년 처녀 항해에서 침몰했다.", "focus": "침몰 연도·항차 확인", "expect": "mostly_supported"},
+  {"id": "E05", "text": "세종대왕은 한글과 측우기를 발명했다.", "focus": "발명 주체 분리 확인", "expect": "partially_supported"},
+  {"id": "E06", "text": "2023년 한국의 합계출산율은 0.72명이다.", "focus": "통계 수치·연도 확인", "expect": "mostly_supported"},
+  {"id": "E07", "text": "김치찌개가 된장찌개보다 맛있다.", "focus": "취향 진술 여부 확인", "expect": "not_checkable"},
+  {"id": "E08", "text": "2027년 한국 경제성장률은 3%를 넘을 것이다.", "focus": "미래 예측 여부 확인", "expect": "not_checkable"},
+  {"id": "E09", "text": "우리 옆집 강아지의 이름은 뭉치다.", "focus": "웹에 근거가 있는지 확인", "expect": "insufficient_evidence"},
+  {"id": "E10", "text": "커피를 마시면 키가 큰다.", "focus": "인과 주장의 근거 확인", "expect": "insufficient_evidence"},
+  {"id": "E11", "text": "일각에서는 백신이 자폐를 유발한다고 주장한다.", "focus": "전달 발화와 사실 여부 분리 확인", "expect": "not_checkable-or-contradicted"},
+  {"id": "E12", "text": "마늘을 먹으면 감기에 안 걸린다는 소문이 있지만 사실과 다르다.", "focus": "부정한 내용의 처리 확인", "expect": "not_checkable-or-insufficient"},
+  {"id": "E13", "text": "법안이 통과되면 내년부터 시행된다.", "focus": "조건부 주장의 처리 확인", "expect": "not_checkable-or-insufficient"},
+  {"id": "E14", "text": "2024년 한국의 1인당 국민소득은 3만 달러를 넘었다.", "focus": "통계 수치·연도 확인", "expect": "mostly_supported-or-contradicted"},
+  {"id": "E15", "text": "에베레스트산의 높이는 8,849m이다.", "focus": "수치 확인", "expect": "mostly_supported"},
+  {"id": "E16", "text": "2020년 도쿄 올림픽은 2020년에 열렸다.", "focus": "개최 연도 확인", "expect": "contradicted"},
+  {"id": "E17", "text": "지구의 자전 주기는 약 24시간이다.", "focus": "과학 상식 확인", "expect": "mostly_supported"},
+  {"id": "E18", "text": "한국의 광복절은 8월 15일이다.", "focus": "기념일 날짜 확인", "expect": "mostly_supported"},
+  {"id": "E19", "text": "초콜릿을 많이 먹으면 머리가 좋아진다.", "focus": "인과 주장의 근거 확인", "expect": "insufficient_evidence"},
+  {"id": "E20", "text": "2025년 노벨 평화상은 일본인이 받았다.", "focus": "수상자 국적 확인", "expect": "contradicted-or-insufficient"}
+]
