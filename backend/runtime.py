@@ -25,7 +25,7 @@ from schemas import ModelPreference
 from tavily_search import TavilyUnavailable, search_tavily
 from providers import ProviderCallError, providers_for_preference, run_with_fallback
 from schemas import FactCheckRequest
-from search import build_search_query, origin_group_for_url, search_sources, source_type_for_url
+from search import apply_shared_origin_groups, build_search_query, origin_group_for_url, search_sources, source_type_for_url
 from sources import SourceReadResult, fetch_public_text, read_sources
 from verification import (
     _empty_judgments,
@@ -344,12 +344,17 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
         if not youtube_key or not any(
             source.get("sourceType") == "유튜브" for source in sources if isinstance(source, dict)
         ):
-            return await read_sources(read_state, reader=cached_reader)
-        async with httpx.AsyncClient(timeout=8.0, trust_env=False) as client:
-            async def youtube_reader(url):
-                return await fetch_youtube_data(url, api_key=youtube_key, client=client)
+            read_result = await read_sources(read_state, reader=cached_reader)
+        else:
+            async with httpx.AsyncClient(timeout=8.0, trust_env=False) as client:
+                async def youtube_reader(url):
+                    return await fetch_youtube_data(url, api_key=youtube_key, client=client)
 
-            return await read_sources(read_state, reader=cached_reader, youtube_reader=youtube_reader)
+                read_result = await read_sources(read_state, reader=cached_reader, youtube_reader=youtube_reader)
+        read_result["sources"] = apply_shared_origin_groups(
+            read_result.get("sources", []), read_result.get("sourceTexts", {}),
+        )
+        return read_result
 
     async def verify(state: FactCheckState):
         if state.get("jevMode"):
@@ -503,8 +508,16 @@ def _result_warnings(
 ) -> list[str]:
     warnings = [
         "최대 3개 주장·6개 출처를 대상으로 한 제한된 검증입니다.",
-        "출처 간 독립성과 원자료 계보는 확인되지 않았습니다.",
     ]
+    groups: dict[str, int] = {}
+    for source in sources:
+        group = source.get("originGroupId") if isinstance(source, dict) else None
+        if isinstance(group, str) and group.startswith("shared-"):
+            groups[group] = groups.get(group, 0) + 1
+    if not any(count >= 2 for count in groups.values()):
+        warnings.append(
+            "출처 간 독립성과 원자료 계보는 확인되지 않았습니다.",
+        )
     if any(source.get("accessStatus") == "unavailable" for source in sources):
         warnings.append(
             "일부 출처 원문에 접근하지 못했습니다. 검색 요약은 직접 인용으로 사용하지 않았습니다."

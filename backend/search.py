@@ -190,6 +190,80 @@ def origin_group_for_url(raw_url: str) -> str:
     return ".".join(parts[-2:]) if len(parts) >= 2 else host
 
 
+_MIN_SHARED_QUOTE_CHARS = 60
+_MAX_GROUP_TEXT_CHARS = 6_000
+
+
+def _shared_passage(first: str, second: str) -> str:
+    """Return a long verbatim passage shared by two texts, if any."""
+    import difflib
+
+    first_text = " ".join(first.split())[:_MAX_GROUP_TEXT_CHARS]
+    second_text = " ".join(second.split())[:_MAX_GROUP_TEXT_CHARS]
+    if len(first_text) < _MIN_SHARED_QUOTE_CHARS or len(second_text) < _MIN_SHARED_QUOTE_CHARS:
+        return ""
+    matcher = difflib.SequenceMatcher(None, first_text, second_text, autojunk=False)
+    match = matcher.find_longest_match(0, len(first_text), 0, len(second_text))
+    if match.size < _MIN_SHARED_QUOTE_CHARS:
+        return ""
+    return first_text[match.a:match.a + match.size]
+
+
+def group_by_shared_quotes(
+    sources: list[dict], source_texts: dict[str, str]
+) -> dict[str, str]:
+    """Map source ids to shared-origin groups using verbatim passages.
+
+    Pure function. Only sources with a qualifying shared passage are
+    returned; everyone else keeps the URL-based origin group.
+    """
+    ids = [
+        source.get("id") for source in sources
+        if isinstance(source, dict) and isinstance(source.get("id"), str)
+        and isinstance(source_texts.get(source.get("id")), str)
+        and source_texts.get(source.get("id"), "").strip()
+    ]
+    parent: dict[str, str] = {source_id: source_id for source_id in ids}
+
+    def find(node: str) -> str:
+        while parent[node] != node:
+            parent[node] = parent[parent[node]]
+            node = parent[node]
+        return node
+
+    for left_index, left_id in enumerate(ids):
+        for right_id in ids[left_index + 1:]:
+            if find(left_id) == find(right_id):
+                continue
+            if _shared_passage(source_texts[left_id], source_texts[right_id]):
+                parent[find(left_id)] = find(right_id)
+    groups: dict[str, list[str]] = {}
+    for source_id in ids:
+        groups.setdefault(find(source_id), []).append(source_id)
+    mapping: dict[str, str] = {}
+    for rank, (_, members) in enumerate(sorted(groups.items()), 1):
+        if len(members) > 1:
+            for member in members:
+                mapping[member] = "shared-%d" % rank
+    return mapping
+
+
+def apply_shared_origin_groups(
+    sources: list[dict], source_texts: dict[str, str]
+) -> list[dict]:
+    """Return source copies with shared-quote groups applied to originGroupId."""
+    mapping = group_by_shared_quotes(sources, source_texts)
+    if not mapping:
+        return sources
+    regrouped = []
+    for source in sources:
+        if isinstance(source, dict) and source.get("id") in mapping:
+            regrouped.append({**source, "originGroupId": mapping[source["id"]]})
+        else:
+            regrouped.append(source)
+    return regrouped
+
+
 _JAPANESE_TEXT = re.compile(r"[\u3040-\u30ff]")
 
 

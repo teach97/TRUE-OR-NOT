@@ -9,6 +9,7 @@ from typing import Any, Annotated, Literal
 
 import httpx
 import re
+from compute import claim_computations
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from providers import (
     LLMProvider,
@@ -565,6 +566,13 @@ async def verify_claims(
         for claim in checkable_claims
         if isinstance(claim.get("id"), str)
     }
+    computed = {
+        claim["id"]: claim_computations(claim.get("quote", ""))
+        for claim in checkable_claims
+        if isinstance(claim.get("id"), str)
+        and isinstance(claim.get("quote"), str)
+        and claim_computations(claim.get("quote", ""))
+    }
     try:
         text = await request_structured(
             active,
@@ -578,6 +586,7 @@ async def verify_claims(
                 "its content is true, and state both in the summary. When the text denies quoted content, "
                 "do not mark it contradicted. Treat conditional or future claims as not checkable. "
                 "When dates or conditions cannot be established, write CONDITION_UNKNOWN in unresolved. "
+                "Use the supplied computed values for any arithmetic; never compute percentages or unit conversions yourself. "
                 "Never use search summaries or URLs as evidence. Provide exact contiguous quotations "
                 "of at least 10 characters and valid source IDs. Set comparison to same only when "
                 "Never use search summaries or URLs as evidence. Provide exact contiguous quotations "
@@ -606,6 +615,7 @@ async def verify_claims(
                 "focus": state.get("focus", ""),
                 "article": _article_context(state),
                 "neighbors": neighbors,
+                "computed": computed,
                 "sources": model_sources,
             },
             schema=JudgmentResponse.model_json_schema(),
