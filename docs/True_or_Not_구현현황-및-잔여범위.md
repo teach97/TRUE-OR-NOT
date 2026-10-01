@@ -62,19 +62,33 @@ True or Not은 텍스트·링크·이미지에서 주장을 추출하고, 검색
 
 | ID | 구현된 범위 | 현재 동작과 경계 | 주요 근거 |
 |---|---|---|---|
+
 | I01 | 텍스트·링크·이미지 입력 | 본문 12,000 UTF-16 단위, 확인 요청 500 단위, http/https 링크, jpeg/png/webp 이미지 최대 1.5MB를 받습니다. JEV 빠른 경로는 이미지를 받지 않습니다. | [schemas.py](../backend/schemas.py), [dashboard](../app/components/fact-check-dashboard.tsx) |
+
 | I02 | 채팅과 인텐트 분기 | 검증 요청과 간단한 답변을 구분하고, 이전 원문·주장·최근 사용자 메시지 일부를 전달합니다. 요약 요청은 별도 경로로 처리합니다. | [intent.py](../backend/intent.py), [main.py](../backend/main.py), [dashboard](../app/components/fact-check-dashboard.tsx) |
+
 | I03 | 주장 추출과 유형 분류 | 최대 3개 주장을 추출하고 사실·의견·예측·불명확 유형과 검색어를 생성합니다. 인용과 UTF-16 원문 위치를 대조합니다. 현재는 후보 선택 없이 자동 실행합니다. | [extraction.py](../backend/extraction.py) |
+
 | I04 | 링크·이미지 원문 확보 | 링크 단독 입력과 일부 링크+요청문 입력은 페이지·자막으로 대체합니다. 페이지는 12,000 UTF-16 단위로 제한합니다. 이미지에서 읽은 텍스트는 검증 대상 본문으로 사용합니다. | [runtime.py](../backend/runtime.py), [extraction.py](../backend/extraction.py) |
+
 | I05 | LangGraph 5단계 실행 | 추출→검색→읽기→검증→합성을 순차 실행합니다. 단계별 어댑터가 연결되어 있습니다. 조건부 복귀나 품질 기반 재실행 루프는 없습니다. | [workflow.py](../backend/workflow.py), [runtime.py](../backend/runtime.py) |
+
 | I06 | 검색과 대체 경로 | Tavily를 우선 사용하고 설정 부재·장애 시 LLM 웹검색으로 대체합니다. 주장 검색어와 링크 제목 기반 검색을 사용하며 출처는 최대 6개입니다. | [runtime.py](../backend/runtime.py), [search.py](../backend/search.py), [tavily_search.py](../backend/tavily_search.py) |
+
 | I07 | 원문 수집과 URL 보호 | 공개 URL의 DNS·IP·리다이렉트·응답 크기·시간을 검사합니다. 원문을 읽지 못한 출처는 접근 불가로 표시하며 검색 요약을 직접 인용으로 사용하지 않습니다. | [sources.py](../backend/sources.py) |
+
 | I08 | 주장별 판정과 인용 검사 | 7개 판정 코드, 실제 원문에 있는 인용, 주장·출처·근거 참조를 검사합니다. 비교 조건이 다르거나 인용이 확인되지 않으면 직접 근거에서 제외합니다. | [verification.py](../backend/verification.py), [contracts.py](../backend/contracts.py) |
+
 | I09 | 주장 주변 맥락 전달 | 주장 앞뒤 문장과 링크 원문의 제목·날짜를 검증 입력에 포함합니다. 실제 원문 맥락을 보강하는 기능이며 장기 기억은 아닙니다. | [verification.py](../backend/verification.py) |
+
 | I10 | AI 개요와 출처 연결 | 읽은 비유튜브 원문으로 개요를 생성하고 출처 ID와 인용을 검사합니다. 개요 인용은 유튜브를 제외합니다. 생성 생략·실패 표시의 의미 분리는 남아 있습니다. | [answer_synthesis.py](../backend/answer_synthesis.py), [fact-check-reply.ts](../app/components/fact-check-reply.ts) |
+
 | I11 | 결과 화면과 원문 연결 | 주장 선택, 원문 위치, 인용·출처·지지/반박 관계, 확인·미확인 내용, 경고를 표시합니다. 모델 선택과 JEV 결과 표시도 있습니다. | [dashboard](../app/components/fact-check-dashboard.tsx), [client](../app/components/fact-check-client.ts) |
+
 | I12 | 진행·취소·오류·재시작 | NDJSON 진행·미리보기·결과 이벤트, 브라우저 취소 전파, 늦은 응답 무시, 오류 뒤 입력 복원과 사용자 재시작이 구현되어 있습니다. 메인 프록시는 프로세스별 동시 실행 1건을 제한합니다. | [streaming.py](../backend/streaming.py), [main route](../app/api/fact-check/route.ts), [dashboard](../app/components/fact-check-dashboard.tsx) |
+
 | I13 | 모델 선택과 Auto 대체 | Auto에서는 설정된 모델을 순서대로 시도합니다. 개별 모델 선택은 해당 모델만 사용합니다. 메인 검증 경로는 실패를 `MODEL_FAILED` 등으로 반환합니다. | [providers.py](../backend/providers.py), [runtime.py](../backend/runtime.py) |
+
 | I14 | 데모 분리와 JSON 내보내기 | 합성 예시는 실제 검증과 구분하고 외부 요청 없이 표시합니다. 결과 JSON을 다운로드하며 유튜브 API 메타데이터·댓글은 내보내기에서 제외합니다. | [demo-state.ts](../app/components/demo-state.ts), [dashboard](../app/components/fact-check-dashboard.tsx), [youtube-context.ts](../app/lib/youtube-context.ts) |
 
 ### 2.2 이미 연결된 확장
@@ -82,10 +96,13 @@ True or Not은 텍스트·링크·이미지에서 주장을 추출하고, 검색
 | ID | 구현된 범위 | 현재 동작과 경계 | 주요 근거 |
 |---|---|---|---|
 | I15 | 내용 요약 | `/api/summarize`로 텍스트·링크·유튜브 자막을 요약합니다. 사실 판정은 하지 않으며 이미지 요약은 지원하지 않습니다. 자막 길이 기준으로 30분 이상이면 거절합니다. | [summarize.py](../backend/summarize.py), [summary route](../app/api/summarize/route.ts) |
+
 | I16 | 유튜브 자막과 댓글 | 확보한 자막을 원문 읽기·주장 판정에 연결합니다. 댓글은 의견 맥락용이며 판정 근거가 아닙니다. 자막 수집 성공은 영상별로 달라질 수 있고 영상 자체의 내용을 분석하지 않습니다. | [youtube.py](../backend/youtube.py), [sources.py](../backend/sources.py), [runtime.py](../backend/runtime.py) |
 | I17 | 시장 맥락과 차트 | 종목 탐지 시 토스증권 우선·Finnhub 대체로 시세와 일봉을 조회하고 차트를 표시합니다. 수집 실패 시 맥락을 생략하고 검증을 계속합니다. 매매 권고 기능은 아닙니다. | [stocks.py](../backend/stocks.py), [runtime.py](../backend/runtime.py), [stock-chart.tsx](../app/components/stock-chart.tsx) |
 | I18 | 수치 계산 보조 | 인접 숫자 사이 증감률을 코드로 계산해 검증 입력에 제공합니다. 문장 속 숫자의 의미를 완전히 해석하는 기능이나 범용 단위 변환기는 아닙니다. | [compute.py](../backend/compute.py), [verification.py](../backend/verification.py) |
+
 | I19 | URL 중복·공통 인용 그룹 | URL 중복을 제거하고, 일정 길이의 공통 원문을 공유하는 출처를 같은 그룹으로 묶습니다. 공통 문구 기반 추정이며 완전한 원자료 계보·출처 독립성 분석은 아닙니다. | [search.py](../backend/search.py), [runtime.py](../backend/runtime.py) |
+
 | I20 | JEV 빠른 판정과 보완 | 검색→읽기→JEV 점수 결과 경로가 있습니다. 입력 공백 보존, 빠른 경로의 LOW_CONFIDENCE 유보 처리, 점수·판정 정합 경고가 구현되어 있습니다. 빠른 경로의 유형 분류 문제는 남아 있습니다. | [runtime.py](../backend/runtime.py), [verification.py](../backend/verification.py) |
 
 ### 2.3 보호 조치와 배포 준비
@@ -109,12 +126,19 @@ True or Not은 텍스트·링크·이미지에서 주장을 추출하고, 검색
 
 | ID | 현재 확인한 공백 | 필요한 작업 | 완료 기준 |
 |---|---|---|---|
+
 | R01 | 루트 `.dockerignore`에 비밀 파일 제외 규칙이 없고 백엔드 컨텍스트에는 해당 파일이 없습니다. Dockerfile은 소스를 통째로 복사합니다. | 각 빌드 컨텍스트에서 `.env*` 등 비밀 파일과 불필요한 로컬 파일을 제외합니다. 비밀값 없는 예제 파일은 필요할 때만 허용합니다. | 빌드 컨텍스트와 최종 이미지에 비밀 파일·키가 포함되지 않음을 확인합니다. 현재 상태로 배포 빌드를 진행하지 않습니다. |
+
 | R02 | 공개 모드는 로컬 요청 제한을 해제하지만 공개 프론트엔드의 접근·비용 제한은 없습니다. 동시 실행 제한은 메인 프록시에만 있습니다. | 부트캠프용 제한 공개 방식을 정하고 검증·JEV·인텐트·요약 요청에 적용합니다. 2.5일 범위에서는 간단한 서버 접근 게이트와 호출 한도를 우선 검토합니다. | 승인되지 않은 요청이 유료 호출 전에 차단되고, 허용 요청과 초과 요청을 구분합니다. 백엔드 공유 시크릿도 실제 배포에서 확인합니다. |
+
 | R03 | 화면의 동의 값은 자동 입력되고 인텐트 API에는 동의 계약이 없습니다. | 사용자 확인과 실제 외부 전송을 연결하고, 인텐트도 같은 동의 경계를 사용하도록 보완합니다. | 동의 전에는 입력·이전 원문이 외부 LLM·검색으로 전송되지 않습니다. |
+
 | R04 | `/api/fact-check/jev` 빠른 경로가 입력 전체를 `kind="fact"`인 주장 1개로 만듭니다. | 기존 추출·유형 분류를 재사용합니다. 일정상 해결되지 않으면 빠른 경로를 이번 시연·공개 범위에서 제외합니다. | 의견·예측을 확정된 사실로 점수 판정하지 않습니다. 메인 그래프의 JEV 옵션과 빠른 API를 별도로 검사합니다. |
+
 | R05 | 합성 대상 없음·생략·실패가 `insufficient_answer()`로 합쳐집니다. | 근거 부족, 생성 생략, 생성 실패의 의미를 계약·화면에서 구분합니다. | 동일 주장 판정을 유지하면서 개요 생성 실패는 처리 실패로 표시합니다. 기술 장애를 근거 부족으로 설명하지 않습니다. |
+
 | R06 | 링크 길이 제한과 이미지 관찰 텍스트 대체는 이미 구현되어 있지만 최신 전체 경로의 실행 확인이 필요합니다. | 링크 단독·링크+요청문·이미지 단독·긴 원문을 최종 결과 조립과 화면까지 검증합니다. 실패한 경계만 수정합니다. | 입력과 원문 위치가 일치하고, 조립 성공 또는 명확한 안전 실패가 확인됩니다. 기존 L3 전체를 미수정 상태로 되돌려 설명하지 않습니다. |
+
 | R07 | 컨테이너·호스팅 설정은 있으나 배포 성공을 확인하지 않았습니다. | 환경 설정, 컨테이너 빌드, 원격 API·스트림, 취소·재요청을 연결 검증합니다. | 제한 공개 URL에서 실제 정상 검증·판단 유보·처리 실패 시연이 가능하고, 설정만 존재하는 상태와 구분합니다. |
 
 근거: [.dockerignore](../.dockerignore), [Dockerfile](../Dockerfile), [backend Dockerfile](../backend/Dockerfile), [main.py](../backend/main.py), [runtime.py](../backend/runtime.py), [dashboard](../app/components/fact-check-dashboard.tsx), [attachment tests](../backend/tests/test_attachments.py).
@@ -123,9 +147,13 @@ True or Not은 텍스트·링크·이미지에서 주장을 추출하고, 검색
 
 | ID | 현재 상태 | 제안하는 구현 | 완료 기준 |
 |---|---|---|---|
+
 | R08 | 인용 거절·자료 접근 실패는 처리하지만 후속 복구 행동을 고르는 그래프 분기는 없습니다. | 품질 점검과 복구 전략 선택을 추가합니다. 첫 구현은 검색어·출처를 바꾸는 재탐색 1종을 우선하고, 인용 재생성은 여유가 있을 때 추가합니다. | 정상 입력은 추가 실행 없이 종료하고, 정의된 복구 사례에서 조건부 복귀가 실제 발생합니다. 일반 근거 부족·의견·예측을 자동 오류로 취급하지 않습니다. |
+
 | R09 | 요청 전체의 품질 복구 횟수·오류 원인·선택 행동을 기록하는 상태가 없습니다. | 기존 상태에 구조화된 진단, 복구 횟수, 행동과 결과 기록을 추가합니다. 요청 전체에서 복구는 최대 1회로 제한합니다. | 무한 반복이 없고 취소·전체 제한 시간·기존 모델 선택 정책이 유지됩니다. 재탐색 뒤 출처·인용 참조가 이전 시도와 섞이지 않습니다. |
+
 | R10 | QA 입력과 실행기는 있지만 복구 루프의 전후 비교·4개 평가 지표는 없습니다. | 기존 사례 중 10~15개를 고정해 기준 실행과 개선 실행을 비교합니다. 오류 주입 사례와 실제 API 사례를 구분합니다. | 완료율·도구/복구 행동 선택 정확도·응답 일관성·평균 복구 횟수를 동일 기준으로 집계합니다. 원본 기록과 코드 기준을 남깁니다. |
+
 | R11 | 테스트 파일은 있으나 CI 설정은 확인되지 않았습니다. `npm test`는 요약 route 테스트를 포함하지 않습니다. | 기존 테스트를 CI에서 실행하고 테스트 명령의 실제 포함 범위를 정리합니다. 신규 복구·배포 경계에 필요한 실패 사례를 추가합니다. | 백엔드·프론트 테스트, 타입 검사, 빌드가 실행되고 요약 경로 테스트도 누락되지 않습니다. |
 
 신규 제품 기능은 R08~R09에 집중합니다. R10~R11은 해당 기여를 설명하고 회귀를 방지하기 위한 평가·검증 작업입니다. 모든 외부 도구를 자유롭게 호출하는 범용 에이전트나 별도 에이전트 플랫폼으로 확장하지 않습니다.
@@ -134,10 +162,15 @@ True or Not은 텍스트·링크·이미지에서 주장을 추출하고, 검색
 
 | ID | 남은 항목 | 현재 근거 | 권장 처리 |
 |---|---|---|---|
+
 | R12 | 주장별 점수와 종합 평균 표시 정책 | 기획서의 잠정 정책은 평균 미표시지만 화면과 채팅 응답은 평균 점수를 표시합니다. | 킥오프에서 정책을 확정하고 화면·소개 문구·테스트를 맞춥니다. 점수를 측정된 정확도로 설명하지 않습니다. |
+
 | R13 | 실제 사용 모델·판정 경로 표시 | 결과 조립은 메타데이터가 없으면 기본 모델·추론 값을 채웁니다. JEV 두 경로의 실패 처리도 다릅니다. | 미확인 모델을 실제 사용 모델로 표시하지 않도록 계약을 검토하고, 판정 경로·대체 여부를 명시합니다. |
+
 | R14 | 인텐트·요약 본문 제한 방식 | 두 프록시는 `req.text()`로 전체를 읽은 뒤 크기를 검사합니다. | 메인 프록시의 제한 읽기를 재사용해 읽는 중 상한을 적용합니다. |
+
 | R15 | 자막·시장 데이터 외부 환경 검증 | 연결 코드는 있으나 영상·종목·권한·호스팅 환경별 성공은 별도입니다. | 발표에 쓸 영상·종목만 실제 확인하고 실패 시 기본 검증이 유지되는지 점검합니다. 실패한 확장은 시연에서 제외합니다. |
+
 | R16 | 문서 간 현황 불일치 | 기존 요약본·PRD·UI 검증 문서에 Finnhub 미연결, 로컬 전용, 옛 UI 단계 등의 설명이 남아 있습니다. | 팀 합의 후 문서별 적용 시점을 표시하고 현재 상태를 통일합니다. 이번 문서는 기존 문서를 자동으로 대체하지 않습니다. |
 
 근거: [dashboard](../app/components/fact-check-dashboard.tsx), [fact-check-reply.ts](../app/components/fact-check-reply.ts), [runtime.py](../backend/runtime.py), [intent route](../app/api/intent/route.ts), [summary route](../app/api/summarize/route.ts), [package.json](../package.json).
