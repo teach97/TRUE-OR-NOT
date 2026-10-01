@@ -723,3 +723,104 @@ def test_verify_claims_requires_a_key_when_verified_source_text_exists():
         assert str(exc) == "NOT_CONFIGURED"
     else:
         raise AssertionError("verified source judgment requires a provider key")
+
+
+def _units(text, char_index):
+    return len(text[:char_index].encode("utf-16-le")) // 2
+
+
+def test_neighbor_sentences_resolve_around_claim_offsets():
+    from verification import _units_to_index, claim_neighbors
+
+    assert _units_to_index("가나\U0001F600다", 0) == 0
+    assert _units_to_index("가나\U0001F600다", 2) == 2
+    assert _units_to_index("가나\U0001F600다", 3) == 2
+    assert _units_to_index("가나\U0001F600다", 4) == 3
+    assert _units_to_index("가나\U0001F600다", 99) == 4
+
+    text = "첫 문장입니다. 이번 인상 폭은 가장 크다. 다음 문장이다. 마지막이다."
+    quote = "이번 인상 폭은 가장 크다"
+    start = text.index(quote)
+    neighbors = claim_neighbors(
+        text, {"id": "c1", "quote": quote, "start": _units(text, start), "end": 0})
+    assert neighbors["before"] == ["첫 문장입니다."]
+    assert neighbors["after"] == ["다음 문장이다."]
+
+    first = claim_neighbors(text, {"id": "c1", "quote": "첫", "start": 0, "end": 1})
+    assert first == {"before": [], "after": ["이번 인상 폭은 가장 크다."]}
+
+    assert claim_neighbors("", {"id": "c1", "start": 0}) == {"before": [], "after": []}
+    assert claim_neighbors(text, {"id": "c1"}) == {"before": [], "after": []}
+
+
+def test_article_context_only_resolves_the_linked_source():
+    from verification import _article_context
+
+    state = {
+        "linkUrl": "https://example.org/article",
+        "sources": [
+            {"id": "s1", "url": "https://example.org/other", "title": "Other",
+             "publishedAt": "2026-01-01"},
+            {"id": "s2", "url": "https://example.org/article", "title": "Real title",
+             "publishedAt": "2026-02-02"},
+        ],
+    }
+    assert _article_context(state) == {"title": "Real title", "publishedAt": "2026-02-02"}
+    assert _article_context({}) == {"title": None, "publishedAt": None}
+
+
+def test_verify_claims_sends_neighbors_and_article_to_model():
+    import json
+
+    import httpx
+
+    from verification import verify_claims
+
+    text = "첫 문장입니다. 이번 인상 폭은 가장 크다. 다음 문장이다."
+    quote = "이번 인상 폭은 가장 크다"
+    state = {
+        "text": text,
+        "focus": "",
+        "linkUrl": "https://example.org/article",
+        "claims": [{"id": "c1", "quote": quote,
+                    "start": _units(text, text.index(quote)),
+                    "end": _units(text, text.index(quote) + len(quote)),
+                    "kind": "fact"}],
+        "sources": [{"id": "s1", "url": "https://example.org/article",
+                     "title": "기사 제목", "publishedAt": "2026-03-03",
+                     "accessStatus": "verified"}],
+        "sourceTexts": {"s1": quote + " 추가 원문 내용입니다."},
+    }
+    seen = {}
+
+    def handler(request):
+        body = json.loads(request.content)
+        seen["input"] = json.loads(body["input"])
+        return httpx.Response(200, json={
+            "status": "completed",
+            "output": [{
+                "type": "message",
+                "content": [{
+                    "type": "output_text",
+                    "text": json.dumps({"claims": [{
+                        "claimId": "c1",
+                        "verdictCode": "insufficient_evidence",
+                        "factScore": 50,
+                        "summary": "직접 근거가 부족합니다.",
+                        "confirmed": [],
+                        "unresolved": ["CONDITION_UNKNOWN"],
+                        "evidence": [],
+                    }]}),
+                }],
+            }],
+        })
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            return await verify_claims(state, api_key="test-only", client=client)
+
+    result = asyncio.run(run())
+    assert result["claims"][0]["verdictCode"] == "insufficient_evidence"
+    assert seen["input"]["article"] == {"title": "기사 제목", "publishedAt": "2026-03-03"}
+    assert seen["input"]["neighbors"]["c1"]["before"] == ["첫 문장입니다."]
+    assert seen["input"]["neighbors"]["c1"]["after"] == ["다음 문장이다."]
