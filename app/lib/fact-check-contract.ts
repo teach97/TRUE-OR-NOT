@@ -69,6 +69,11 @@ export type FactCheckResult = {
   claims: FactClaim[]; sources: FactSource[]; evidence: FactEvidence[]; warnings: string[]; answer: FactCheckAnswer;
   market?: MarketContext | null;
 };
+export type ContentSummary = {
+  title: string; summary: string; points: string[];
+  sourceName: string | null; sourceUrl: string | null;
+  warnings: string[]; meta: string; model?: string | null;
+};
 export type ProgressSource = {
   id: string; url: string; title: string; publisher: string;
   accessStatus: 'candidate' | 'verified' | 'unavailable'; sourceType: string;

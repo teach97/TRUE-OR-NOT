@@ -286,6 +286,21 @@ class FactCheckResponse(_ContractModel):
     result: FactCheckResult
 
 
+class ContentSummary(_ContractModel):
+    title: str = Field(min_length=1, max_length=300)
+    summary: str = Field(min_length=1, max_length=2_000)
+    points: list[str] = Field(max_length=5)
+    sourceName: str | None = Field(default=None, max_length=100)
+    sourceUrl: str | None = Field(default=None, max_length=2048)
+    warnings: list[str] = Field(max_length=3)
+    model: str | None = Field(default=None, max_length=100)
+    reasoning: Reasoning | None = None
+
+
+class SummaryResponse(_ContractModel):
+    result: ContentSummary
+
+
 class ModelOption(_ContractModel):
     id: ModelId
     label: str = Field(min_length=1, max_length=50)

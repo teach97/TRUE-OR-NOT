@@ -6,13 +6,13 @@ import type { CSSProperties, FormEvent, ReactNode } from 'react';
 import { initialState, transition } from './demo-state';
 import type { Claim } from './demo-state';
 import { MODEL_OPTIONS } from '../lib/fact-check-contract';
-import type { AgentStage, AnswerBlock, AttachedImage, FactCheckAnswer, FactCheckRequest, FactCheckResult, FactSource, ModelOption, ModelPreference, ProgressClaim, ProgressSource } from '../lib/fact-check-contract';
+import type { AgentStage, AnswerBlock, AttachedImage, ContentSummary, FactCheckAnswer, FactCheckRequest, FactCheckResult, FactSource, ModelOption, ModelPreference, ProgressClaim, ProgressSource } from '../lib/fact-check-contract';
 import { sourceDiscoveryLabel } from '../lib/source-discovery';
 import { scoreBand, scoreLabel } from '../lib/fact-score';
 import { formatYoutubePublishedAt, formatYoutubeViewCount, stripYoutubeApiDataForExport, youtubeThumbnailUrl } from '../lib/youtube-context';
 import { FactCheckError, faviconUrlFor, readFactCheckStream, safeSourceUrl, validResult } from './fact-check-client';
-import { composeAssistantReply, createAnswerCitationDisplayState, presentAnswerCitations } from './fact-check-reply';
-import { classifyChatInput, describeHistory, isFollowUpText, isIdentityQuestion, metaReply } from './chat-intent';
+import { composeAssistantReply, createAnswerCitationDisplayState, modelLabel as modelNameLabel, presentAnswerCitations } from './fact-check-reply';
+import { classifyChatInput, describeHistory, isFollowUpText, isIdentityQuestion, isSummarizeRequest, metaReply } from './chat-intent';
 import { DEMO_FOCUS, DEMO_TEXT, demoPreview, documents } from './demo-fixture';
 import ScrambleText from './scramble-text';
 import StockChart from './stock-chart';
@@ -172,11 +172,23 @@ type ChatProgress = {
   sourcesRead?: ProgressSource[]; sourcesReadElapsedSeconds?: number;
   claims?: ProgressClaim[]; claimsElapsedSeconds?: number; completed?: boolean; error?: string;
 };
-type ChatMessage = {id: string; role: 'assistant' | 'user'; text?: string; answer?: FactCheckAnswer; factScore?: number | null; verdict?: string | null; search?: string | null; scoreMode?: 'jev' | 'claims'; scoreEngine?: string | null; sources?: FactSource[]; progress?: ChatProgress; meta?: string; tone?: 'normal' | 'error'; imagePreview?: string; thinking?: boolean};
+type ChatMessage = {id: string; role: 'assistant' | 'user'; text?: string; answer?: FactCheckAnswer; factScore?: number | null; verdict?: string | null; search?: string | null; scoreMode?: 'jev' | 'claims'; scoreEngine?: string | null; sources?: FactSource[]; progress?: ChatProgress; summary?: ContentSummary; meta?: string; tone?: 'normal' | 'error'; imagePreview?: string; thinking?: boolean};
 type ModelSelection = ModelPreference;
 
 function ThinkingLoader({label}: {label: string}) {
   return <span className="chat-loader-row" role="status" aria-label={label}><LatticeLoader label="검증 중" doneLabel="검증 완료" errorLabel="검증 실패" pattern="orbit" grid={3} shape="round" cellSize={7} gap={3} fontSize={12} step={75} idleOpacity={0.15} glow color="#ffffff" showTimer/><span>{label}</span></span>;
+}
+
+function SummaryReply({summary}: {summary: ContentSummary}) {
+  const href = summary.sourceUrl ? safeSourceUrl(summary.sourceUrl) : null;
+  return <section className="summary-reply" aria-label="내용 요약">
+    <div className="ai-answer-heading"><span className="answer-spark" aria-hidden="true">✦</span><h3><BlurText text="요약"/></h3></div>
+    <h4>{summary.title}</h4>
+    <p>{summary.summary}</p>
+    {summary.points.length > 0 && <ul className="summary-points">{summary.points.map((point, index) => <li key={index}>{point}</li>)}</ul>}
+    {href && <p><a className="answer-citation-chip" href={href} target="_blank" rel="noopener noreferrer"><span className="answer-citation-title">{summary.sourceName || '원문 열기'}</span><span aria-hidden="true">↗</span></a></p>}
+    <p className="source-caption">원문 내용 정리입니다. 사실 검증이 아닙니다.</p>
+  </section>;
 }
 const WELCOME_MESSAGE: ChatMessage = {id: 'welcome', role: 'assistant', text: '확인하고 싶은 주장이나 원문을 보내주세요. 문장을 나누고, 직접 확인할 수 있는 출처와 인용을 연결하겠습니다.'};
 
@@ -517,6 +529,17 @@ export default function FactCheckDashboard() {
     if (value.action === 'reply' && typeof value.reply !== 'string') throw new Error('INTENT_FAILED');
     return {action: value.action, reply: typeof value.reply === 'string' ? value.reply : null, focus: typeof value.focus === 'string' ? value.focus : null};
   }
+  async function requestSummary(text: string, focus: string, linkUrl: string | null, signal: AbortSignal): Promise<ContentSummary> {
+    const response = await fetch('/api/summarize', {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify({text, focus, consent: true, modelPreference, ...(linkUrl ? {linkUrl} : {})}), signal});
+    if (!response.ok) {
+      const error = await response.json().catch(()=>null);
+      throw new FactCheckError(typeof error?.code === 'string' ? error.code : 'HTTP_ERROR', typeof error?.message === 'string' ? error.message : `요약 요청에 실패했습니다 (${response.status}).`);
+    }
+    const value = await response.json() as {result?: unknown};
+    const result = value?.result as ContentSummary | undefined;
+    if (!result || typeof result.title !== 'string' || typeof result.summary !== 'string' || !Array.isArray(result.points)) throw new FactCheckError('PROTOCOL', '요약 결과 형식이 올바르지 않습니다.');
+    return {...result, meta: `${modelNameLabel(result.model ?? null)} · 내용 요약`};
+  }
   const prevHasClaims = (liveResult?.claims.length ?? 0) > 0;
   const continuedThread = !sample && !image && !detectedLink && liveResult !== null && isFollowUpText(draft);
   const followUp = continuedThread && prevHasClaims;
@@ -582,6 +605,21 @@ export default function FactCheckDashboard() {
         : message));
     };
     let gate: GateDecision | null = null;
+    if (!image && isSummarizeRequest(draft) && (detectedLink || draft.trim().length > 200)) {
+      try {
+        const reply = await requestSummary(draft, focus.trim(), detectedLink, controller.signal);
+        if (generation.current !== current || controller.signal.aborted) {release(); return;}
+        removeThinking();
+        addMessage({role: 'assistant', summary: reply});
+        setNotice('내용을 요약했습니다. 사실 확인은 검증으로 요청해 주세요.');
+      } catch (error) {
+        if (generation.current !== current || controller.signal.aborted) return;
+        removeThinking();
+        addMessage({role: 'assistant', text: error instanceof FactCheckError ? `요약 실패: ${error.message}` : '요약 요청에 실패했습니다.', tone: 'error'});
+      }
+      setDraft(''); setFocus(''); setImage(null); release();
+      return;
+    }
     if (!image && !detectedLink && isIdentityQuestion(draft)) {
       removeThinking();
       const label = modelSelection === 'auto' ? 'Auto' : (MODEL_OPTIONS.find(model => model.id === modelSelection)?.label ?? modelSelection);
@@ -796,7 +834,7 @@ export default function FactCheckDashboard() {
               <div className={`chat-bubble ${message.answer ? 'chat-bubble--answer' : ''} ${message.scoreMode === 'jev' ? 'chat-bubble--fact-score' : ''}`}>
                 {message.answer ? (message.scoreMode === 'jev' && message.factScore !== undefined
                   ? <><JevFactScore score={message.factScore} verdict={message.verdict} search={message.search}/><JevSourceList sources={message.sources ?? []}/></>
-                  : <>{message.factScore !== undefined && <JevFactScore score={message.factScore} verdict={message.verdict} engine={message.scoreEngine ?? '종합'}/>}<AnswerOverview answer={message.answer} sources={message.sources ?? []} messageId={message.id}/></>) : message.progress ? <ProgressReply progress={message.progress}/> : message.thinking ? <ThinkingLoader label={notice || '근거를 모으고 사실 여부를 대조하고 있습니다.'}/> : <>{message.imagePreview && <img className="chat-image-preview" src={message.imagePreview} alt="사용자가 보낸 이미지"/>}{message.text ? <p>{message.text}</p> : null}</>}
+                  : <>{message.factScore !== undefined && <JevFactScore score={message.factScore} verdict={message.verdict} engine={message.scoreEngine ?? '종합'}/>}<AnswerOverview answer={message.answer} sources={message.sources ?? []} messageId={message.id}/></>) : message.progress ? <ProgressReply progress={message.progress}/> : message.thinking ? <ThinkingLoader label={notice || '근거를 모으고 사실 여부를 대조하고 있습니다.'}/> : message.summary ? <SummaryReply summary={message.summary}/> : <>{message.imagePreview && <img className="chat-image-preview" src={message.imagePreview} alt="사용자가 보낸 이미지"/>}{message.text ? <p>{message.text}</p> : null}</>}
                 {message.meta && <small>{message.meta}</small>}
               </div>
             </motion.div>)}

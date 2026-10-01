@@ -12,9 +12,10 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from streaming import stream_events
 from pydantic import BaseModel, ConfigDict, Field
 
-from contracts import AgentStatus, FactCheckResponse
+from contracts import AgentStatus, ContentSummary, FactCheckResponse
 from intent import classify_intent
 from jev import JevError
+from summarize import summarize_content
 from providers import ProviderCallError, configured_model_options, configured_providers, providers_for_preference, run_with_fallback
 from runtime import build_runtime_workflow, load_settings, run_jev_fast_check
 from schemas import FactCheckRequest, ModelPreference
@@ -129,6 +130,50 @@ async def fact_check(payload: FactCheckRequest, graph=Depends(get_workflow)):
         return JSONResponse(
             {"code": "AGENT_FAILED", "message": "검증을 완료하지 못했습니다."},
             status_code=502,
+            headers={"Cache-Control": "no-store"},
+        )
+
+
+@app.post("/api/summarize")
+async def summarize(payload: FactCheckRequest):
+    """Summarize content for research; never judges truth."""
+    if payload.image is not None:
+        return JSONResponse(
+            {"code": "INVALID_REQUEST", "message": "이미지 요약은 지원하지 않습니다. 텍스트나 링크로 보내주세요."},
+            status_code=422,
+            headers={"Cache-Control": "no-store"},
+        )
+    settings = load_settings()
+    try:
+        async with httpx.AsyncClient(timeout=90, trust_env=False) as client:
+            result = await summarize_content(
+                text=payload.text,
+                focus=payload.focus,
+                link_url=payload.linkUrl,
+                image=None,
+                consent=payload.consent,
+                settings=settings,
+                client=client,
+                model_preference=payload.modelPreference,
+            )
+        response = ContentSummary.model_validate(result)
+        return JSONResponse(
+            {"result": response.model_dump(mode="json")},
+            headers={"Cache-Control": "no-store"},
+        )
+    except ValueError as exc:
+        messages = {
+            "INVALID_REQUEST": (422, "요약 요청을 확인해 주세요."),
+            "NOT_CONFIGURED": (503, "서버의 LLM provider 설정이 필요합니다."),
+            "NO_CONTENT": (422, "요약할 내용을 찾지 못했습니다. 원문·링크를 확인해 주세요."),
+            "SOURCE_UNREADABLE": (502, "링크 원문을 읽지 못했습니다."),
+            "SOURCE_TOO_LONG": (422, "30분 이상 영상은 요약하지 않습니다."),
+            "SUMMARIZE_FAILED": (502, "요약을 만들지 못했습니다. 잠시 후 다시 시도해 주세요."),
+        }
+        status, message = messages.get(str(exc), (502, "요약을 만들지 못했습니다."))
+        return JSONResponse(
+            {"code": str(exc), "message": message},
+            status_code=status,
             headers={"Cache-Control": "no-store"},
         )
 

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {classifyChatInput, describeHistory, isIdentityQuestion, metaReply} from './chat-intent.ts';
+import {classifyChatInput, describeHistory, isIdentityQuestion, isSummarizeRequest, metaReply} from './chat-intent.ts';
 
 test('routes meta questions away from verification', () => {
   const previous = {hasPrevious: true, hasAttachment: false};
@@ -61,4 +61,11 @@ test('summarizes visible conversation history without providers', () => {
   assert.ok(summary.includes('마크저커버그는 뱀파이어인가'));
   assert.ok(summary.includes('근거 부족(50점)'));
   assert.ok(metaReply('greeting').length > 0 && metaReply('identity').length > 0);
+});
+test('detects summarize requests without hijacking verifications', () => {
+  assert.equal(isSummarizeRequest('https://example.com/page 요약해줘'), true);
+  assert.equal(isSummarizeRequest('이 영상 요약 좀 해줘'), true);
+  assert.equal(isSummarizeRequest('위 기사가 사실인지 요약해줘'), false);
+  assert.equal(isSummarizeRequest('사실인지 확인해줘'), false);
+  assert.equal(isSummarizeRequest(''), false);
 });
