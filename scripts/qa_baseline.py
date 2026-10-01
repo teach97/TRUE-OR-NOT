@@ -61,10 +61,13 @@ def run_case(case, outdir, repeats):
 def main():
     repeats = int(sys.argv[1]) if len(sys.argv) > 1 else 3
     stamp = sys.argv[2] if len(sys.argv) > 2 else datetime.datetime.now().strftime("%Y%m%d-%H%M")
+    wanted = sys.argv[3:]
     outdir = os.path.join(REPO, "output", "qa-baseline", stamp)
     os.makedirs(outdir, exist_ok=True)
     with open(os.path.join(REPO, "scripts", "qa_cases.json"), encoding="utf-8") as fh:
         cases = json.load(fh)
+    if wanted:
+        cases = [case for case in cases if case["id"] in wanted]
     print("cases=%d repeats=%d outdir=%s" % (len(cases), repeats, outdir), flush=True)
     for case in cases:
         run_case(case, outdir, repeats)
