@@ -117,9 +117,12 @@ async def summarize_content(
     if not providers:
         raise ValueError("NOT_CONFIGURED")
 
+    from dataclasses import replace
+
     async def operation(provider: LLMProvider):
+        effective = replace(provider, reasoning="high") if provider.kind == "openai" else provider
         raw = await request_structured(
-            provider,
+            effective,
             client,
             instructions=_SUMMARY_INSTRUCTIONS,
             input_data={
@@ -127,7 +130,7 @@ async def summarize_content(
                 "content": source["body"],
             },
             schema=SummaryDraft.model_json_schema(),
-            max_output_tokens=2_000,
+            max_output_tokens=6_000,
         )
         try:
             return SummaryDraft.model_validate_json(raw)
