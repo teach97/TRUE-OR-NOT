@@ -568,3 +568,16 @@ def test_runtime_verify_escales_to_llm_when_jev_fails(monkeypatch):
     update = asyncio.run(adapters.verify(_jev_runtime_state()))
     assert update["claims"][0]["verdictCode"] == "mostly_supported"
     assert update["llmModel"] == "gemini-3.8-flash"
+
+
+def test_jev_coherence_warning_flags_mismatched_bands_only():
+    from verification import _JEV_MODE_WARNING, jev_coherence_warning
+
+    assert jev_coherence_warning("mostly_supported", 85) is None
+    assert jev_coherence_warning("partially_supported", 65) is None
+    assert jev_coherence_warning("contradicted", 10) is None
+    assert jev_coherence_warning("insufficient_evidence", 50) is None
+    assert jev_coherence_warning("mostly_supported", 75) is not None
+    assert jev_coherence_warning("partially_supported", 50) is not None
+    assert jev_coherence_warning("contradicted", 60) is not None
+    assert _JEV_MODE_WARNING != jev_coherence_warning("mostly_supported", 75)

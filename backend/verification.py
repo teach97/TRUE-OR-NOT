@@ -643,6 +643,29 @@ _JEV_SUMMARIES = {
 
 _JEV_MODE_WARNING = "Jev 고속 판정: 직접 인용을 표시하지 않습니다."
 
+_JEV_COHERENT_BANDS = {
+    "mostly_supported": (80, 100),
+    "partially_supported": (60, 79),
+    "contradicted": (0, 39),
+}
+
+_JEV_COHERENCE_WARNING = (
+    "점수와 판정이 어긋납니다. 점수는 참고만 하고 판정과 경고를 우선 확인하세요."
+)
+
+
+def jev_coherence_warning(verdict_code: str, fact_score: int) -> str | None:
+    """Flag score/verdict mismatches without blocking the result."""
+    band = _JEV_COHERENT_BANDS.get(verdict_code)
+    if band is None:
+        return None
+    low, high = band
+    if not isinstance(fact_score, int) or isinstance(fact_score, bool):
+        return _JEV_COHERENCE_WARNING
+    if fact_score < low or fact_score > high:
+        return _JEV_COHERENCE_WARNING
+    return None
+
 
 async def verify_claims_jev(
     state: dict[str, Any],
@@ -700,6 +723,9 @@ async def verify_claims_jev(
         result = _base_claim_result(
             claim, judgment["verdictCode"], _JEV_SUMMARIES[judgment["verdictCode"]], judgment["factScore"]
         )
-        result["warnings"] = [_JEV_MODE_WARNING]
+        coherence = jev_coherence_warning(judgment["verdictCode"], judgment["factScore"])
+        result["warnings"] = (
+            [_JEV_MODE_WARNING, coherence] if coherence else [_JEV_MODE_WARNING]
+        )
         final_claims.append(result)
     return {"claims": final_claims, "evidence": []}
