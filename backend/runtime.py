@@ -200,8 +200,27 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
                 return ""
             return page_text if isinstance(page_text, str) else ""
 
+        async def fetch_youtube_transcript():
+            from youtube import fetch_transcript_text, youtube_video_id
+
+            video_id = youtube_video_id(link_url) if has_link else None
+            if not video_id:
+                return ""
+            try:
+                result = await fetch_transcript_text(video_id)
+            except Exception:
+                return ""
+            text = result.get("text") if isinstance(result, dict) else None
+            return text if isinstance(text, str) and text.strip() else ""
+
+        async def fetch_link_text():
+            transcript = await fetch_youtube_transcript()
+            if transcript.strip():
+                return transcript
+            return await fetch_page()
+
         if link_only:
-            page_text = await fetch_page()
+            page_text = await fetch_link_text()
             if page_text.strip():
                 return await extract_from_page(page_text)
         update = await with_fallback(
@@ -212,7 +231,7 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
             "EXTRACTION_FAILED",
         )
         if has_link and not link_only and not update.get("claims"):
-            page_text = await fetch_page()
+            page_text = await fetch_link_text()
             if page_text.strip():
                 try:
                     return await extract_from_page(page_text)

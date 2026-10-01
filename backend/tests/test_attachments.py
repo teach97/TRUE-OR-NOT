@@ -297,3 +297,62 @@ def test_extract_link_with_real_claims_keeps_draft_text(monkeypatch):
     update = asyncio.run(adapters.extract(state))
     assert "text" not in update
     assert update["claims"][0]["quote"] == "Draft claim"
+
+
+def test_extract_youtube_link_with_words_falls_back_to_transcript(monkeypatch):
+    import runtime
+    import youtube
+    from runtime import Settings, make_runtime_adapters
+
+    async def fake_transcript(video_id):
+        assert video_id == "aB_12345678"
+        return {"text": "영상에서 설명합니다.", "status": "collected"}
+
+    async def no_page_fetch(url):
+        raise AssertionError("page fetch must not run for YouTube links with transcripts")
+
+    async def fake_claims(state, **kwargs):
+        return {"claims": []}
+
+    async def fake_page(page_text, **kwargs):
+        assert page_text == "영상에서 설명합니다."
+        return {"claims": [{"id": "c1", "quote": "영상에서 설명", "kind": "fact",
+                            "start": 0, "end": 8}], "text": page_text}
+
+    monkeypatch.setattr(youtube, "fetch_transcript_text", fake_transcript)
+    monkeypatch.setattr(runtime, "fetch_public_text", no_page_fetch)
+    monkeypatch.setattr(runtime, "extract_claims", fake_claims)
+    monkeypatch.setattr(runtime, "extract_page_claims", fake_page)
+    settings = Settings(api_key=SecretStr("test-only"))
+    adapters = make_runtime_adapters(settings)
+    state = {"text": "https://www.youtube.com/watch?v=aB_12345678 파악해줘", "focus": "",
+             "consent": True, "linkUrl": "https://www.youtube.com/watch?v=aB_12345678"}
+    update = asyncio.run(adapters.extract(state))
+    assert update["text"] == "영상에서 설명합니다."
+    assert update["claims"][0]["quote"] == "영상에서 설명"
+
+
+def test_extract_youtube_link_without_transcript_keeps_old_behavior(monkeypatch):
+    import runtime
+    import youtube
+    from runtime import Settings, make_runtime_adapters
+
+    async def no_transcript(video_id):
+        return {"text": None, "status": "unavailable"}
+
+    async def fake_page_fetch(url):
+        return ("", url)
+
+    async def fake_claims(state, **kwargs):
+        return {"claims": []}
+
+    monkeypatch.setattr(youtube, "fetch_transcript_text", no_transcript)
+    monkeypatch.setattr(runtime, "fetch_public_text", fake_page_fetch)
+    monkeypatch.setattr(runtime, "extract_claims", fake_claims)
+    settings = Settings(api_key=SecretStr("test-only"))
+    adapters = make_runtime_adapters(settings)
+    state = {"text": "https://www.youtube.com/watch?v=aB_12345678 파악해줘", "focus": "",
+             "consent": True, "linkUrl": "https://www.youtube.com/watch?v=aB_12345678"}
+    update = asyncio.run(adapters.extract(state))
+    assert update["claims"] == []
+    assert "text" not in update
