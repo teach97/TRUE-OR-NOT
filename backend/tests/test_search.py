@@ -77,7 +77,7 @@ def _finance_candidate(url, title="t"):
             "accessStatus": "pending"}
 
 
-def test_trusted_finance_hosts_move_first_for_stock_questions():
+def test_preferred_finance_hosts_move_first_for_stock_questions():
     from search import _select_diverse_sources
 
     candidates = [
@@ -86,7 +86,7 @@ def test_trusted_finance_hosts_move_first_for_stock_questions():
         _finance_candidate("https://news.example.kr/tesla"),
         _finance_candidate("https://www.reuters.com/tesla-results"),
     ]
-    selected = _select_diverse_sources(candidates, prefer_trusted=True)
+    selected = _select_diverse_sources(candidates, prefer_finance=True)
     assert [s["url"] for s in selected[:2]] == [
         "https://www.bloomberg.com/tesla-earnings",
         "https://www.reuters.com/tesla-results",
@@ -94,7 +94,7 @@ def test_trusted_finance_hosts_move_first_for_stock_questions():
     assert len(selected) == 4
 
 
-def test_trusted_boost_off_preserves_provider_order():
+def test_finance_boost_off_preserves_provider_order():
     from search import _select_diverse_sources
 
     candidates = [
@@ -108,13 +108,13 @@ def test_trusted_boost_off_preserves_provider_order():
     ]
 
 
-def test_trusted_match_covers_subdomains():
-    from search import is_trusted_finance_host
+def test_finance_match_covers_subdomains():
+    from search import is_preferred_finance_host
 
-    assert is_trusted_finance_host("https://kr.reuters.com/article") is True
-    assert is_trusted_finance_host("https://www.investing.com/equities/tesla") is True
-    assert is_trusted_finance_host("https://fakeinvesting.com/x") is False
-    assert is_trusted_finance_host("not a url") is False
+    assert is_preferred_finance_host("https://kr.reuters.com/article") is True
+    assert is_preferred_finance_host("https://www.investing.com/equities/tesla") is True
+    assert is_preferred_finance_host("https://fakeinvesting.com/x") is False
+    assert is_preferred_finance_host("not a url") is False
 
 
 def test_search_collects_deduplicated_candidates_without_evidence():

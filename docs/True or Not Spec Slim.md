@@ -38,7 +38,7 @@
 | X02 | 채팅 + 인텐트 게이트 | 구현 |
 | X03 | Tavily 검색과 LLM 검색 대체 | 구현 |
 | X04 | 모델 선택 + JEV 스위치 | 구현 |
-| X05 | 유튜브 댓글 맥락 (판정 미사용) | 구현, 실 API 미검증 |
+| X05 | 유튜브 댓글 맥락 (판정 미사용) + 30분 미만 자막 근거 사용 | 구현, 실 API 검증됨 |
 | X06 | 링크 제목 키워드 추가 검색 | 구현 (Tavily 키 있을 때만) |
 | X07 | Finnhub | 미연결 (키 로드만) |
 
@@ -47,6 +47,8 @@
 ## 10. 기술 구성
 
 - 브라우저 → Next.js 프록시(로컬 전용) → FastAPI 127.0.0.1:8010 → LangGraph 5단계 → NDJSON 스트림.
+- POST `/api/summarize`: 링크·붙여넣기 내용 요약. 판정 없음.
+- GPT-6 Luna 1순위 + `service_tier: fast`. 배포 준비(env 게이트·공유 시크릿·Docker·render.yaml)는 코드에 있고 실행은 보류.
 - 키는 `backend/.env` 전용. 브라우저에 키 없음.
 - 제한: 본문/확인요청 12,000/500자, 주장 3개, 출처 6개, LLM 90초, Tavily 30초, 전체 스트림 240초, 재시도 없음(provider 폴백 최대 3단).
 - 오류: INVALID_REQUEST, LOCAL_ONLY, BUSY, CANCELLED, NOT_CONFIGURED, AGENT_FAILED, BACKEND_UNAVAILABLE/FAILED, TIMEOUT, INTENT_FAILED, JEV 4종(LOW_CONFIDENCE·GATEWAY_ERROR·NO_JUDGMENT·BAD_RESPONSE).
