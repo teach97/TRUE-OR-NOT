@@ -117,10 +117,10 @@ async def summarize_content(
     if not providers:
         raise ValueError("NOT_CONFIGURED")
 
-    async def operation(provider: LLMProvider, operation_client: httpx.AsyncClient):
+    async def operation(provider: LLMProvider):
         raw = await request_structured(
             provider,
-            operation_client,
+            client,
             instructions=_SUMMARY_INSTRUCTIONS,
             input_data={
                 "focus": focus,
