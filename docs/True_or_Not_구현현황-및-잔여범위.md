@@ -98,7 +98,9 @@ True or Not은 텍스트·링크·이미지에서 주장을 추출하고, 검색
 | I15 | 내용 요약 | `/api/summarize`로 텍스트·링크·유튜브 자막을 요약합니다. 사실 판정은 하지 않으며 이미지 요약은 지원하지 않습니다. 자막 길이 기준으로 30분 이상이면 거절합니다. | [summarize.py](../backend/summarize.py), [summary route](../app/api/summarize/route.ts) |
 
 | I16 | 유튜브 자막과 댓글 | 확보한 자막을 원문 읽기·주장 판정에 연결합니다. 댓글은 의견 맥락용이며 판정 근거가 아닙니다. 자막 수집 성공은 영상별로 달라질 수 있고 영상 자체의 내용을 분석하지 않습니다. | [youtube.py](../backend/youtube.py), [sources.py](../backend/sources.py), [runtime.py](../backend/runtime.py) |
+
 | I17 | 시장 맥락과 차트 | 종목 탐지 시 토스증권 우선·Finnhub 대체로 시세와 일봉을 조회하고 차트를 표시합니다. 수집 실패 시 맥락을 생략하고 검증을 계속합니다. 매매 권고 기능은 아닙니다. | [stocks.py](../backend/stocks.py), [runtime.py](../backend/runtime.py), [stock-chart.tsx](../app/components/stock-chart.tsx) |
+
 | I18 | 수치 계산 보조 | 인접 숫자 사이 증감률을 코드로 계산해 검증 입력에 제공합니다. 문장 속 숫자의 의미를 완전히 해석하는 기능이나 범용 단위 변환기는 아닙니다. | [compute.py](../backend/compute.py), [verification.py](../backend/verification.py) |
 
 | I19 | URL 중복·공통 인용 그룹 | URL 중복을 제거하고, 일정 길이의 공통 원문을 공유하는 출처를 같은 그룹으로 묶습니다. 공통 문구 기반 추정이며 완전한 원자료 계보·출처 독립성 분석은 아닙니다. | [search.py](../backend/search.py), [runtime.py](../backend/runtime.py) |
