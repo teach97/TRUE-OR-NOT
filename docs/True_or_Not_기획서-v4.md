@@ -570,6 +570,6 @@ v3식 역할 4분할(에이전트/검색/프론트/QA) 대신 파일 소유권 �
 - 시장 맥락(X13): 토스증권 우선·Finnhub 대체로 시세·60일봉 조회. 주식 탐지 시에만 결과에 첨부, 실패해도 검증 계속. 차트는 lightweight-charts 렌더.
 - 금융 정보 우선 정렬: investing.com·reuters.com·wsj.com·bloomberg.com을 주식 질문에서 앞으로 정렬. “신뢰”가 아닌 “우선” 표현을 쓴다.
 - GPT-6 Luna 1순위 + `service_tier: fast` (약 2배 요금). 표시 순서도 Luna 우선으로 통일.
-- JEV修正: 입력 공백 보존(원문 대조 깨짐 수정), LOW_CONFIDENCE는 “근거 부족” 판정으로 반환.
+- JEV: 입력 공백 보존(원문 대조 깨짐 수정), LOW_CONFIDENCE는 “근거 부족” 판정으로 반환.
 - 배포 준비(미실행): 프록시 env 게이트 3종, 백엔드 공유 시크릿, Docker 2종, `render.yaml`.
 - 테스트: 백엔드 324 passed, 프론트 59 passed, `tsc` 통과 (2026-10-01 실측).
