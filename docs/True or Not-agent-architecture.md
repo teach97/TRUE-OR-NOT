@@ -1,6 +1,7 @@
 # True or Not 팩트 검증 에이전트 설계
 
-> 최종 갱신: 2026-09-30. 아래는 현재 코드 기준(as-built)이며, 기획서 v4·PRD와 함께 본다.
+> 최종 갱신: 2026-10-02. 아래는 현재 코드 기준(as-built)이며, 기획서 v4·PRD와 함께 본다.
+> 이 문서는 평가 기준 P2-1(에이전트 아키텍처 설계서)의 5개 항목에 대응하도록 구성되어 있다.
 
 ## 선택한 연결 방식
 
@@ -11,6 +12,122 @@
 - 주의: ChatGPT/Codex 구독 인증과 별도의 API 인증이며, 모델·웹 검색 사용량은 각 공급자의 API 정책에 따라 과금됩니다.
 
 모델 선택(`modelPreference`: auto·개별 모델)은 브라우저에서 고를 수 있습니다. auto는 위 우선순위대로 시도하고, 개별 선택은 해당 모델만 단독 사용합니다(실패 시 자동 전환 없음). 각 단계에서 현재 공급자 요청이 실패하면 키가 설정된 다음 공급자를 우선순위대로 시도합니다. 성공한 모델 ID와 추론 강도는 결과에 표시합니다.
+
+## 1. StateGraph 노드 배치 (P2-1 항목 1)
+
+그래프 정의는 `backend/workflow.py`의 `build_workflow`가 맡으며, 실행 시 실제 동작은 `backend/runtime.py`의 `build_runtime_workflow`가 어댑터를 주입하여 완성합니다.
+
+```mermaid
+flowchart LR
+    START --> EXTRACT[extracting<br/>주장 추출]
+    EXTRACT --> SEARCH[searching<br/>검색]
+    SEARCH --> READ[reading<br/>원문 읽기]
+    READ --> VERIFY[verifying<br/>판정]
+    VERIFY --> SYNTH[synthesizing<br/>개요 합성·결과 조립]
+    SYNTH --> END
+```
+
+| 노드 | 사고 흐름 매핑 | 주입되는 동작 (`runtime.py`) | 출력 |
+|---|---|---|---|
+| `extracting` | 인지 (무엇을 검증할지 파악) | 텍스트·링크·이미지에서 최대 3개 주장 추출, 원문 위치 검증 | `claims`, `searchQueries`, `text` |
+| `searching` | 행동 - 탐색 | Tavily 우선, 없거나 실패 시 LLM 웹검색으로 대체. 주식 질문 시 시장 맥락 첨부 | `sources` 후보, `market` |
+| `reading` | 행동 - 수집 | 검색 메타데이터의 URL만 원문 수집. 접근 실패는 `unavailable`로 표시 | `sources`, `sourceTexts` |
+| `verifying` | 판단 | LLM 판정 제안 → 인용·참조 무결성 코드 검증. JEV 모드 실패 시 조용히 LLM 판정으로 전환 | `claims` 확정, `evidence` |
+| `synthesizing` | 검증·정리 | 검증된 원문 인용으로 AI 개요 합성 후 최종 결과 조립·계약 검증 | `answer`, `result` |
+
+현재 그래프는 조건 분기 없는 직선형이며, 이는 의도된 단순화입니다. 품질 점검 후 되돌아가는 순환 간선(Review→Repair)은 후속 과제(R08~R09)로 분리되어 있으며, 정상 입력은 추가 실행 없이 종료됩니다.
+
+## 2. 분기 조건과 예외 흐름 (P2-1 항목 2)
+
+모든 분기는 명시적 조건식으로 정의되어 있으며, 예외 흐름은 사실 판정으로 위장하지 않고 실패·유보로 처리합니다.
+
+| # | 분기 위치 | 조건 | 참일 때 | 거짓일 때 |
+|---|---|---|---|---|
+| F1 | 모델 선택 | `modelPreference == "auto"` | 키가 설정된 공급자를 Luna→3.8→3.7 순으로 시도 (`providers.py`) | 지정 모델만 단독 사용, 실패 시 전환 없음 |
+| F2 | 검색 수단 | `TAVILY_API_KEY` 설정 + 호출 성공 | Tavily 결과 사용 | LLM 웹검색으로 대체. 둘 다 불가 시 `LLM_SEARCH_UNAVAILABLE` 경고 |
+| F3 | 링크 입력 | 본문이 링크 URL 단독과 일치 | 페이지 본문 수집 후 그 본문으로 추출 (`runtime.py` `extract`) | 입력 텍스트로 추출. 주장 0건이면 링크 본문으로 1회 폴백 |
+| F4 | JEV 검증 실패 | `JevError` 발생 | 파이프라인 내부에서는 로그 후 LLM 판정으로 전환. `/jev` 단독 경로는 오류 반환 | JEV 결과 사용 |
+| F5 | 개요 합성 | `eligible_sources` 존재 + 합성 성공 | AI 개요 + 출처 칩 제공 | 고정 안내 문구 표시 (합성 생략·실패와 근거 부족의 문구 분리는 잔여 L4) |
+| F6 | 시장 맥락 | 종목 탐지 + 토스/Finnhub 응답 성공 | 결과에 시세·차트 첨부 | 맥락 생략 후 검증 계속 (검증 실패 아님) |
+| F7 | 유튜브 | `YOUTUBE_API_KEY` 설정 + 영상 존재 | 메타·댓글(최대 10개)·자막 수집. 자막은 판정 근거, 댓글은 맥락용 | 키 미설정 시 `not_configured`, 조회 실패 시 `unavailable` 표시 |
+
+```mermaid
+flowchart TD
+    S[searching] -->|Tavily 키 있음 + 성공| T[Tavily 결과]
+    S -->|키 없음·실패| L[LLM 웹검색]
+    T --> R[reading]
+    L -->|성공| R
+    L -->|불가| W[LLM_SEARCH_UNAVAILABLE 경고\n판정이 아닌 유보로 기록]
+    W --> R
+    R --> V[verifying]
+    V -->|jevMode + JEV 성공| JV[JEV 점수 결과]
+    V -->|JEV 실패| LV[LLM 판정으로 전환\n경고 기록]
+    V -->|일반 모드| LV
+```
+
+## 3. 기억·컨텍스트 윈도우·요약 전략 (P2-1 항목 3)
+
+| 구분 | 설계 | 근거 |
+|---|---|---|
+| 단기 기억 | 요청 1건의 `FactCheckState`가 전부이며, 서버 영속 저장 없음. 프로세스 재시작 시 소멸 | `workflow.py` `FactCheckState`, 운영 경계(영속 큐 아님) |
+| 컨텍스트 윈도우 관리 | 입력 상한으로 윈도우 초과를 사전 차단. 본문 12,000자·확인 요청 500자(UTF-16), 합성 입력은 출처별 6,000자·최대 6개 출처, 유튜브 댓글 10개·API 응답 256KB | `schemas.py`, `answer_synthesis.py` `eligible_sources` |
+| 길이 초과 처리 | 링크 본문은 12,000자로 절단 후 저장하여 최종 조립 재검증 실패 방지. astral 문자 분리 방지 절단 | `runtime.py` `_truncate_units` |
+| 요약 전략 | 에이전트 기억용 요약은 없음. 내용 요약(`/api/summarize`)은 사용자 요청 처리용 별도 경로이며 기억 관리로 사용하지 않음 | `summarize.py` |
+| 장기 기억 | 범위 밖. 로그인·보관함·대화 기억은 후속 과제로 제외 | 기획서 v4 범위 밖 |
+
+## 4. Tool 호출 흐름 (P2-1 항목 4)
+
+정직한 기술 원칙: 도구 선택은 LLM의 자율적 Function Calling이 아니라, 단계 어댑터가 조건에 따라 호출하는 프로그래밍 방식입니다. LLM은 구조화 출력(JSON 스키마)으로 제안하고, 실제 호출·검증은 코드가 수행합니다.
+
+```mermaid
+sequenceDiagram
+    participant G as Graph 노드
+    participant A as 단계 어댑터<br/>(runtime.py)
+    participant P as 공급자 풀<br/>(providers.py)
+    participant T as 외부 도구<br/>(Tavily·LLM검색·YouTube·시장API)
+    participant V as 코드 검증<br/>(verification·contracts)
+    G->>A: 상태 전달
+    A->>P: modelPreference로 공급자 목록 요청
+    P-->>A: Luna → 3.8 → 3.7 (키 있는 것만)
+    A->>T: 도구 호출 (검색·수집·시세)
+    T-->>A: 후보 결과
+    A->>V: LLM 제안 + 원문 대조
+    V-->>A: 통과·탈락 (탈락분은 제외 후 판정 재평가)
+    A-->>G: 상태 업데이트 반환
+```
+
+| 호출 | 호출 주체 | LLM 역할 | 코드 역할 |
+|---|---|---|---|
+| 주장 추출·검색어 생성 | `extract` 어댑터 | 주장·검색어 제안 | 개수 상한(3개), 원문 위치 검증 |
+| 웹검색 (Tavily·LLM) | `search` 어댑터 | LLM 검색 시 검색어 실행·결과 반환 | 공급자 선택, 출처 수 상한(6개), 동일 사이트 2개 제한 |
+| 원문 수집 | `read` 어댑터 | 관여 없음 | URL 안전 검사, 리다이렉트·크기·시간 제한, 접근 상태 기록 |
+| 판정 | `verify` 어댑터 | 판정·인용·관계 제안 | 인용 원문 대조, 참조 무결성, 조건 비교 후 최종 판정 |
+| 개요 합성 | `synthesize` 어댑터 | 개요 초안 | 출처 ID·인용 대조, 실패 시 고정 문구 |
+
+## 5. 상태 객체 정의 (P2-1 항목 5)
+
+`backend/workflow.py`의 `FactCheckState`(`TypedDict`, `total=False`)가 유일한 상태 정의이며, 필드 중복 없이 단계별로 추가되는 단방향 구조입니다.
+
+| 필드 | 타입 | 기록 시점 |
+|---|---|---|
+| `text`, `focus`, `consent`, `modelPreference` | `str`, `str`, `bool`, `str` | 요청 진입 |
+| `linkUrl` | `str \| None` | 요청 진입 |
+| `image` | `dict \| None` | 요청 진입 (JEV 경로 제외) |
+| `jevMode` | `bool` | 요청 진입 |
+| `claims` | `list[dict]` | extracting |
+| `searchQueries` | `dict[str, str]` | extracting |
+| `searchNotice` | `str` | searching (장애 시) |
+| `stockSymbols` | `list[str]` | searching |
+| `market` | `dict \| None` | searching |
+| `sources` | `list[dict]` | searching·reading |
+| `sourceTexts` | `dict[str, str]` | reading |
+| `sourceSections` | `dict[str, list[dict]]` | reading |
+| `evidence` | `list[dict]` | verifying |
+| `result` | `dict` | synthesizing |
+| `answer`, `answerModel`, `answerReasoning` | `dict`, `str \| None`, `str \| None` | synthesizing |
+| `llmModel`, `llmReasoning` | `str`, `str` | 각 LLM 단계 성공 시 |
+
+복구 루프 도입 시 추가될 필드(`diagnostics`, `recoveryCount`, `recoveryTrace`)는 현재 존재하지 않으며, 추가 시 본 표에 갱신합니다. 요청 전체 복구는 최대 1회로 제한할 예정입니다(R09).
 
 ## 구성
 
