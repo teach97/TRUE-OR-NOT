@@ -11,6 +11,7 @@ const MODEL_OPTIONS = [
   {id: 'gemini-3.7-flash', label: 'Gemini 3.7 Flash'},
 ] as const;
 let active = 0;
+const MAX_CONCURRENT = 10;
 function backend(path: string) {
   const base = new URL(process.env.FACTLENS_BACKEND_URL || 'http://127.0.0.1:8010');
   if (process.env.FACTLENS_ALLOW_REMOTE_BACKEND === '1') {
@@ -70,7 +71,7 @@ export async function POST(req: Request) {
     if(Number(req.headers.get('content-length'))>3000000)throw new Error('BODY_TOO_LARGE');
     input=validateRequest(JSON.parse(await limitedText(new Response(req.body),3000000,signal)));
   }catch{return error(400,'INVALID_REQUEST','본문, 확인 요청 길이 및 외부 전송 동의를 확인해 주세요.');}
-  if(active>=1)return error(429,'BUSY','진행 중인 검증이 있습니다. 완료 후 다시 시도해 주세요.');
+  if(active>=MAX_CONCURRENT)return error(429,'BUSY','진행 중인 검증이 많습니다. 완료 후 다시 시도해 주세요.');
   if(req.signal.aborted)return error(400,'CANCELLED','요청이 취소되었습니다.');
   active++;
   const controller=new AbortController();

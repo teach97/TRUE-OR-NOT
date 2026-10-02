@@ -108,14 +108,16 @@ test('POST forwards NDJSON without credentials; cancellation releases concurrenc
  globalThis.fetch=async(url,init)=>{
   assert.equal(String(url),'http://127.0.0.1:8010/api/fact-check/stream');
   assert.equal(new Headers(init.headers).has('authorization'),false);
-  assert.deepEqual(JSON.parse(init.body),input);observed=init.signal;
+  assert.deepEqual(JSON.parse(init.body),input);if(!observed)observed=init.signal;
   return new Response(new ReadableStream({start(c){c.enqueue(new TextEncoder().encode('{"type":"stage","stage":"extracting","message":"test"}\n'));},cancel(){cancelled=true;}}),{headers:{'Content-Type':'application/x-ndjson'}});
  };
  try {
-  const r=await POST(make(input));assert.equal(r.status,200);
+  const actives=[];
+  for(let i=0;i<10;i++){const r=await POST(make(input));assert.equal(r.status,200);actives.push(r);}
   assert.equal((await POST(make(input))).status,429);
-  const reader=r.body.getReader();assert.equal((await reader.read()).done,false);await reader.cancel();
+  const reader=actives[0].body.getReader();assert.equal((await reader.read()).done,false);await reader.cancel();
   assert.equal(observed.aborted,true);assert.equal(cancelled,true);
+  for(const r of actives.slice(1)){const reader=r.body.getReader();await reader.cancel();}
   globalThis.fetch=async()=>{throw new Error('SECRET');};
   const failed=await POST(make(input));assert.equal(failed.status,503);assert.ok(!(await failed.text()).includes('SECRET'));
  }finally{globalThis.fetch=saved;}
