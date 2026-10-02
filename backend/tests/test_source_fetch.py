@@ -262,7 +262,10 @@ def test_youtube_transcript_becomes_verified_source_text():
     async def youtube_reader(url):
         return {
             'title': 'AGI 전망 인터뷰',
-            'comments': [],
+            'channelTitle': 'AI 연구 채널',
+            'publishedAt': '2026-09-20T12:30:00Z',
+            'viewCount': '1234567',
+            'comments': ['댓글 원문 1'],
             'status': 'collected',
             'transcript': '영상에서 AGI에 대해 설명합니다.',
             'transcriptStatus': 'collected',
@@ -279,6 +282,11 @@ def test_youtube_transcript_becomes_verified_source_text():
 
     assert state['sources'][0]['accessStatus'] == 'verified'
     assert state['sources'][0]['youtubeDataStatus'] == 'collected'
+    assert state['sources'][0]['youtubeTitle'] == 'AGI 전망 인터뷰'
+    assert state['sources'][0]['youtubeChannelTitle'] == 'AI 연구 채널'
+    assert state['sources'][0]['youtubePublishedAt'] == '2026-09-20T12:30:00Z'
+    assert state['sources'][0]['youtubeViewCount'] == '1234567'
+    assert state['sources'][0]['youtubeComments'] == ['댓글 원문 1']
     assert state['sourceTexts'] == {'s1': '영상에서 AGI에 대해 설명합니다.'}
 
 
