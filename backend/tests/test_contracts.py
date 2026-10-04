@@ -101,6 +101,14 @@ def test_market_context_is_optional_but_validated():
         raise AssertionError("oversized candles must be rejected")
 
 
+def test_market_context_rejects_retired_toss_source():
+    from contracts import MarketContext
+
+    assert MarketContext.model_validate({"symbol": "TSLA", "candles": []}).source == "finnhub"
+    with pytest.raises(ValidationError):
+        MarketContext.model_validate({"source": "tossinvest", "symbol": "TSLA", "candles": []})
+
+
 def test_evidence_may_expose_only_a_bounded_matching_article_section():
     payload = result_payload()
     payload["evidence"][0].update({

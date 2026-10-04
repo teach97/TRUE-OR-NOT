@@ -61,8 +61,6 @@ class Settings(BaseModel):
     gemini_api_key: SecretStr = SecretStr("")
     youtube_api_key: SecretStr = SecretStr("")
     tavily_api_key: SecretStr = SecretStr("")
-    toss_client_id: SecretStr = SecretStr("")
-    toss_client_secret: SecretStr = SecretStr("")
     typesafe_api_key: SecretStr = SecretStr("")
     finnhub_api_key: SecretStr = SecretStr("")
 
@@ -75,8 +73,6 @@ def load_settings(env_path: Path | None = None) -> Settings:
     gemini_key = os.environ.get("GEMINI_API_KEY", values.get("GEMINI_API_KEY") or "")
     youtube_key = os.environ.get("YOUTUBE_API_KEY", values.get("YOUTUBE_API_KEY") or "")
     tavily_key = os.environ.get("TAVILY_API_KEY", values.get("TAVILY_API_KEY") or "")
-    toss_id = os.environ.get("TOSS_CLIENT_ID", values.get("TOSS_CLIENT_ID") or "")
-    toss_secret = os.environ.get("TOSS_CLIENT_SECRET", values.get("TOSS_CLIENT_SECRET") or "")
     gateway_key = os.environ.get("TYPESAFE_API_KEY", values.get("TYPESAFE_API_KEY") or "")
     finnhub_key = os.environ.get("FINNHUB_API_KEY", values.get("FINNHUB_API_KEY") or "")
     return Settings(
@@ -84,8 +80,6 @@ def load_settings(env_path: Path | None = None) -> Settings:
         gemini_api_key=SecretStr(gemini_key.strip()),
         youtube_api_key=SecretStr(youtube_key.strip()),
         tavily_api_key=SecretStr(tavily_key.strip()),
-        toss_client_id=SecretStr(toss_id.strip()),
-        toss_client_secret=SecretStr(toss_secret.strip()),
         typesafe_api_key=SecretStr(gateway_key.strip()),
         finnhub_api_key=SecretStr(finnhub_key.strip()),
     )
@@ -241,7 +235,7 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
         return update
 
     async def search(state: FactCheckState):
-        from stocks import build_market_context, detect_stock_symbols
+        from stocks import detect_stock_symbols
 
         symbols = detect_stock_symbols(state.get("text", ""), state.get("focus", ""))
         search_state = {**state, "stockSymbols": symbols} if symbols else state
@@ -454,52 +448,35 @@ def _normalize_source(raw: dict, checked_at: str) -> dict:
 async def _fetch_market(symbols: list[str], settings: Settings) -> dict | None:
     """Fetch quote plus candles for the first detected symbol, if configured.
 
-    Best-effort: any failure returns None so market data can never fail
-    verification. Toss Securities is tried first; Finnhub is the fallback.
+    Best-effort: any Finnhub failure omits market context without failing
+    verification. Quote and candle access depend on the configured account.
     """
     from datetime import datetime, timezone
 
     from finnhub import fetch_candles as finnhub_candles
     from finnhub import fetch_stock_quote as finnhub_quote
     from stocks import build_market_context, display_name_for
-    from tossinvest import fetch_candles as toss_candles
-    from tossinvest import fetch_stock_quote as toss_quote
 
     if not symbols:
         return None
     symbol = symbols[0]
-    quote: dict | None = None
-    candles: dict | None = None
-    source = "tossinvest"
-    toss_id = settings.toss_client_id.get_secret_value()
-    toss_secret = settings.toss_client_secret.get_secret_value()
+    finnhub_key = settings.finnhub_api_key.get_secret_value()
+    if not finnhub_key.strip():
+        return None
     try:
         async with httpx.AsyncClient(timeout=30.0, trust_env=False) as client:
-            if toss_id.strip() and toss_secret.strip():
-                quote = await toss_quote(
-                    symbol, client_id=toss_id, client_secret=toss_secret, client=client
-                )
-                if not quote.get("error"):
-                    candles = await toss_candles(
-                        symbol, client_id=toss_id, client_secret=toss_secret, client=client
-                    )
-            if quote is None or quote.get("error") or (candles is not None and candles.get("error")):
-                source = "finnhub"
-                finnhub_key = settings.finnhub_api_key.get_secret_value()
-                if not finnhub_key.strip():
-                    return None
-                quote = await finnhub_quote(symbol, api_key=finnhub_key, client=client)
-                if quote.get("error"):
-                    return None
-                candles = await finnhub_candles(symbol, api_key=finnhub_key, client=client)
-        if candles is None or candles.get("error"):
+            quote = await finnhub_quote(symbol, api_key=finnhub_key, client=client)
+            if quote.get("error"):
+                return None
+            candles = await finnhub_candles(symbol, api_key=finnhub_key, client=client)
+        if candles.get("error"):
             return None
         context = build_market_context(
             symbol, display_name_for(symbol), quote, candles,
             data_as_of=datetime.now(timezone.utc).isoformat(),
         )
         if context is not None:
-            context["source"] = source
+            context["source"] = "finnhub"
         return context
     except Exception:
         return None

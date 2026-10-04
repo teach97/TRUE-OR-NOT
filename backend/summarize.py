@@ -117,12 +117,9 @@ async def summarize_content(
     if not providers:
         raise ValueError("NOT_CONFIGURED")
 
-    from dataclasses import replace
-
     async def operation(provider: LLMProvider):
-        effective = replace(provider, reasoning="high") if provider.kind == "openai" else provider
         raw = await request_structured(
-            effective,
+            provider,
             client,
             instructions=_SUMMARY_INSTRUCTIONS,
             input_data={

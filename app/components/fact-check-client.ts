@@ -83,7 +83,7 @@ function validMarket(value: unknown): value is MarketContext {
   if (typeof value !== 'object') return false;
   const market = value as MarketContext;
   const numberOrNull = (n: unknown) => n == null || (typeof n === 'number' && Number.isFinite(n));
-  return (market.source === 'tossinvest' || market.source === 'finnhub' || market.source === 'krx')
+  return (market.source === 'finnhub' || market.source === 'krx')
     && typeof market.symbol === 'string' && market.symbol.length >= 1 && market.symbol.length <= 16
     && (market.displayName == null || (typeof market.displayName === 'string' && market.displayName.length <= 100))
     && numberOrNull(market.current) && numberOrNull(market.previousClose) && numberOrNull(market.changePercent)

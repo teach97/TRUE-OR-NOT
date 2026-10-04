@@ -91,7 +91,7 @@ class MarketCandle(_ContractModel):
 
 
 class MarketContext(_ContractModel):
-    source: Literal["tossinvest", "finnhub", "krx"] = "tossinvest"
+    source: Literal["finnhub", "krx"] = "finnhub"
     symbol: str = Field(min_length=1, max_length=16)
     displayName: str | None = Field(default=None, max_length=100)
     current: float | None = None

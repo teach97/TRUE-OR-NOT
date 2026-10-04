@@ -2,6 +2,44 @@
 import asyncio
 
 
+def test_openai_summary_preserves_max_reasoning_in_request_and_result():
+    import json
+
+    import httpx
+    from pydantic import SecretStr
+
+    from runtime import Settings
+    from summarize import summarize_content
+
+    def handler(request):
+        body = json.loads(request.content)
+        assert body["model"] == "gpt-6-luna"
+        assert body["reasoning"]["effort"] == "max"
+        return httpx.Response(200, json={
+            "status": "completed",
+            "output": [{"type": "message", "content": [{
+                "type": "output_text",
+                "text": json.dumps({
+                    "title": "요약 제목", "summary": "원문의 핵심입니다.",
+                    "points": ["핵심 내용"],
+                }, ensure_ascii=False),
+            }]}],
+        })
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            return await summarize_content(
+                text="요약할 원문입니다.", consent=True,
+                settings=Settings(api_key=SecretStr("test-only")),
+                client=client, model_preference="gpt-6-luna",
+            )
+
+    result = asyncio.run(run())
+    assert result["summary"] == "원문의 핵심입니다."
+    assert result["model"] == "gpt-6-luna"
+    assert result["reasoning"] == "max"
+
+
 def test_gather_prefers_youtube_transcript_over_page(monkeypatch):
     import sources
     import summarize

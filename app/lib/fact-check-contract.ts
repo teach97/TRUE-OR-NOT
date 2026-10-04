@@ -60,7 +60,7 @@ export type MarketCandle = {
   time: number; open: number; high: number; low: number; close: number; volume?: number | null;
 };
 export type MarketContext = {
-  source: 'tossinvest' | 'finnhub' | 'krx'; symbol: string; displayName?: string | null;
+  source: 'finnhub' | 'krx'; symbol: string; displayName?: string | null;
   current?: number | null; previousClose?: number | null; changePercent?: number | null;
   dataAsOf?: string | null; candles: MarketCandle[];
 };

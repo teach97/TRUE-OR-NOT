@@ -278,13 +278,13 @@ def test_synthesis_instructions_require_citation_diversity():
     assert "single source" in seen["instructions"]
 
 
-def test_openai_synthesis_uses_high_reasoning_effort_and_reports_it():
+def test_openai_synthesis_preserves_max_reasoning_effort_and_reports_it():
     state = state_with_source()
 
     def handler(request):
         body = json.loads(request.content)
         assert body["model"] == "gpt-6-luna"
-        assert body["reasoning"]["effort"] == "high"
+        assert body["reasoning"]["effort"] == "max"
         assert body["max_output_tokens"] == 4_000
         return httpx.Response(200, json={
             "status": "completed",
@@ -305,7 +305,7 @@ def test_openai_synthesis_uses_high_reasoning_effort_and_reports_it():
     answer = asyncio.run(run())
 
     assert answer["model"] == "gpt-6-luna"
-    assert answer["reasoning"] == "high"
+    assert answer["reasoning"] == "max"
 
 
 @pytest.mark.parametrize("citation", [
