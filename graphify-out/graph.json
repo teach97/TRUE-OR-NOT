@@ -17606,7 +17606,7 @@
       "node_kind": "heading",
       "norm_label": "\u110c\u1165\u11bc\u1105\u1175\u110b\u116a \u1106\u1175\u1100\u1165\u11b7\u110c\u1173\u11bc",
       "source_file": "docs/qa/\uc2e4\ud589\uae30\ub85d/2026-10-04-\uacc4\uc0b0.md",
-      "source_location": "L55"
+      "source_location": "L64"
     },
     {
       "id": "docs_qa_\uc2e4\ud589\uae30\ub85d_2026_10_04_\uacc4\uc0b0_\uc9c0\uc6d0_\uc0dd\ub7b5_\uacbd\uacc4",
@@ -18045,7 +18045,7 @@
       "node_kind": "heading",
       "norm_label": "\u1102\u1161\u11b7\u110b\u1173\u11ab \u110c\u1161\u11a8\u110b\u1165\u11b8",
       "source_file": "docs/\uc791\uc5c5\ud604\ud669.md",
-      "source_location": "L34"
+      "source_location": "L35"
     },
     {
       "id": "docs_\uc791\uc5c5\ud604\ud669_\uba3c\uc800_\ubcfc_\uc791\uc5c5",
@@ -68679,7 +68679,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/qa/\uc2e4\ud589\uae30\ub85d/2026-10-04-\uacc4\uc0b0.md",
-      "source_location": "L55",
+      "source_location": "L64",
       "weight": 1.0
     },
     {
@@ -69537,7 +69537,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/\uc791\uc5c5\ud604\ud669.md",
-      "source_location": "L34",
+      "source_location": "L35",
       "weight": 1.0
     },
     {
@@ -74697,7 +74697,7 @@
     },
     {
       "source": "docs_\uc791\uc5c5\ud604\ud669",
-      "target": "docs_qa_\uc2e4\ud589\uae30\ub85d_2026_10_04_ci",
+      "target": "docs_qa_\uc2e4\ud589\uae30\ub85d_2026_10_04_\uacc4\uc0b0",
       "relation": "references",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -74708,7 +74708,7 @@
     },
     {
       "source": "docs_\uc791\uc5c5\ud604\ud669",
-      "target": "docs_qa_\uc2e4\ud589\uae30\ub85d_2026_10_04_\ub300\ud654\uc800\uc7a5",
+      "target": "docs_qa_\uc2e4\ud589\uae30\ub85d_2026_10_04_ci",
       "relation": "references",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -74719,13 +74719,13 @@
     },
     {
       "source": "docs_\uc791\uc5c5\ud604\ud669",
-      "target": "docs_qa_\uc2e4\ud589\uae30\ub85d_2026_10_04_\uacc4\uc0b0",
+      "target": "docs_qa_\uc2e4\ud589\uae30\ub85d_2026_10_04_\ub300\ud654\uc800\uc7a5",
       "relation": "references",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/\uc791\uc5c5\ud604\ud669.md",
-      "source_location": "L43",
+      "source_location": "L29",
       "weight": 1.0
     },
     {
@@ -80620,5 +80620,5 @@
       "relation": "composes_horizontal_wordmark"
     }
   ],
-  "built_at_commit": "e746b2e88af3ea9127bc5315790574edc6a6f837"
+  "built_at_commit": "f8e3800e0fbe12028861560f0bb416c282b77488"
 }
