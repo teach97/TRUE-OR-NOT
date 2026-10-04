@@ -79,7 +79,33 @@ SerpApi는 확인된 무료 쿼터 안에서만 호출하도록 제한되어 있
 
 `consent`는 반드시 `true`여야 합니다. 텍스트는 1~12,000자, 확인 초점은 최대 500자입니다. 모델 선택값은 `auto`, `gemini-3.8-flash`, `gemini-3.7-flash`, `gpt-6-luna` 중 하나입니다.
 
-## 테스트 및 점검
+## 대화 저장 · Render PostgreSQL
+
+기존 검증과 별도인 `/api/conversations` API가 대화 생성·목록·메시지 저장·복원·삭제를 제공합니다. `DATABASE_URL`과 최소 32자 무작위 `CONVERSATION_SESSION_SECRET`은 무시되는 `backend/.env` 또는 Render 백엔드 환경 설정에만 둡니다. 키를 바꾸면 기존 익명 쿠키가 무효화됩니다. 브라우저·Next.js·Git에는 넣지 않습니다.
+
+- 로컬 및 다른 PC에서 실행하는 백엔드: **External Database URL**, TLS, 해당 네트워크의 공인 IP 허용 규칙을 사용합니다.
+- 같은 워크스페이스·Singapore 리전의 Render 백엔드: **Internal Database URL**을 사용합니다.
+- DB 설정이 없거나 실패해도 기존 검증은 사용할 수 있으며, 저장 재시도는 LLM을 호출하지 않습니다.
+
+백엔드 디렉터리에서 실행합니다. 마이그레이션은 프로젝트의 두 테이블만 반복 가능하게 생성하며 기존 데이터나 DB를 삭제하지 않습니다.
+
+```powershell
+uv sync --locked
+uv run python migrate_conversations.py --init-session-secret
+uv run python smoke_test_conversations.py
+```
+
+`--init-session-secret`은 Git ignore가 확인된 `.env`에 서명 키가 없을 때만 생성합니다. Render에서는 환경 설정에 서명 키를 별도로 넣고 `uv run python migrate_conversations.py`만 실행합니다. 합성 DB 시험은 임시 대화만 만들고 종료 시 삭제하며 접속 정보·실제 사용자 대화를 출력하지 않습니다.
+
+연결 풀은 최대 4개이며 DB 작업 제한은 3초입니다. 목록은 최대 30개, 메시지는 최신 100개까지 조회하고 이전 페이지를 제공합니다. 큰 한국어 답변이 모이면 응답 바이트 상한을 지키도록 페이지당 메시지 수를 줄입니다. 원문 전체·이미지·YouTube API 메타데이터/댓글·시장 데이터·진행 중 메시지는 저장하지 않습니다. 복원한 결과는 원래 검증 시각의 과거 기록입니다.
+
+무료 시연 DB: `true-or-not-conversations`, Singapore, PostgreSQL 18, 2026-11-03 만료 예정. 공개 웹서비스 배포·백업·유료 전환은 별도 범위입니다.
+
+삭제 시 제목과 메시지·결과를 제거하고 내용 없는 생성 요청 삭제 표식만 유지합니다. 다른 탭의 늦은 재시도로 삭제한 대화가 재생성되는 것을 차단합니다.
+
+브라우저 재현 시험은 `tests/browser/conversation_smoke.py`와 `conversation_restore_regression.py`에 보존했습니다. 합성 대화만 사용하며 실제 LLM을 호출하지 않습니다. 백엔드 8017, 해당 백엔드에 연결한 개발 프론트 3017을 별도로 실행하고 백엔드 디렉터리에서 `uv run --with playwright python tests/browser/conversation_smoke.py` 또는 `uv run --with playwright python tests/browser/conversation_restore_regression.py`로 실행합니다. 로컬 Chrome이 필요하며 실행 후 시험 서버를 종료합니다.
+
+## 일반 테스트 및 점검
 
 백엔드 디렉터리에서 오프라인 테스트를 실행합니다.
 
