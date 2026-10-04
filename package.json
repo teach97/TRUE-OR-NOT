@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "typecheck": "tsc --noEmit",
-    "test": "node --test app/lib/server/*.test.mjs app/components/*.test.mjs app/lib/*.test.mjs app/api/fact-check/jev/route.test.mjs"
+    "test": "node --test"
   },
   "dependencies": {
     "@paper-design/shaders-react": "^0.0.81",

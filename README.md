@@ -23,7 +23,13 @@ npm run dev
 | `npm run build` | 프로덕션 빌드를 생성합니다. |
 | `npm run start` | 생성된 프로덕션 빌드를 실행합니다. |
 | `npm run typecheck` | TypeScript 타입을 검사합니다. |
-| `npm test` | 기본 Node 테스트를 실행합니다. 추가 요약 route 테스트는 [QA 안내](docs/qa/검증기준.md)를 따릅니다. |
+| `npm test` | Node 테스트를 자동 발견하여 실행합니다. 요약·JEV API 경계 테스트도 포함합니다. |
+
+## 자동 검증 (CI)
+
+[GitHub Actions CI](.github/workflows/ci.yml)는 main 푸시·PR·수동 실행 시 프론트엔드 테스트·타입 검사·프로덕션 빌드와 백엔드 잠금 파일 검사·pytest를 병렬 실행합니다. Node.js 24와 Python 3.12를 사용하며 `npm ci`와 `uv sync --frozen`으로 잠금 파일 기준 의존성을 설치합니다.
+
+CI에는 실제 공급자 키·DB URL을 전달하지 않습니다. 오프라인 회귀 통과는 실제 LLM·검색·DB 연결 또는 Render 배포 성공을 의미하지 않습니다. 실행 결과와 미검증 범위는 [QA 실행기록](docs/qa/실행기록/)을 따릅니다.
 
 ## 주요 디렉터리
 
