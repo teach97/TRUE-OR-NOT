@@ -22,9 +22,11 @@ def test_snapshot_strips_private_and_api_fields():
     data['sources'][0]['youtubeComments'] = ['private comment']
     data['evidence'][0]['sectionText'] = 'full external article'
     data['rawProvider'] = 'private'
+    data['scoreMode'] = 'jev'
     snapshot = StoredSnapshot.model_validate(data).model_dump(mode='json')
     assert snapshot['sources'][0]['url'] == data['sources'][0]['url']
     assert snapshot['checkedAt'] == data['checkedAt']
+    assert snapshot['scoreMode'] == 'jev'
     assert 'rawProvider' not in snapshot
     assert 'youtubeComments' not in snapshot['sources'][0]
     assert 'sectionText' not in snapshot['evidence'][0]
@@ -35,3 +37,8 @@ def test_snapshot_rejects_broken_references():
     data['evidence'][0]['sourceId'] = 'missing'
     with pytest.raises(ValidationError):
         StoredSnapshot.model_validate(data)
+
+
+def test_numeric_one_is_not_storage_consent():
+    with pytest.raises(ValidationError):
+        MessageCreate.model_validate(dict(storageConsent=1,requestId=str(uuid4()),role='user',content='hello',status='completed'))

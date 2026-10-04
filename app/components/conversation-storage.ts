@@ -10,12 +10,12 @@ type Client = {
 export class ConversationStorage {
   consent=false;epoch=0;active:string|null=null;items:Conversation[]=[];nextCursor:string|null=null;beforeSequence:number|null=null;loading=false;
   error:string|null=null;pending:MessageCreate[]=[];
-  private createId=crypto.randomUUID();private creatingTitle:string|null=null;private running:Promise<void>|null=null;
+  private createId=crypto.randomUUID();private creatingTitle:string|null=null;private running:Promise<void>|null=null;private earlierBusy=false;
   private controller=new AbortController();
   private client:Client;private changed:()=>void;
   constructor(client:Client,changed:()=>void){this.client=client;this.changed=changed;}
   setConsent(value:boolean){this.consent=value;if(!value){this.invalidate();this.pending=[];this.error=null;}this.changed();}
-  invalidate(){this.epoch++;this.controller.abort();this.controller=new AbortController();this.running=null;}
+  invalidate(){this.epoch++;this.controller.abort();this.controller=new AbortController();this.running=null;this.loading=false;this.earlierBusy=false;}
   newConversation(){this.invalidate();this.active=null;this.createId=crypto.randomUUID();this.creatingTitle=null;this.pending=[];this.error=null;this.beforeSequence=null;this.loading=false;this.changed();}
   async refresh(more=false){
     const epoch=this.epoch;
@@ -51,14 +51,15 @@ export class ConversationStorage {
     finally{if(epoch===this.epoch){this.loading=false;this.changed();}}
   }
   async loadEarlier():Promise<MessagePage|null>{
-    if(!this.active||!this.beforeSequence)return null;
-    const epoch=this.epoch;
-    try {const page=await this.client.get(this.active,this.beforeSequence,this.controller.signal);if(epoch!==this.epoch)return null;this.beforeSequence=page.beforeSequence;this.changed();return page;}
+    if(!this.active||!this.beforeSequence||this.earlierBusy)return null;
+    const epoch=this.epoch,boundary=this.beforeSequence;this.earlierBusy=true;
+    try {const page=await this.client.get(this.active,boundary,this.controller.signal);if(epoch!==this.epoch||this.beforeSequence!==boundary)return null;this.beforeSequence=page.beforeSequence;this.changed();return page;}
     catch(error){if(epoch===this.epoch){this.error=error instanceof Error?error.message:'STORAGE_UNAVAILABLE';this.changed();}return null;}
+    finally{if(epoch===this.epoch)this.earlierBusy=false;}
   }
   async deleteConversation(id:string){
-    this.newConversation();const epoch=this.epoch;
-    try {await this.client.delete(id,this.controller.signal);if(epoch===this.epoch)await this.refresh();}
+    if(this.active===id)this.newConversation();else this.invalidate();const epoch=this.epoch;
+    try {await this.client.delete(id,this.controller.signal);if(epoch===this.epoch){await this.refresh();if(this.consent&&this.pending.length&&!this.error)await this.flush();}}
     catch(error){if(epoch===this.epoch){this.error=error instanceof Error?error.message:'STORAGE_UNAVAILABLE';this.changed();}}
   }
   async newSession(){this.newConversation();this.items=[];try{await this.client.session(true,this.controller.signal);await this.refresh();}catch{this.error='STORAGE_UNAVAILABLE';this.changed();}}

@@ -58,11 +58,17 @@ async def smoke():
             raise AssertionError('Deleted conversation resurrected')
         except StorageError as error:
             assert error.code == 'NOT_FOUND'
+        try:
+            recreated = await store.create(owner,create)
+            identifier = recreated.id
+            raise AssertionError('Deleted create request resurrected')
+        except StorageError as error:
+            assert error.code == 'NOT_FOUND'
         identifier = None
         print({'passed':True,'checks':['create','duplicate','concurrent duplicate','changed retry','owner isolation','reconnect','101-message pagination','delete','no resurrection'],'seconds':round(time.monotonic()-started,2)})
     finally:
-        if identifier:
-            await store.delete(owner,identifier)
+        async with store.connection() as conn:
+            await conn.execute('DELETE FROM conversations WHERE owner_id=$1',owner)
         await store.close()
 
 

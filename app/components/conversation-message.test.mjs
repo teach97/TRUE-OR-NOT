@@ -10,3 +10,9 @@ test('only final user, chat, summary, failure and cancelled messages are stored'
   assert.equal(toStoredMessage({role:'assistant',text:'실패',tone:'error'}).status,'failed');
   assert.equal(toStoredMessage({role:'assistant',text:'취소',storageStatus:'cancelled'}).status,'cancelled');
 });
+test('empty JEV answer keeps the final snapshot and score presentation',()=>{
+  const answer={status:'insufficient_evidence',overview:null,sections:[],conclusion:null,model:null,reasoning:null};
+  const result={text:'Claim',focus:'',demo:false,model:'jev',reasoning:'max',checkedAt:'2026-10-04',claims:[],sources:[],evidence:[],warnings:[],answer};
+  const stored=toStoredMessage({role:'assistant',answer,scoreMode:'jev'},result);
+  assert.ok(stored);assert.equal(stored.snapshot.text,'Claim');assert.equal(stored.snapshot.scoreMode,'jev');
+});

@@ -2,7 +2,7 @@
 from datetime import datetime
 from typing import Literal
 from uuid import UUID
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from contracts import FactClaim, FactCheckAnswer, FactCheckResult, Reasoning
 
 
@@ -17,6 +17,7 @@ class StoredSnapshot(BaseModel):
     checkedAt: str
     model: str
     reasoning: Reasoning
+    scoreMode: Literal['jev','claims'] | None = None
     claims: list[FactClaim]
     sources: list[dict]
     evidence: list[dict]
@@ -34,14 +35,25 @@ class StoredSnapshot(BaseModel):
         return self
 
 
-class ConversationCreate(BaseModel):
+class StorageConsent(BaseModel):
+    storageConsent: Literal[True]
+
+    @field_validator('storageConsent',mode='before')
+    @classmethod
+    def explicit_consent(cls,value):
+        if value is not True:
+            raise ValueError('INVALID_REQUEST')
+        return value
+
+
+class ConversationCreate(StorageConsent):
     model_config = ConfigDict(extra='forbid')
     storageConsent: Literal[True]
     createRequestId: UUID
     title: str = Field(min_length=1, max_length=80)
 
 
-class MessageCreate(BaseModel):
+class MessageCreate(StorageConsent):
     model_config = ConfigDict(extra='forbid')
     storageConsent: Literal[True]
     requestId: UUID

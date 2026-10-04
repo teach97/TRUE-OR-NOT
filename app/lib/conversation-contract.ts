@@ -1,6 +1,7 @@
 import type {FactCheckResult, FactSource, FactEvidence, AnswerBlock} from './fact-check-contract';
 
 export type StoredSnapshot = Omit<FactCheckResult, 'demo' | 'market' | 'sources' | 'evidence'> & {
+  scoreMode?:'jev'|'claims'|null;
   sources: Pick<FactSource,'id'|'url'|'title'|'publisher'|'publishedAt'|'retrievedAt'|'accessStatus'|'sourceType'|'originGroupId'>[];
   evidence: Pick<FactEvidence,'id'|'claimId'|'sourceId'|'quote'|'quoteTranslation'|'quoteVerified'|'relation'>[];
 };

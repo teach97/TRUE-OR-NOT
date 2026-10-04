@@ -4,11 +4,10 @@ import time
 from uuid import UUID
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, ValidationError
-from typing import Literal
+from pydantic import ValidationError
 from pathlib import Path
 from dotenv import dotenv_values
-from conversation_contracts import ConversationCreate, MessageCreate
+from conversation_contracts import ConversationCreate, MessageCreate, StorageConsent
 from conversation_session import issue_session, verify_session
 from conversation_store import StorageError
 
@@ -73,13 +72,9 @@ async def status():
     return JSONResponse({'configured':bool(setting('DATABASE_URL')),'sessionAvailable':len(setting('CONVERSATION_SESSION_SECRET'))>=32},headers={'Cache-Control':'no-store'})
 
 
-class Consent(BaseModel):
-    storageConsent: Literal[True]
-
-
 @router.post('/session')
 async def session(request: Request):
-    validated(Consent,await body(request))
+    validated(StorageConsent,await body(request))
     key = secret()
     token = request.headers.get('x-ton-session')
     if token:

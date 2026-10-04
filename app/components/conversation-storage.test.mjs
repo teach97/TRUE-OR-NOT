@@ -48,3 +48,25 @@ test('message queued during history refresh is flushed before becoming idle',asy
   for(let n=0;n<20&&client.rows.length<2;n++)await Promise.resolve();
   assert.deepEqual(client.rows.map(item=>item.role),['user','assistant']);
 });
+test('turning storage off during restore releases the loading guard',async()=>{
+  const client=api();let resolve;client.get=()=>new Promise(done=>{resolve=done;});
+  const store=new ConversationStorage(client,()=>{});store.setConsent(true);
+  const loading=store.loadConversation(crypto.randomUUID());
+  assert.equal(store.loading,true);store.setConsent(false);
+  assert.equal(store.loading,false);
+  resolve({conversation:{id:store.active},messages:[],beforeSequence:null});await loading;
+});
+test('deleting a different history item preserves the selected conversation',async()=>{
+  const client=api();const store=new ConversationStorage(client,()=>{});store.active=crypto.randomUUID();
+  const selected=store.active;
+  await store.deleteConversation(crypto.randomUUID());
+  assert.equal(store.active,selected);
+});
+test('only one earlier-message request runs for the same pagination boundary',async()=>{
+  const client=api();let resolve,calls=0;client.get=()=>{calls++;return new Promise(done=>{resolve=done;});};
+  const store=new ConversationStorage(client,()=>{});store.active=crypto.randomUUID();store.beforeSequence=201;
+  const first=store.loadEarlier();const duplicate=store.loadEarlier();
+  assert.equal(calls,1);
+  resolve({conversation:{id:store.active},messages:[],beforeSequence:101});
+  const [page,extra]=await Promise.all([first,duplicate]);assert.ok(page);assert.equal(extra,null);assert.equal(store.beforeSequence,101);
+});

@@ -5,8 +5,10 @@ CREATE TABLE IF NOT EXISTS conversations (
   title varchar(80) NOT NULL,
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now(),
+  deleted_at timestamptz,
   UNIQUE (owner_id, create_request_id)
 );
+ALTER TABLE conversations ADD COLUMN IF NOT EXISTS deleted_at timestamptz;
 CREATE INDEX IF NOT EXISTS conversations_owner_updated ON conversations(owner_id, updated_at DESC, id DESC);
 CREATE TABLE IF NOT EXISTS messages (
   id uuid PRIMARY KEY,

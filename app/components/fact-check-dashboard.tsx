@@ -780,7 +780,7 @@ export default function FactCheckDashboard() {
   }
 
   function restoredMessage(item:StoredMessage):ChatMessage {
-    if(item.snapshot){const result=restoreSnapshot(item.snapshot);return {id:item.id,role:item.role,...composeAssistantReply(result),meta:`과거 검증 결과 · ${result.checkedAt}`};}
+    if(item.snapshot){const result=restoreSnapshot(item.snapshot);const jev=item.snapshot.scoreMode==='jev'||result.model==='jev-latest';return {id:item.id,role:item.role,...composeAssistantReply(result,jev?result:null),meta:`과거 검증 결과 · ${result.checkedAt}`};}
     return {id:item.id,role:item.role,text:item.content,...(item.status==='failed'?{tone:'error' as const}:{}),meta:item.status==='cancelled'?'중단된 요청':undefined};
   }
 
@@ -794,6 +794,7 @@ export default function FactCheckDashboard() {
 
   async function selectConversation(id:string) {
     stop();dispatch({type:'cancel'});const current=generation.current;
+    setLiveResult(null);dispatch({type:'reset'});
     setMessages([WELCOME_MESSAGE]);setDraft('');setFocus('');setImage(null);setSample(false);
     const page=await storage.loadConversation(id);
     if(page&&generation.current===current)restorePage(page);
@@ -805,7 +806,8 @@ export default function FactCheckDashboard() {
   }
 
   function deleteConversation(id:string) {
-    reset();void storage.deleteConversation(id);
+    if(storage.active===id)reset();else if(request.current)cancelVerification();else stop();
+    void storage.deleteConversation(id);
   }
 
   function download() {

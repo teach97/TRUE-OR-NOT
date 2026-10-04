@@ -84,6 +84,8 @@ class ConversationStore:
                 row = await conn.fetchrow('INSERT INTO conversations(id,owner_id,create_request_id,title) VALUES($1,$2,$3,$4) ON CONFLICT(owner_id,create_request_id) DO NOTHING RETURNING *', uuid4(), owner, payload.createRequestId, payload.title)
                 if row is None:
                     row = await conn.fetchrow('SELECT * FROM conversations WHERE owner_id=$1 AND create_request_id=$2', owner, payload.createRequestId)
+                    if row['deleted_at'] is not None:
+                        raise StorageError('NOT_FOUND')
                     if row['title'] != payload.title:
                         raise StorageError('IDEMPOTENCY_CONFLICT')
                 return conversation(row)
@@ -91,7 +93,7 @@ class ConversationStore:
     async def list(self, owner: UUID, cursor: str | None = None):
         boundary = decode_cursor(cursor) if cursor else None
         async with self.connection() as conn:
-            rows = await conn.fetch('SELECT * FROM conversations WHERE owner_id=$1 AND ($2::timestamptz IS NULL OR (updated_at,id)<($2,$3::uuid)) ORDER BY updated_at DESC,id DESC LIMIT 31', owner, boundary[0] if boundary else None, boundary[1] if boundary else None)
+            rows = await conn.fetch('SELECT * FROM conversations WHERE owner_id=$1 AND deleted_at IS NULL AND ($2::timestamptz IS NULL OR (updated_at,id)<($2,$3::uuid)) ORDER BY updated_at DESC,id DESC LIMIT 31', owner, boundary[0] if boundary else None, boundary[1] if boundary else None)
             items = [conversation(row) for row in rows[:30]]
             next_cursor = base64.urlsafe_b64encode(json.dumps([items[-1].updatedAt.isoformat(), str(items[-1].id)]).encode()).decode().rstrip('=') if len(rows) > 30 else None
             return ConversationPage(items=items, nextCursor=next_cursor)
@@ -101,7 +103,7 @@ class ConversationStore:
             raise StorageError('INVALID_REQUEST')
         async with self.connection() as conn:
             async with conn.transaction(isolation='repeatable_read', readonly=True):
-                row = await conn.fetchrow('SELECT * FROM conversations WHERE id=$1 AND owner_id=$2', id, owner)
+                row = await conn.fetchrow('SELECT * FROM conversations WHERE id=$1 AND owner_id=$2 AND deleted_at IS NULL', id, owner)
                 if row is None:
                     raise StorageError('NOT_FOUND')
                 rows = await conn.fetch('SELECT * FROM messages WHERE conversation_id=$1 AND ($2::int IS NULL OR sequence<$2) ORDER BY sequence DESC LIMIT 101', id, before)
@@ -116,7 +118,7 @@ class ConversationStore:
         snapshot = payload.snapshot.model_dump(mode='json') if payload.snapshot else None
         async with self.connection() as conn:
             async with conn.transaction():
-                row = await conn.fetchrow('SELECT id FROM conversations WHERE id=$1 AND owner_id=$2 FOR UPDATE', id, owner)
+                row = await conn.fetchrow('SELECT id FROM conversations WHERE id=$1 AND owner_id=$2 AND deleted_at IS NULL FOR UPDATE', id, owner)
                 if row is None:
                     raise StorageError('NOT_FOUND')
                 existing = await conn.fetchrow('SELECT * FROM messages WHERE conversation_id=$1 AND request_id=$2 AND role=$3', id, payload.requestId, payload.role)
@@ -132,6 +134,9 @@ class ConversationStore:
 
     async def delete(self, owner: UUID, id: UUID):
         async with self.connection() as conn:
-            deleted = await conn.fetchval('DELETE FROM conversations WHERE id=$1 AND owner_id=$2 RETURNING id', id, owner)
-            if deleted is None:
-                raise StorageError('NOT_FOUND')
+            async with conn.transaction():
+                row=await conn.fetchrow('SELECT id FROM conversations WHERE id=$1 AND owner_id=$2 AND deleted_at IS NULL FOR UPDATE',id,owner)
+                if row is None:
+                    raise StorageError('NOT_FOUND')
+                await conn.execute('DELETE FROM messages WHERE conversation_id=$1',id)
+                await conn.execute("UPDATE conversations SET title='',deleted_at=clock_timestamp() WHERE id=$1 AND owner_id=$2",id,owner)
