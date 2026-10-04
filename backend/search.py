@@ -339,9 +339,12 @@ def _source_identity(url: str) -> str:
     return urlunsplit((parts.scheme.lower(), host, path, urlencode(query), ""))
 
 
-def _project_candidates(candidates: list[dict], prefer_finance: bool = False) -> list[dict]:
+def _project_candidates(
+    candidates: list[dict], prefer_finance: bool = False, exclude_urls: list[str] | None = None,
+) -> list[dict]:
     """Preserve the provider's candidate order and its origin, not a SERP rank."""
     """Preserve the provider's candidate order and its origin, not a SERP rank."""
+    excluded = {_source_identity(url) for url in exclude_urls or []}
     found: dict[str, dict] = {}
     for position, candidate in enumerate(candidates, 1):
         if not isinstance(candidate, dict) or is_japanese_candidate(candidate) or is_unreliable_candidate(candidate):
@@ -351,6 +354,8 @@ def _project_candidates(candidates: list[dict], prefer_finance: bool = False) ->
             continue
         host = urlsplit(url).hostname
         key = _source_identity(url)
+        if key in excluded:
+            continue
         previous = found.get(key)
         title = candidate.get("title")
         title = title.strip()[:300] if isinstance(title, str) and title.strip() else host
@@ -425,6 +430,7 @@ async def search_sources(
                 "Use up to four search passes guided by searchPlan only when they improve relevance. "
                 "For Korean questions prefer relevant Korean news and blogs, then international primary sources and reporting. "
                 "Do not add a foreign-language page solely for diversity or return copies from one publisher. "
+                "Avoid excludedUrls and find alternative relevant pages for the supplied queries. "
                 "Include Reddit, DCInside, and YouTube only when directly relevant as labeled context candidates. "
                 "Exclude Naver Knowledge iN (kin.naver.com) answers entirely; they are never cited. "
                 "Do not judge truth or treat snippets as verified evidence."
@@ -434,6 +440,7 @@ async def search_sources(
                 "primaryQueries": primary_queries,
                 "focus": state.get("focus", ""),
                 "searchPlan": _SEARCH_PLAN,
+                "excludedUrls": state.get("excludedSourceUrls", []),
             },
         )
         provider_name = "openai_web_search" if active.kind == "openai" else "gemini_google_search"
@@ -443,7 +450,8 @@ async def search_sources(
             for candidate in search_candidates(data, active)
         ]
         selected = _project_candidates(
-            candidates, prefer_finance=bool(state.get("stockSymbols"))
+            candidates, prefer_finance=bool(state.get("stockSymbols")),
+            exclude_urls=state.get("excludedSourceUrls", []),
         )
         return {"sources": [{"id": f"s{i+1}", **source} for i, source in enumerate(selected)]}
     except (ProviderCallError, httpx.HTTPError, TimeoutError, ValueError, KeyError, TypeError, AttributeError):

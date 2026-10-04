@@ -18,33 +18,44 @@ async def stream_events(graph, payload, *, timeout=240):
     try:
         async with asyncio.timeout(timeout):
             yield encode({'type':'stage','stage':STAGES[0],'message':MESSAGES[0]})
-            expected = 0
+            expected = STAGES[0]
+            recoveries = 0
             state = dict(payload)
             async with aclosing(graph.astream(payload, stream_mode='updates')) as updates:
                 async for update in updates:
                     for stage, values in update.items():
-                        if expected >= len(STAGES) or stage != STAGES[expected]:
+                        if stage != expected:
                             raise ValueError('Unexpected stage')
                         if values is None:
                             values = {}
                         if not isinstance(values, dict):
                             raise ValueError('Invalid stage update')
                         state.update(values)
-                        expected += 1
                         if stage == 'synthesizing':
+                            expected = None
                             response = FactCheckResponse.model_validate({'result':values.get('result')})
                             yield encode({'type':'result','result':response.result.model_dump(mode='json')})
                         else:
+                            recovering = stage == 'verifying' and state.get('recoveryRequested') is True
+                            if recovering:
+                                if recoveries or state.get('recoveryCount') != 1:
+                                    raise ValueError('Unexpected recovery')
+                                recoveries += 1
+                                expected = 'searching'
+                            else:
+                                expected = STAGES[STAGES.index(stage) + 1]
                             if stage in {'searching', 'reading'}:
                                 sources = build_progress_sources(state)
-                                if sources:
+                                if sources or state.get('recoveryCount') == 1:
                                     phase = 'found' if stage == 'searching' else 'read'
                                     yield encode({'type':'sources','phase':phase,'sources':sources})
-                            elif stage == 'verifying':
+                            elif stage == 'verifying' and not recovering:
                                 preview = build_progress_preview(state)
                                 yield encode({'type':'preview',**preview})
-                            yield encode({'type':'stage','stage':STAGES[expected],'message':MESSAGES[expected]})
-            if expected != len(STAGES):
+                            message = ('다른 출처를 한 번 더 검색하고 있습니다.' if recovering
+                                       else MESSAGES[STAGES.index(expected)])
+                            yield encode({'type':'stage','stage':expected,'message':message})
+            if expected is not None:
                 raise ValueError('Incomplete graph')
     except TimeoutError:
         yield encode({'type':'error','code':'TIMEOUT','message':'검증 시간이 초과되었습니다.'})

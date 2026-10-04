@@ -32,6 +32,12 @@ class FactCheckState(TypedDict, total=False):
     answerReasoning: str | None
     llmModel: str
     llmReasoning: str
+    claimSnapshot: list[dict[str, Any]]
+    diagnostics: list[dict[str, Any]]
+    recoveryRequested: bool
+    recoveryCount: int
+    recoveryTrace: list[dict[str, Any]]
+    excludedSourceUrls: list[str]
 
 
 Stage = Callable[[FactCheckState], Awaitable[dict[str, Any]]]
@@ -45,7 +51,7 @@ def build_workflow(
     verify: Stage,
     synthesize: Stage,
 ):
-    """Compile the five explicit stages with no implicit provider."""
+    """Compile five stages; a reviewed failure may return to search once."""
     builder = StateGraph(FactCheckState)
     stages = {
         "extracting": extract,
@@ -57,7 +63,14 @@ def build_workflow(
     previous = START
     for name, handler in stages.items():
         builder.add_node(name, handler)
-        builder.add_edge(previous, name)
+        if previous != "verifying":
+            builder.add_edge(previous, name)
         previous = name
+    builder.add_conditional_edges(
+        "verifying",
+        lambda state: "searching" if state.get("recoveryRequested") is True
+        and state.get("recoveryCount") == 1 else "synthesizing",
+        {"searching": "searching", "synthesizing": "synthesizing"},
+    )
     builder.add_edge(previous, END)
     return builder.compile()

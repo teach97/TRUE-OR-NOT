@@ -1,3 +1,5 @@
+> 과거 기록: 2026-10-03 문서 통합 때 보존한 원문이다. 당시 내용이며 현행 상태·작업 지시가 아니다. [현행 문서 안내](<../../../../README.md>)를 먼저 읽는다. 본문은 유지하고 상대 링크만 이동 위치에 맞췄다.
+
 # Grounded Answer Synthesis Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (- [ ]) syntax for tracking.

@@ -2,3 +2,11 @@
 build
 node_modules
 README.md
+.git
+.next
+.env*
+**/.env*
+**/.venv
+**/__pycache__
+**/.pytest_cache
+graphify-out

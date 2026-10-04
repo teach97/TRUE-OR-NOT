@@ -1,4 +1,4 @@
-"""Server settings and the assembled four-stage verification workflow."""
+"""Server settings and the five-stage workflow with one bounded re-search."""
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import logging
@@ -24,8 +24,9 @@ from jev import JevError
 from schemas import ModelPreference
 from tavily_search import TavilyUnavailable, search_tavily
 from providers import ProviderCallError, providers_for_preference, run_with_fallback
+from recovery import review_recovery
 from schemas import FactCheckRequest
-from search import apply_shared_origin_groups, build_search_query, origin_group_for_url, search_sources, source_type_for_url
+from search import _source_identity, apply_shared_origin_groups, build_search_query, origin_group_for_url, search_sources, source_type_for_url
 from sources import SourceReadResult, fetch_public_text, read_sources
 from verification import (
     _empty_judgments,
@@ -253,7 +254,7 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
                 _logger.warning("tavily search unavailable reason=%s", type(exc).__name__)
                 update = None
             if update is not None:
-                market = await _fetch_market(symbols, settings)
+                market = state.get("market") if state.get("recoveryCount") else await _fetch_market(symbols, settings)
                 return {**update, "stockSymbols": symbols, "market": market}
         update = await with_fallback(
             search_state,
@@ -262,7 +263,7 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
             ),
             "SEARCH_FAILED",
         )
-        market = await _fetch_market(symbols, settings)
+        market = state.get("market") if state.get("recoveryCount") else await _fetch_market(symbols, settings)
         return {**update, "stockSymbols": symbols, "market": market}
 
     async def read(state: FactCheckState):
@@ -271,6 +272,9 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
         if (
             isinstance(link_url, str)
             and link_url
+            and _source_identity(link_url) not in {
+                _source_identity(url) for url in state.get("excludedSourceUrls", [])
+            }
             and not any(
                 isinstance(source, dict)
                 and (source.get("url") == link_url or source.get("resolvedUrl") == link_url)
@@ -310,7 +314,7 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
             except Exception:
                 link_title = ""
             tavily_key = settings.tavily_api_key.get_secret_value()
-            if link_title.strip() and tavily_key.strip():
+            if link_title.strip() and tavily_key.strip() and not state.get("recoveryCount"):
                 try:
                     async with httpx.AsyncClient(timeout=30.0, trust_env=False) as search_client:
                         extra = await search_tavily(
@@ -567,6 +571,15 @@ def build_fact_check_result(
         "model": update.get("answerModel"),
         "reasoning": update.get("answerReasoning"),
     }
+    warnings = _result_warnings(
+        sources,
+        merged_state.get("searchNotice"),
+        youtube_transcript_verified=any(
+            isinstance(raw, dict) and raw.get("youtubeTranscript") for raw in raw_sources
+        ),
+    )
+    if merged_state.get("recoveryCount"):
+        warnings.append("원문 수집·인용 검증 문제로 검색어를 바꿔 1회 재탐색했습니다.")
     return FactCheckResult.model_validate({
         "text": request.text,
         "focus": request.focus,
@@ -577,14 +590,7 @@ def build_fact_check_result(
         "claims": claims,
         "sources": sources,
         "evidence": evidence,
-        "warnings": _result_warnings(
-            sources,
-            merged_state.get("searchNotice"),
-            youtube_transcript_verified=any(
-                isinstance(raw, dict) and raw.get("youtubeTranscript")
-                for raw in raw_sources
-            ),
-        ),
+        "warnings": warnings,
         "market": merged_state.get("market"),
         "answer": answer,
     })
@@ -833,11 +839,38 @@ def build_runtime_workflow(
     *,
     adapters: RuntimeAdapters | None = None,
 ):
-    """Compile five ordered stages and assemble the result after synthesis."""
+    """Compile five stages, review failures once, and assemble after synthesis."""
     runtime_adapters = adapters or make_runtime_adapters(settings)
 
+    async def extracting(state: FactCheckState):
+        update = await runtime_adapters.extract(state)
+        return {**update, "claimSnapshot": [dict(c) for c in update.get("claims", [])],
+                "recoveryCount": 0, "recoveryRequested": False, "recoveryTrace": []}
+
+    async def searching(state: FactCheckState):
+        update = await runtime_adapters.search(state)
+        excluded = {_source_identity(url) for url in state.get("excludedSourceUrls", [])}
+        sources = [s for s in update.get("sources", [])
+                   if _source_identity(s["url"]) not in excluded]
+        return {**update, "sources": sources, "sourceTexts": {}, "sourceSections": {},
+                "evidence": [], "diagnostics": [], "recoveryRequested": False}
+
     async def verifying(state: FactCheckState):
-        return await runtime_adapters.verify(state)
+        update = await runtime_adapters.verify(state)
+        update = {**update, "diagnostics": update.get("diagnostics", [])}
+        return {**update, **review_recovery({**state, **update})}
+
+    async def reading(state: FactCheckState):
+        update = await runtime_adapters.read(state)
+        excluded = {_source_identity(url) for url in state.get("excludedSourceUrls", [])}
+        sources = [s for s in update.get("sources", []) if not any(
+            _source_identity(url) in excluded for url in (s.get("url"), s.get("resolvedUrl"))
+            if isinstance(url, str) and url
+        )]
+        ids = {s["id"] for s in sources}
+        return {**update, "sources": sources,
+                "sourceTexts": {sid: text for sid, text in update.get("sourceTexts", {}).items() if sid in ids},
+                "sourceSections": {sid: sections for sid, sections in update.get("sourceSections", {}).items() if sid in ids}}
 
     async def synthesizing(state: FactCheckState):
         try:
@@ -871,9 +904,9 @@ def build_runtime_workflow(
         return {**update, "result": result.model_dump(mode="json")}
 
     return build_workflow(
-        extract=runtime_adapters.extract,
-        search=runtime_adapters.search,
-        read=runtime_adapters.read,
+        extract=extracting,
+        search=searching,
+        read=reading,
         verify=verifying,
         synthesize=synthesizing,
     )

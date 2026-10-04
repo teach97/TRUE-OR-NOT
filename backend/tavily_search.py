@@ -96,6 +96,7 @@ async def search_tavily(
         ])
     candidates = [candidate for group in candidate_groups for candidate in group if candidate]
     selected = _project_candidates(
-        candidates, prefer_finance=bool(state.get("stockSymbols"))
+        candidates, prefer_finance=bool(state.get("stockSymbols")),
+        exclude_urls=state.get("excludedSourceUrls", []),
     )
     return {"sources": [{"id": f"s{i+1}", **source} for i, source in enumerate(selected)]}

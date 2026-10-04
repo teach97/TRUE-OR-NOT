@@ -255,10 +255,11 @@ def _validate_evidence(
     judgment: Judgment,
     sources: dict[str, dict[str, Any]],
     source_texts: dict[str, str],
-) -> tuple[list[_ValidatedEvidence], bool, bool]:
+) -> tuple[list[_ValidatedEvidence], bool, bool, list[str]]:
     valid: list[_ValidatedEvidence] = []
     rejected = False
     condition_mismatch = False
+    invalid_source_ids: list[str] = []
     seen: set[tuple[str, str, str]] = set()
 
     for candidate in judgment.evidence:
@@ -274,6 +275,7 @@ def _validate_evidence(
             or quote not in _normalize_text(source_text)
         ):
             rejected = True
+            invalid_source_ids.append(candidate.sourceId)
             continue
 
         if candidate.relation in {"supports", "contradicts"} and candidate.comparison != "same":
@@ -293,7 +295,7 @@ def _validate_evidence(
             )
         )
 
-    return valid, rejected, condition_mismatch
+    return valid, rejected, condition_mismatch, invalid_source_ids
 
 
 def _section_for_quote(quote: str, sections: list[dict[str, Any]]) -> dict[str, Any] | None:
@@ -451,6 +453,7 @@ def ground_judgments(
 
     evidence: list[dict[str, Any]] = []
     final_claims: list[dict[str, Any]] = []
+    diagnostics: list[dict[str, Any]] = []
     next_evidence_id = 1
 
     for claim in claims:
@@ -476,7 +479,10 @@ def ground_judgments(
             continue
 
         judgment = by_claim[claim_id]
-        valid, rejected, condition_mismatch = _validate_evidence(judgment, source_map, source_texts)
+        valid, rejected, condition_mismatch, invalid_sources = _validate_evidence(judgment, source_map, source_texts)
+        if invalid_sources:
+            diagnostics.append({"code": "CITATION_REJECTED", "claimId": claim_id,
+                                "sourceIds": sorted(set(invalid_sources))})
         code, reconciled_summary = _reconcile_verdict(judgment.verdictCode, valid)
         summary = reconciled_summary or judgment.summary
         confirmed = list(judgment.confirmed)
@@ -507,7 +513,7 @@ def ground_judgments(
             result["evidenceIds"].append(evidence_id)
         final_claims.append(result)
 
-    return {"claims": final_claims, "evidence": evidence}
+    return {"claims": final_claims, "evidence": evidence, "diagnostics": diagnostics}
 
 
 def _empty_judgments(fact_claims: list[dict[str, Any]]) -> list[dict[str, Any]]:

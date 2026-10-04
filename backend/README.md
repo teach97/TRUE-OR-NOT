@@ -1,4 +1,4 @@
-# True or Not 백엔드
+# FactLens 백엔드
 
 이 디렉터리는 FastAPI와 LangGraph로 구성된 팩트체크 API입니다. 주장을 분류하고 검색어를 만들며, 관련 출처를 찾고 원문을 읽은 뒤 직접 인용을 검증해 근거 기반 답변을 구성합니다. 기본 실행 주소는 `http://127.0.0.1:8010`입니다.
 
@@ -39,11 +39,10 @@ Copy-Item .env.example .env
 | `SERPAPI_API_KEY` | 선택 사항입니다. 무료 요금제 조건이 확인되면 Google 자연검색을 사용합니다. |
 | `YOUTUBE_API_KEY` | 선택 사항입니다. 검색 결과에 YouTube 영상이 있을 때 영상 정보와 공개 댓글을 가져오는 데 사용합니다. |
 | `FINNHUB_API_KEY` | 선택 사항입니다. 주가 조회 어댑터에 사용합니다. |
-| `TOSS_CLIENT_ID` / `TOSS_CLIENT_SECRET` | 선택 사항입니다. 토스증권 Open API(국내·미국 시세·캔들) 사용에 필요합니다. WTS에서 발급받고 허용 IP를 등록해야 합니다. Finnhub보다 우선하며, 없으면 Finnhub으로 대체합니다. |
 
 Gemini 또는 OpenAI 키 중 하나 이상을 설정해야 LLM 검증을 시작할 수 있습니다. 두 제공자 키를 모두 설정하고 모델을 `auto`로 선택하면 다음 순서로 시도합니다.
 
-1. GPT-6 Luna (`max`, Fast 처리)
+1. GPT-6 Luna (`max`, Fast 처리; 추출·검색·판정·개요·요약 전 경로 동일)
 2. Gemini 3.8 Flash (`high`)
 3. Gemini 3.7 Flash (`high`)
 
