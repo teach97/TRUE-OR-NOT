@@ -26,7 +26,7 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - 작업 전후로 diff·상태를 확인한다
 - 보안·키·토큰은 절대 출력·커밋하지 않는다
 - 긴 작업은 단계별로 보고하고, 막히면 early stop한다.
-- 작업이 끝나면 검증 후 main에 commit·push하고 완료 처리한다. 사용자가 별도 브랜치를 명시적으로 요청한 경우에만 해당 브랜치에서 작업한다. 일반 push가 불가능하거나 force push·비밀정보 노출 위험이 있으면 즉시 알린다.
+- 작업이 끝나면 검증 후 작업 브랜치에 commit·push하고 완료 처리한다. main 직접 push는 금지하며, 머지는 PR과 담당자 확인을 거쳐 진행한다, 일반 push가 불가능하거나 force push·비밀정보 노출 위험이 있으면 즉시 알린다.
 - 테스트가 끝난 웹·서버·검증용 프로세스가 2개 이상이라면 모두 종료하고 사용자가 사용중인 포트만 남긴다, 사용자가 사용중이던 서버는 재시작한다.
 
 
