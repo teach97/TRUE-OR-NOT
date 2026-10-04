@@ -1,5 +1,7 @@
 """Deterministic arithmetic and shared-origin grouping; no network calls."""
 
+import pytest
+
 
 def test_extract_numbers_skips_years_and_parses_commas():
     from compute import extract_numbers
@@ -8,6 +10,13 @@ def test_extract_numbers_skips_years_and_parses_commas():
     assert extract_numbers("3.5% 상승") == [3.5]
     assert extract_numbers("숫자 없음") == []
     assert extract_numbers("") == []
+
+
+def test_extract_numbers_preserves_year_like_measurements():
+    from compute import extract_numbers
+
+    assert extract_numbers("2024년 가격이 2,000원에서 2,500원으로 올랐다") == [2000.0, 2500.0]
+    assert extract_numbers("2024년 직원 2000명") == [2000.0]
 
 
 def test_percent_change_guards_zero_and_types():
@@ -19,13 +28,63 @@ def test_percent_change_guards_zero_and_types():
     assert percent_change("a", 10) is None
 
 
-def test_claim_computations_pairs_adjacent_numbers():
+def test_claim_computations_limits_explicit_changes():
     from compute import claim_computations
 
-    assert claim_computations("매출이 100에서 130으로 늘었다") == [
-        {"expression": "100→130", "percent": 30.0}]
     assert claim_computations("주장 하나") == []
-    assert len(claim_computations("1 2 3 4 5 6 7 8")) == 3
+    assert claim_computations("1원→2원, 3원→4원, 5원→6원, 7원→8원") == [
+        {"expression": "1→2", "percent": 100.0},
+        {"expression": "3→4", "percent": 33.3},
+        {"expression": "5→6", "percent": 20.0},
+    ]
+
+
+@pytest.mark.parametrize("quote, expected", [
+    ("가격이 2,000원에서 2,500원으로 올랐다", {"expression": "2000→2500", "percent": 25.0}),
+    ("매출이 100억 원에서 130억원으로 늘었다", {"expression": "100→130", "percent": 30.0}),
+    ("직원 수가 100명에서 130명으로 늘었다", {"expression": "100→130", "percent": 30.0}),
+    ("수량 10개→8개", {"expression": "10→8", "percent": -20.0}),
+    ("가격 1만원 -> 1.5만 원", {"expression": "1→1.5", "percent": 50.0}),
+    ("가격이 2000원→2500원 상승했다", {"expression": "2000→2500", "percent": 25.0}),
+    ("수량 10개 -> 8개 감소", {"expression": "10→8", "percent": -20.0}),
+])
+def test_claim_computations_compares_same_unit_changes(quote, expected):
+    from compute import claim_computations
+
+    assert claim_computations(quote) == [expected]
+
+
+@pytest.mark.parametrize("quote", [
+    "매출 100억원, 직원 20명",
+    "매출 100억원에서 순이익 130억원으로 바뀌었다",
+    "가격 100원에서 130달러로 바뀌었다",
+    "가격 10만원에서 100000원으로 바뀌었다",
+    "가격은 100원에서 130원까지다",
+    "가격은 100원부터 130원까지다",
+    "가격 100원, 배송비 130원",
+    "매출이 100에서 130으로 늘었다",
+    "1 2 3 4 5 6 7 8",
+    "2024년에서 2025년으로 넘어갔다",
+    "금리가 3%에서 4%로 올랐다",
+    "가격이 -100원에서 130원으로 바뀌었다",
+    "가격이 1e3원에서 2e3원으로 바뀌었다",
+    "가격이 1,2원에서 3원으로 바뀌었다",
+    "가격이 0원에서 100원으로 올랐다",
+    "가격 100~200원→300원",
+    "가격 100~ 200원→300원",
+    "가격 1/2원→3원",
+    "가격 1/ 2원→3원",
+    "가격 - 100원에서 130원으로 바뀌었다",
+    "가격 100원→200원~300원",
+    "가격 100원→200원 ~ 300원",
+    "가격 100원→200원/2",
+    "가격 100원→200원 / 2",
+    "가격 100원→200원까지",
+])
+def test_claim_computations_skips_ambiguous_comparisons(quote):
+    from compute import claim_computations
+
+    assert claim_computations(quote) == []
 
 
 def test_shared_passage_groups_copied_sources():
@@ -62,7 +121,13 @@ def test_independence_warning_drops_when_group_confirmed():
     assert not any("독립성" in warning for warning in _result_warnings(grouped))
 
 
-def test_verify_input_carries_computed_values():
+@pytest.mark.parametrize("text, expected", [
+    ("매출이 100억원에서 130억원으로 늘었다.", {"c1": [{"expression": "100→130", "percent": 30.0}]}),
+    ("가격이 2000원에서 2500원으로 올랐다.", {"c1": [{"expression": "2000→2500", "percent": 25.0}]}),
+    ("매출 100억원, 직원 20명.", {}),
+    ("매출이 100에서 130으로 늘었다.", {}),
+])
+def test_verify_input_carries_only_supported_computed_values(text, expected):
     import asyncio
     import json
 
@@ -70,7 +135,6 @@ def test_verify_input_carries_computed_values():
 
     from verification import verify_claims
 
-    text = "매출이 100에서 130으로 늘었다."
     state = {
         "text": text,
         "focus": "",
@@ -109,4 +173,4 @@ def test_verify_input_carries_computed_values():
             return await verify_claims(state, api_key="test-only", client=client)
 
     asyncio.run(run())
-    assert seen["input"]["computed"]["c1"] == [{"expression": "100→130", "percent": 30.0}]
+    assert seen["input"]["computed"] == expected
