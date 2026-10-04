@@ -196,8 +196,15 @@ function SummaryReply({summary}: {summary: ContentSummary}) {
   </section>;
 }
 const WELCOME_MESSAGE: ChatMessage = {id: 'welcome', role: 'assistant', text: '확인하고 싶은 주장이나 원문을 보내주세요. 문장을 나누고, 직접 확인할 수 있는 출처와 인용을 연결하겠습니다.'};
+const EXTERNAL_CONSENT_KEY = 'ton_external_consent';
+const EXTERNAL_CONSENT_VERSION = '2026-10-05-v1';
 
-function Modal({open, title, onClose, children}: {open: boolean; title: string; onClose: () => void; children: ReactNode}) {
+function readExternalConsent() {
+  try { return localStorage.getItem(EXTERNAL_CONSENT_KEY) === EXTERNAL_CONSENT_VERSION; }
+  catch { return false; }
+}
+
+function Modal({open, title, onClose, children, footer}: {open: boolean; title: string; onClose: () => void; children: ReactNode; footer?: ReactNode}) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     if (open && !ref.current?.open) ref.current?.showModal();
@@ -205,7 +212,7 @@ function Modal({open, title, onClose, children}: {open: boolean; title: string; 
   }, [open]);
   return <dialog ref={ref} className="dialog" aria-labelledby="dialog-heading" onClose={onClose} onClick={event => {if (event.target === event.currentTarget) onClose();}}>
     <div className="dialog-head"><span className="eyebrow">True or Not · 근거 워크스페이스</span><button className="icon-button" onClick={onClose} aria-label="대화상자 닫기"><Icon name="close"/></button></div>
-    <h2 id="dialog-heading">{title}</h2>{children}<button className="secondary-button dialog-done" onClick={onClose}>확인했습니다</button>
+    <h2 id="dialog-heading">{title}</h2>{children}{footer ?? <button className="secondary-button dialog-done" onClick={onClose}>확인했습니다</button>}
   </dialog>;
 }
 
@@ -372,6 +379,11 @@ export default function FactCheckDashboard() {
   const [sample, setSample] = useState(false);
   const [mobileTab, setMobileTab] = useState('results');
   const [dialog, setDialog] = useState<string | null>(null);
+  const [externalConsent, setExternalConsent] = useState(false);
+  const externalConsentRef = useRef(false);
+  const screenConsent = useRef(false);
+  const pendingConsent = useRef(false);
+  const form = useRef<HTMLFormElement>(null);
   const [notice, setNotice] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE]);
   const storage = useConversationStorage();
@@ -413,6 +425,21 @@ export default function FactCheckDashboard() {
   const sourceDocs = snapshot?.demo && selected ? documents.filter(document => selected.evidenceIds.includes(document.id)) : [];
   const activeDocument = documents.find(document => document.id === dialog);
   const busy = state.status === 'loading';
+  useEffect(() => {
+    const refreshConsent = () => {
+      const accepted = readExternalConsent();
+      screenConsent.current = false;
+      externalConsentRef.current = accepted;
+      setExternalConsent(accepted);
+      if (!accepted && request.current) cancelVerification();
+    };
+    refreshConsent();
+    const changed = (event: StorageEvent) => {
+      if (event.key === EXTERNAL_CONSENT_KEY || event.key === null) refreshConsent();
+    };
+    window.addEventListener('storage', changed);
+    return () => window.removeEventListener('storage', changed);
+  }, []);
   useEffect(() => {
     if (!stickToBottom.current) return;
     stickToBottom.current = false;
@@ -499,6 +526,41 @@ export default function FactCheckDashboard() {
     addMessage({role:'assistant',text:'검증을 중단했습니다.',storageStatus:'cancelled'});
   }
 
+  function acceptExternalConsent() {
+    screenConsent.current = false;
+    try { localStorage.setItem(EXTERNAL_CONSENT_KEY, EXTERNAL_CONSENT_VERSION); }
+    catch { screenConsent.current = true; setNotice('브라우저 저장이 차단되어 전송 동의는 현재 화면에서만 유지됩니다.'); }
+    externalConsentRef.current = true;
+    setExternalConsent(true);
+    const resume = pendingConsent.current;
+    pendingConsent.current = false;
+    setDialog(null);
+    if (resume) form.current?.requestSubmit();
+  }
+
+  function revokeExternalConsent() {
+    try { localStorage.removeItem(EXTERNAL_CONSENT_KEY); }
+    catch { setNotice('동의를 철회했습니다. 브라우저에 남은 동의 기록도 사이트 데이터 설정에서 삭제해 주세요.'); }
+    externalConsentRef.current = false;
+    screenConsent.current = false;
+    setExternalConsent(false);
+    pendingConsent.current = false;
+    if (request.current) cancelVerification();
+  }
+
+  function hasExternalConsent() {
+    const accepted = externalConsentRef.current && (screenConsent.current || readExternalConsent());
+    if (!accepted && externalConsentRef.current) {
+      externalConsentRef.current = false;
+      setExternalConsent(false);
+    }
+    return accepted;
+  }
+
+  function requireExternalConsent() {
+    if (!hasExternalConsent()) throw new FactCheckError('CONSENT_REQUIRED', '외부 서비스 전송에 다시 동의해 주세요.');
+  }
+
   function firstUrl(text: string): string | null {
     const match = text.match(/https?:\/\/[^\s)\]]+/);
     if (!match) return null;
@@ -534,21 +596,26 @@ export default function FactCheckDashboard() {
       recentUser: messages.filter(message => message.role === 'user' && message.text).slice(-3).map(message => message.text!.slice(0, 200)),
     };
   }
-  async function requestGate(text: string, model: ModelPreference, signal: AbortSignal): Promise<GateDecision> {
-    const response = await fetch('/api/intent', {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify({text, context: gateContext(), modelPreference: model}), signal});
+  async function requestGate(text: string, model: ModelPreference, consent: true, signal: AbortSignal): Promise<GateDecision> {
+    requireExternalConsent();
+    const response = await fetch('/api/intent', {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify({text, context: gateContext(), consent, modelPreference: model}), signal});
     if (!response.ok) throw new Error('INTENT_FAILED');
     const value = await response.json() as {action?: unknown; reply?: unknown; focus?: unknown};
+    requireExternalConsent();
     if (value?.action !== 'verify' && value?.action !== 'reply') throw new Error('INTENT_FAILED');
     if (value.action === 'reply' && typeof value.reply !== 'string') throw new Error('INTENT_FAILED');
     return {action: value.action, reply: typeof value.reply === 'string' ? value.reply : null, focus: typeof value.focus === 'string' ? value.focus : null};
   }
-  async function requestSummary(text: string, focus: string, linkUrl: string | null, signal: AbortSignal): Promise<ContentSummary> {
-    const response = await fetch('/api/summarize', {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify({text, focus, consent: true, modelPreference, ...(linkUrl ? {linkUrl} : {})}), signal});
+  async function requestSummary(text: string, focus: string, linkUrl: string | null, consent: boolean, signal: AbortSignal): Promise<ContentSummary> {
+    requireExternalConsent();
+    if (!consent) throw new FactCheckError('CONSENT_REQUIRED', '외부 서비스 전송에 먼저 동의해 주세요.');
+    const response = await fetch('/api/summarize', {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify({text, focus, consent, modelPreference, ...(linkUrl ? {linkUrl} : {})}), signal});
     if (!response.ok) {
       const error = await response.json().catch(()=>null);
       throw new FactCheckError(typeof error?.code === 'string' ? error.code : 'HTTP_ERROR', typeof error?.message === 'string' ? error.message : `요약 요청에 실패했습니다 (${response.status}).`);
     }
     const value = await response.json() as {result?: unknown};
+    requireExternalConsent();
     const result = value?.result as ContentSummary | undefined;
     if (!result || typeof result.title !== 'string' || typeof result.summary !== 'string' || !Array.isArray(result.points)) throw new FactCheckError('PROTOCOL', '요약 결과 형식이 올바르지 않습니다.');
     return {...result, meta: `${modelNameLabel(result.model ?? null)} · 내용 요약`};
@@ -595,6 +662,12 @@ export default function FactCheckDashboard() {
     if (!draft.trim() && !image) {setNotice('검증할 원문이나 이미지를 입력해 주세요.'); return;}
     if (draft.length > 12000 || focus.length > 500) {setNotice('원문은 12,000자, 확인 요청은 500자 이내로 입력해 주세요.'); return;}
     if (sample) {dispatch({type: 'load', snapshot: {...demoPreview, focus}}); setNotice('합성 예시입니다. 실제 검증 요청은 전송하지 않았습니다.'); return;}
+    const consent = hasExternalConsent();
+    if (!consent && (image || detectedLink || !isIdentityQuestion(draft))) {
+      pendingConsent.current = true;
+      setDialog('external-consent');
+      return;
+    }
 
     stop();
     const storageEpoch = storage.epoch;
@@ -624,7 +697,7 @@ export default function FactCheckDashboard() {
     let gate: GateDecision | null = null;
     if (!image && isSummarizeRequest(draft) && (detectedLink || draft.trim().length > 200)) {
       try {
-        const reply = await requestSummary(draft, focus.trim(), detectedLink, controller.signal);
+        const reply = await requestSummary(draft, focus.trim(), detectedLink, consent, controller.signal);
         if (generation.current !== current || controller.signal.aborted) {release(); return;}
         removeThinking();
         appendReply({role: 'assistant', summary: reply});
@@ -644,9 +717,10 @@ export default function FactCheckDashboard() {
       setDraft(''); setFocus(''); setImage(null); release();
       return;
     }
+    if (!consent) {release(); return;}
     if (!image && !detectedLink && draft.trim().length <= 120) {
       try {
-        gate = await requestGate(draft.trim(), modelPreference, controller.signal);
+        gate = await requestGate(draft.trim(), modelPreference, consent, controller.signal);
       } catch { gate = null; }
       if (generation.current !== current || controller.signal.aborted) {release(); return;}
     }
@@ -677,7 +751,7 @@ export default function FactCheckDashboard() {
     const effectiveFocus = followUp
       ? [focus.trim(), gateFocus.trim(), draft.trim()].filter(part => part).join(' / ')
       : [focus.trim(), gateFocus.trim()].filter(part => part).join(' / ');
-    const submitted: FactCheckRequest = {text: effectiveText, focus: effectiveFocus, consent: true as const, modelPreference, ...(detectedLink && !followUp ? {linkUrl: detectedLink} : {}), ...(image ? {image: {mime: image.mime, data: image.data}} : {})};
+    const submitted: FactCheckRequest = {text: effectiveText, focus: effectiveFocus, consent, modelPreference, ...(detectedLink && !followUp ? {linkUrl: detectedLink} : {}), ...(image ? {image: {mime: image.mime, data: image.data}} : {})};
     if (!followUp) {
       setLiveResult(null);
       dispatch({type: 'reset'});
@@ -685,7 +759,9 @@ export default function FactCheckDashboard() {
     dispatch({type: 'start'});
     setNotice(followUp ? '이전 원문을 유지하고 확인 요청으로 이어서 검증합니다.' : '검증 요청을 서버로 전송하고 있습니다.');
     try {
-      const runMain = async () => readFactCheckStream(
+      const runMain = async () => {
+        requireExternalConsent();
+        return readFactCheckStream(
         await fetch('/api/fact-check', {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify(submitted), signal: controller.signal}),
         {
           signal: controller.signal,
@@ -710,8 +786,10 @@ export default function FactCheckDashboard() {
             setNotice('1차 검증을 마쳤습니다. 최종 답변과 인용을 정리하고 있습니다.');
           },
         },
-      );
+        );
+      };
       const runJev = async (): Promise<FactCheckResult> => {
+        requireExternalConsent();
         const jevResponse = await fetch('/api/fact-check/jev', {method: 'POST', headers: {'content-type': 'application/json'}, body: JSON.stringify({...submitted, jevMode: true}), signal: controller.signal});
         if (!jevResponse.ok) {
           const error = await jevResponse.json().catch(()=>null);
@@ -733,6 +811,7 @@ export default function FactCheckDashboard() {
         result = await runMain();
       }
       if (generation.current !== current || controller.signal.aborted) return;
+      requireExternalConsent();
       if (!submitted.linkUrl && !submitted.image && (result.text !== submitted.text || result.focus !== submitted.focus)) throw new Error('제출한 원문과 검증 결과가 일치하지 않습니다. 다시 시도해 주세요.');
       setImage(null);
       setDraft('');
@@ -896,7 +975,7 @@ export default function FactCheckDashboard() {
           </div>
           {!atBottom && <button type="button" className="thread-to-bottom" onClick={() => {stickToBottom.current = true; scrollThreadToBottom(); setAtBottom(true);}} aria-label="채팅 맨 아래로 이동"><Icon name="arrow" size={16}/></button>}
           </div>
-          <form className="chat-form" onSubmit={submit}>
+          <form ref={form} className="chat-form" onSubmit={submit}>
             <BorderGlow className="chat-input-shell" borderRadius={19} backgroundColor="#1c1f23" glowIntensity={1.9} glowRadius={46} animated coneSpread={32}>
               <label className="sr-only" htmlFor="document-text">확인할 원문</label>
               <textarea ref={editor} id="document-text" value={draft} onChange={event => {setDraft(event.target.value); if (sample) {setSample(false); setMessages([WELCOME_MESSAGE]);}}} onPaste={async event => {
@@ -924,7 +1003,7 @@ export default function FactCheckDashboard() {
                 </div>
               </div>
             </BorderGlow>
-            <div className="chat-footer"><div>{sample && <span className="sample-state"><Icon name="shield" size={14}/>합성 예시는 외부로 전송하지 않습니다.</span>}</div><button type="button" className="sample-chip" onClick={loadSample}>예시로 시작하기 <Icon name="arrow" size={14}/></button></div>
+            <div className="chat-footer"><div>{sample && <span className="sample-state"><Icon name="shield" size={14}/>합성 예시는 외부로 전송하지 않습니다.</span>}<button type="button" className="sample-chip" onClick={() => externalConsent ? revokeExternalConsent() : setDialog('external-consent')}>{externalConsent ? '외부 전송 동의 철회' : '외부 전송 안내'}</button></div><button type="button" className="sample-chip" onClick={loadSample}>예시로 시작하기 <Icon name="arrow" size={14}/></button></div>
           </form>
           <div className={`chat-status ${busy ? 'is-busy' : ''}`} role="status" aria-live="polite">{busy ? notice || '검증을 진행하고 있습니다.' : notice || (configured === false && jevConfigured !== true ? configurationHelp : '원문을 입력하거나 예시로 시작해 근거를 확인해 보세요.')}</div>
         </section>
@@ -985,6 +1064,12 @@ export default function FactCheckDashboard() {
         <footer className="page-footer"><span><span className="footer-mark">F</span>True or Not <span className="footer-divider">/</span>판단을 대신하지 않고, 근거를 연결합니다.</span><span className="footer-links"><a href="/privacy">개인정보 처리방침</a><a href="/terms">이용약관</a><a href="https://www.youtube.com/t/terms" target="_blank" rel="noopener noreferrer">YouTube 약관</a><a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">Google 개인정보</a></span><button className="text-button" onClick={() => setDialog('guide')}>검증 원칙<Icon name="arrow" size={15}/></button></footer>
       </main>
     </div>
-    <Modal open={dialog !== null} title={activeDocument?.title || (dialog === 'guide' ? '근거를 읽는 세 가지 원칙' : '검증 안내')} onClose={() => setDialog(null)}>{activeDocument ? <><p className="dialog-notice">합성 예시 문서 · 외부 출처 링크가 아닙니다.</p><dl className="document-metadata"><dt>작성 주체</dt><dd>{activeDocument.publisher}</dd><dt>설정 날짜</dt><dd>{activeDocument.date}</dd><dt>원자료 관계</dt><dd>그룹 {activeDocument.group} · {activeDocument.relation}</dd></dl><div className="document-fulltext">{activeDocument.text}</div></> : dialog === 'guide' ? <ol className="guide-list"><li><span>01</span><div><h3>주장을 작게 나누세요.</h3><p>누가, 언제, 어디서, 어떤 조건으로 한 말인지 원문과 함께 확인하세요.</p></div></li><li><span>02</span><div><h3>출처의 수보다 관계를 보세요.</h3><p>같은 발표를 옮긴 여러 문서는 하나의 원자료를 공유할 수 있습니다.</p></div></li><li><span>03</span><div><h3>모르는 것은 남겨 두세요.</h3><p>근거가 없다고 거짓은 아닙니다. 의견과 미래 예측을 확정된 사실처럼 판정하지 않습니다.</p></div></li></ol> : <div className="about-copy"><p>검증을 시작하면 원문과 확인 요청은 서버, 외부 AI 및 검색 서비스로 전송됩니다. 채팅에 붙인 링크의 페이지는 서버에서 직접 가져오고, 첨부한 이미지는 주장 추출을 위해 AI 제공자에게 보내며 서버에 저장하지 않습니다. 관련 YouTube 영상 제목과 공개 댓글 최대 10개는 YouTube Data API로 조회할 수 있습니다. 댓글은 LLM 입력 및 판정 근거로 사용하지 않습니다.</p><p>검증 결과와 YouTube 댓글은 현재 화면 메모리에만 유지되며 새로고침하면 사라집니다. YouTube API 제목·댓글은 JSON 내보내기에서 제외됩니다. 자세한 내용은 <a href="/privacy">개인정보 처리방침</a>과 <a href="/terms">이용약관</a>을 확인해 주세요.</p></div>}</Modal>
+    <Modal open={dialog !== null} title={dialog === 'external-consent' ? '외부 서비스 전송 동의' : activeDocument?.title || (dialog === 'guide' ? '근거를 읽는 세 가지 원칙' : '검증 안내')} onClose={() => {pendingConsent.current = false; setDialog(null);}} footer={dialog === 'external-consent' ? <div className="dialog-done"><button type="button" className="secondary-button" onClick={() => {pendingConsent.current = false; setDialog(null);}}>동의하지 않음</button><button type="button" className="secondary-button" onClick={acceptExternalConsent}>동의하고 시작</button></div> : undefined}>
+      {dialog === 'external-consent' ? <div className="about-copy">
+        <p>의도 분석·검증·요약을 위해 입력한 텍스트, 확인 요청, 링크, 첨부 이미지와 필요한 이전 대화 맥락을 서버로 전송합니다. 설정된 AI 서비스(OpenAI·Google Gemini·AI Gateway), TypeSafe JEV, 검색 서비스(Tavily 및 모델 제공자의 검색 기능)가 요청 처리에 사용될 수 있습니다. 링크와 검색된 공개 페이지는 서버에서 읽으며 YouTube 기능은 Google 서비스에 영상 ID를 전송해 자막·공개 영상 정보·댓글을 조회할 수 있습니다.</p>
+        <p>민감정보·제3자의 비공개 정보는 입력하지 마세요. 외부 제공자의 처리·보관 정책은 <a href="/privacy" target="_blank" rel="noopener noreferrer">개인정보 처리방침</a>과 <a href="/terms" target="_blank" rel="noopener noreferrer">이용약관</a>에서 확인해 주세요. 이 안내는 법적 검토 완료를 의미하지 않습니다.</p>
+        <p>전송 동의는 이 브라우저에서 안내 버전만 저장해 다음 질문과 새로고침 후에도 유지합니다. 동의 철회·사이트 데이터 삭제·안내 범위 변경 시 다시 확인하며, 브라우저 저장이 차단되면 현재 화면에서만 유지합니다. 거절하면 외부 호출을 하지 않고 입력을 보존합니다. 대화 저장은 별도 선택이며 자동으로 켜지지 않습니다.</p>
+      </div> : activeDocument ? <><p className="dialog-notice">합성 예시 문서 · 외부 출처 링크가 아닙니다.</p><dl className="document-metadata"><dt>작성 주체</dt><dd>{activeDocument.publisher}</dd><dt>설정 날짜</dt><dd>{activeDocument.date}</dd><dt>원자료 관계</dt><dd>그룹 {activeDocument.group} · {activeDocument.relation}</dd></dl><div className="document-fulltext">{activeDocument.text}</div></> : dialog === 'guide' ? <ol className="guide-list"><li><span>01</span><div><h3>주장을 작게 나누세요.</h3><p>누가, 언제, 어디서, 어떤 조건으로 한 말인지 원문과 함께 확인하세요.</p></div></li><li><span>02</span><div><h3>출처의 수보다 관계를 보세요.</h3><p>같은 발표를 옮긴 여러 문서는 하나의 원자료를 공유할 수 있습니다.</p></div></li><li><span>03</span><div><h3>모르는 것은 남겨 두세요.</h3><p>근거가 없다고 거짓은 아닙니다. 의견과 미래 예측을 확정된 사실처럼 판정하지 않습니다.</p></div></li></ol> : <div className="about-copy"><p>최초 전송 동의 후 원문과 확인 요청은 서버, 외부 AI 및 검색 서비스로 전송됩니다. 채팅에 붙인 링크의 페이지는 서버에서 직접 가져오고, 첨부한 이미지는 주장 추출을 위해 AI 제공자에게 보내며 대화 DB에는 저장하지 않습니다. YouTube 자막·영상 정보·공개 댓글을 조회할 수 있으며 댓글은 LLM 입력 및 판정 근거로 사용하지 않습니다.</p><p>대화 저장은 별도 선택입니다. 저장하지 않은 결과와 YouTube API 정보는 현재 화면 메모리에만 유지되며 새로고침하면 사라집니다. YouTube API 제목·댓글은 대화 저장과 JSON 내보내기에서 제외됩니다. 자세한 내용은 <a href="/privacy">개인정보 처리방침</a>과 <a href="/terms">이용약관</a>을 확인해 주세요.</p></div>}
+    </Modal>
   </div></MotionConfig>;
 }

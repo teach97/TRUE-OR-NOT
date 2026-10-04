@@ -87,13 +87,13 @@ def test_intent_endpoint_rejects_bad_payloads_and_reports_unconfigured(monkeypat
         lambda: Settings(api_key=SecretStr(""), gemini_api_key=SecretStr("")),
     )
     with TestClient(app) as client:
-        assert client.post("/api/intent", json={}).status_code == 422
-        assert client.post("/api/intent", json={"text": ""}).status_code == 422
+        assert client.post("/api/intent", json={"consent": True}).status_code == 422
+        assert client.post("/api/intent", json={"text": "", "consent": True}).status_code == 422
         assert client.post(
-            "/api/intent", json={"text": "하이", "context": {"previousText": 1}}).status_code == 422
+            "/api/intent", json={"text": "하이", "consent": True, "context": {"previousText": 1}}).status_code == 422
         assert client.post(
-            "/api/intent", json={"text": "하이", "modelPreference": "nope"}).status_code == 422
-        unconfigured = client.post("/api/intent", json={"text": "하이"})
+            "/api/intent", json={"text": "하이", "consent": True, "modelPreference": "nope"}).status_code == 422
+        unconfigured = client.post("/api/intent", json={"text": "하이", "consent": True})
         assert unconfigured.status_code == 503
 
 
@@ -134,11 +134,17 @@ def test_intent_endpoint_uses_selected_model(monkeypatch):
         lambda: Settings(api_key=SecretStr("openai-test-only"), gemini_api_key=SecretStr("gemini-test-only")),
     )
     with TestClient(app) as client:
-        response = client.post("/api/intent", json={"text": "하이", "modelPreference": "gpt-6-luna"})
+        response = client.post("/api/intent", json={
+            "text": "하이", "modelPreference": "gpt-6-luna", "consent": True,
+        })
         assert response.status_code == 200
+        assert response.json() == {"action": "reply", "reply": "hi", "focus": None}
         assert hits == ["api.openai.com/v1/responses"]
-        picked = client.post("/api/intent", json={"text": "하이", "modelPreference": "gemini-3.7-flash"})
+        picked = client.post("/api/intent", json={
+            "text": "하이", "modelPreference": "gemini-3.7-flash", "consent": True,
+        })
         assert picked.status_code == 200
+        assert picked.json() == {"action": "reply", "reply": "hi", "focus": None}
         assert hits[-1] == "generativelanguage.googleapis.com/v1beta/interactions"
 
 
@@ -154,5 +160,7 @@ def test_intent_endpoint_reports_missing_selected_model(monkeypatch):
         lambda: Settings(api_key=SecretStr("openai-test-only"), gemini_api_key=SecretStr("")),
     )
     with TestClient(app) as client:
-        missing = client.post("/api/intent", json={"text": "하이", "modelPreference": "gemini-3.7-flash"})
+        missing = client.post("/api/intent", json={
+            "text": "하이", "modelPreference": "gemini-3.7-flash", "consent": True,
+        })
         assert missing.status_code == 503

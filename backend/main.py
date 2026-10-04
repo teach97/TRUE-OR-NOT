@@ -11,7 +11,7 @@ from fastapi import Depends, FastAPI, Request, Response
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse, StreamingResponse
 from streaming import stream_events
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from contracts import AgentStatus, ContentSummary, FactCheckResponse
 from intent import classify_intent
@@ -285,8 +285,16 @@ class IntentRequest(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 
     text: str = Field(min_length=1, max_length=2000)
+    consent: Literal[True]
     context: IntentContext = Field(default_factory=IntentContext)
     modelPreference: ModelPreference = "auto"
+
+    @field_validator("consent", mode="before")
+    @classmethod
+    def require_consent(cls, value):
+        if type(value) is not bool:
+            raise ValueError("Explicit consent is required")
+        return value
 
 
 @app.post("/api/intent")

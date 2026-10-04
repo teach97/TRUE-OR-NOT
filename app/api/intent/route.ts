@@ -35,6 +35,9 @@ export async function POST(req: Request) {
     if (text.length > 20000) throw new Error('BODY_TOO_LARGE');
     body=JSON.parse(text);
   }catch{return error(400,'INVALID_REQUEST','의도 파악 입력을 확인해 주세요.');}
+  if (!body || typeof body !== 'object' || Array.isArray(body) || !('consent' in body) || body.consent !== true) {
+    return error(400,'CONSENT_REQUIRED','외부 서비스 전송에 먼저 동의해 주세요.');
+  }
   if(req.signal.aborted)return error(400,'CANCELLED','요청이 취소되었습니다.');
   try {
     const signal=AbortSignal.any([req.signal,AbortSignal.timeout(25000)]);

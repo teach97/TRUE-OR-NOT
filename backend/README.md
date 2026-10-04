@@ -79,6 +79,8 @@ SerpApi는 확인된 무료 쿼터 안에서만 호출하도록 제한되어 있
 
 `consent`는 반드시 `true`여야 합니다. 텍스트는 1~12,000자, 확인 초점은 최대 500자입니다. 모델 선택값은 `auto`, `gemini-3.8-flash`, `gemini-3.7-flash`, `gpt-6-luna` 중 하나입니다.
 
+`/api/intent`도 `consent: true`를 필수로 받습니다. 모든 외부 POST 경로는 누락·false·문자열·숫자·null 동의를 외부 클라이언트 생성 전에 422로 거부합니다. 브라우저는 최초 안내에서 사용자가 선택한 동의를 동일 사이트의 다음 질문·새로고침에 재사용하며 철회·사이트 데이터 삭제·안내 버전 변경 시 다시 확인합니다. 전송 동의와 아래의 대화 보관 동의는 별개이고 `consent`는 이용자 인증 수단이 아닙니다.
+
 ## 대화 저장 · Render PostgreSQL
 
 기존 검증과 별도인 `/api/conversations` API가 대화 생성·목록·메시지 저장·복원·삭제를 제공합니다. `DATABASE_URL`과 최소 32자 무작위 `CONVERSATION_SESSION_SECRET`은 무시되는 `backend/.env` 또는 Render 백엔드 환경 설정에만 둡니다. 키를 바꾸면 기존 익명 쿠키가 무효화됩니다. 브라우저·Next.js·Git에는 넣지 않습니다.
