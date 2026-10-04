@@ -66,8 +66,8 @@
     "semantic_hash": ""
   },
   "app/components/floating-lines-background.tsx": {
-    "mtime": 1790678443.981194,
-    "seen": 1790685982.0698369,
+    "mtime": 1791097352.1486003,
+    "seen": 1791098455.2960079,
     "ast_hash": "fb6b0f3afee0730c0aa27193673560cd",
     "semantic_hash": ""
   },
@@ -288,9 +288,9 @@
     "semantic_hash": ""
   },
   "backend/sources.py": {
-    "mtime": 1791094640.4056377,
-    "seen": 1791094662.0294063,
-    "ast_hash": "de6b8e33d8169c1cdf3635a08a18e8f9",
+    "mtime": 1791094846.0156136,
+    "seen": 1791098455.3190649,
+    "ast_hash": "8056ec42b2f8805bfb2d59f1deea6b31",
     "semantic_hash": ""
   },
   "backend/streaming.py": {
@@ -450,9 +450,9 @@
     "semantic_hash": ""
   },
   "next-env.d.ts": {
-    "mtime": 1791094653.323287,
-    "seen": 1791094662.033431,
-    "ast_hash": "0e4a65e8b2b9aa3ed0f8957b9406bd41",
+    "mtime": 1791094846.016614,
+    "seen": 1791098455.329779,
+    "ast_hash": "c7b887684e81cfa5830eeeb7286485f6",
     "semantic_hash": ""
   },
   "next.config.ts": {
@@ -1002,9 +1002,9 @@
     "semantic_hash": ""
   },
   "app/components/conversation-client.test.mjs": {
-    "mtime": 1791081785.0810702,
-    "seen": 1791090921.2824032,
-    "ast_hash": "738e1da556707eef9b5cc975913c371e",
+    "mtime": 1791098303.9687214,
+    "seen": 1791098455.2890162,
+    "ast_hash": "46f9e7923e4221983b6cab64b071654a",
     "semantic_hash": ""
   },
   "app/components/conversation-client.ts": {
@@ -1056,15 +1056,15 @@
     "semantic_hash": ""
   },
   "app/lib/conversation-contract.test.mjs": {
-    "mtime": 1791081267.140956,
-    "seen": 1791090921.2841516,
-    "ast_hash": "413b2a110f2d907b86ee0aa85c3c465f",
+    "mtime": 1791098302.8943775,
+    "seen": 1791098455.3018153,
+    "ast_hash": "2005a4118c26f705923ec1e13257639c",
     "semantic_hash": ""
   },
   "app/lib/conversation-contract.ts": {
-    "mtime": 1791091757.4069366,
-    "seen": 1791092488.932134,
-    "ast_hash": "275afe8cc6739cbf7c7ab66409e5d0de",
+    "mtime": 1791098321.0988543,
+    "seen": 1791098455.3018153,
+    "ast_hash": "cd00b884db54948705be6bf547fbcfa4",
     "semantic_hash": ""
   },
   "app/lib/server/conversation-proxy.test.mjs": {
@@ -1440,9 +1440,15 @@
     "semantic_hash": ""
   },
   "docs/qa/\uc2e4\ud589\uae30\ub85d/2026-10-04-\ub300\ud654\uc800\uc7a5.md": {
-    "mtime": 1791093155.1325967,
-    "seen": 1791094662.039718,
-    "ast_hash": "847751fd179228a47ce795a1a0823656",
+    "mtime": 1791094846.7942863,
+    "seen": 1791098455.3505445,
+    "ast_hash": "11f42cd76aed43a74802ff8793f8004f",
+    "semantic_hash": ""
+  },
+  "docs/qa/\uc2e4\ud589\uae30\ub85d/2026-10-04-\uc794\uc5ec\ubcc0\uacbd\uc815\ub9ac.md": {
+    "mtime": 1791095107.8029559,
+    "seen": 1791098455.3505445,
+    "ast_hash": "5d2cd64d37a6c6f05cc4eccebdf3e4a8",
     "semantic_hash": ""
   }
 }

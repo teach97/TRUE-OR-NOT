@@ -26,5 +26,6 @@ export function sanitizeSnapshot(result:FactCheckResult):StoredSnapshot {
   };
 }
 export function restoreSnapshot(snapshot:StoredSnapshot):FactCheckResult {
-  return {...snapshot,demo:false,market:null,sources:snapshot.sources.map(source=>({...source,youtubeTitle:null,youtubeChannelTitle:null,youtubePublishedAt:null,youtubeViewCount:null,youtubeComments:[],youtubeDataStatus:'not_applicable'}))};
+  // 저장 대상에서 제외된 유튜브 API 메타데이터는 복원 시 사용할 수 없습니다.
+  return {...snapshot,demo:false,market:null,sources:snapshot.sources.map(source=>({...source,youtubeTitle:null,youtubeChannelTitle:null,youtubePublishedAt:null,youtubeViewCount:null,youtubeComments:[],youtubeDataStatus:source.sourceType==='유튜브'?'unavailable':'not_applicable'}))};
 }
