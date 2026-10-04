@@ -2,6 +2,7 @@
 import hmac
 import os
 import subprocess
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Literal
 
@@ -19,9 +20,39 @@ from summarize import summarize_content
 from providers import ProviderCallError, configured_model_options, configured_providers, providers_for_preference, run_with_fallback
 from runtime import build_runtime_workflow, load_settings, run_jev_fast_check
 from schemas import FactCheckRequest, ModelPreference
+from conversation_api import router as conversation_router, storage_error
+from conversation_store import ConversationStore, StorageError
+from dotenv import dotenv_values
 
 
-app = FastAPI(title="True or Not Backend", version="0.1.0")
+@asynccontextmanager
+async def lifespan(app):
+    values = dotenv_values(Path(__file__).with_name('.env'))
+    app.state.conversation_store = ConversationStore(os.getenv('DATABASE_URL',values.get('DATABASE_URL') or ''))
+    try:
+        yield
+    finally:
+        await app.state.conversation_store.close()
+
+
+app = FastAPI(title="True or Not Backend", version="0.1.0", lifespan=lifespan)
+app.include_router(conversation_router)
+
+
+@app.exception_handler(StorageError)
+async def conversation_error(request, error):
+    return storage_error(error)
+
+
+@app.middleware('http')
+async def conversation_body_limit(request, call_next):
+    if request.url.path.startswith('/api/conversations'):
+        try:
+            if int(request.headers.get('content-length','0')) > 524288:
+                return storage_error(StorageError('BODY_TOO_LARGE'))
+        except ValueError:
+            return storage_error(StorageError('INVALID_REQUEST'))
+    return await call_next(request)
 
 
 def _code_revision() -> str:
