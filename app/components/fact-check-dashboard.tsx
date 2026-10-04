@@ -25,6 +25,11 @@ import BlurText from './blur-text';
 import { useSpotlight } from './spotlight';
 import TechText from './tech-text';
 import BorderGlow from './border-glow';
+import ConversationHistory from './conversation-history';
+import {useConversationStorage} from './use-conversation-storage';
+import {toStoredMessage} from './conversation-message';
+import {restoreSnapshot} from '../lib/conversation-contract';
+import type {MessagePage,StoredMessage} from '../lib/conversation-contract';
 import BellToggle from './bell-toggle';
 import GlideSelect from './glide-select';
 import type { GlideSelectOption } from './glide-select';
@@ -172,7 +177,7 @@ type ChatProgress = {
   sourcesRead?: ProgressSource[]; sourcesReadElapsedSeconds?: number;
   claims?: ProgressClaim[]; claimsElapsedSeconds?: number; completed?: boolean; error?: string;
 };
-type ChatMessage = {id: string; role: 'assistant' | 'user'; text?: string; answer?: FactCheckAnswer; factScore?: number | null; verdict?: string | null; search?: string | null; scoreMode?: 'jev' | 'claims'; scoreEngine?: string | null; sources?: FactSource[]; progress?: ChatProgress; summary?: ContentSummary; meta?: string; tone?: 'normal' | 'error'; imagePreview?: string; thinking?: boolean};
+type ChatMessage = {id: string; role: 'assistant' | 'user'; text?: string; answer?: FactCheckAnswer; factScore?: number | null; verdict?: string | null; search?: string | null; scoreMode?: 'jev' | 'claims'; scoreEngine?: string | null; sources?: FactSource[]; progress?: ChatProgress; summary?: ContentSummary; meta?: string; tone?: 'normal' | 'error'; imagePreview?: string; thinking?: boolean; storageStatus?: 'cancelled'};
 type ModelSelection = ModelPreference;
 
 function ThinkingLoader({label}: {label: string}) {
@@ -369,6 +374,7 @@ export default function FactCheckDashboard() {
   const [dialog, setDialog] = useState<string | null>(null);
   const [notice, setNotice] = useState('');
   const [messages, setMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE]);
+  const storage = useConversationStorage();
   const request = useRef<AbortController | null>(null);
   const generation = useRef(0);
   const messageCounter = useRef(0);
@@ -467,9 +473,15 @@ export default function FactCheckDashboard() {
     return () => {controller.abort(); generation.current++; request.current?.abort();};
   }, []);
 
-  function addMessage(message: Omit<ChatMessage, 'id'>) {
+  function saveChat(message: Omit<ChatMessage,'id'>, epoch: number, result?:FactCheckResult) {
+    const stored = toStoredMessage(message,result);
+    if(stored)void storage.saveMessage(stored,epoch);
+  }
+
+  function addMessage(message: Omit<ChatMessage, 'id'>, epoch=storage.epoch) {
     const id = `message-${messageCounter.current++}`;
     setMessages(current => [...current, {...message, id}]);
+    saveChat(message,epoch);
     return id;
   }
 
@@ -484,6 +496,7 @@ export default function FactCheckDashboard() {
     dispatch({type: 'cancel'});
     setMessages(messages => messages.filter(message => !message.thinking));
     setNotice('검증을 중단했습니다.');
+    addMessage({role:'assistant',text:'검증을 중단했습니다.',storageStatus:'cancelled'});
   }
 
   function firstUrl(text: string): string | null {
@@ -546,6 +559,7 @@ export default function FactCheckDashboard() {
 
   function loadSample() {
     stop();
+    storage.newConversation();
     setLiveResult(null);
     dispatch({type: 'cancel'});
     dispatch({type: 'load', snapshot: demoPreview});
@@ -563,6 +577,7 @@ export default function FactCheckDashboard() {
 
   function reset() {
     stop();
+    storage.newConversation();
     setLiveResult(null);
     setImage(null);
     dispatch({type: 'reset'});
@@ -576,12 +591,14 @@ export default function FactCheckDashboard() {
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (busy || request.current) return;
+    if (busy || request.current || storage.loading) return;
     if (!draft.trim() && !image) {setNotice('검증할 원문이나 이미지를 입력해 주세요.'); return;}
     if (draft.length > 12000 || focus.length > 500) {setNotice('원문은 12,000자, 확인 요청은 500자 이내로 입력해 주세요.'); return;}
     if (sample) {dispatch({type: 'load', snapshot: {...demoPreview, focus}}); setNotice('합성 예시입니다. 실제 검증 요청은 전송하지 않았습니다.'); return;}
 
     stop();
+    const storageEpoch = storage.epoch;
+    const appendReply = (message:Omit<ChatMessage,'id'>) => addMessage(message,storageEpoch);
     const controller = new AbortController();
     request.current = controller;
     addMessage({role: 'user', text: followUp ? draft.trim() : draft, meta: continuedThread ? '이전 검증에 이어서 확인' : focus ? `확인 요청: ${focus}` : undefined, ...(image ? {imagePreview: image.preview} : {})});
@@ -610,12 +627,12 @@ export default function FactCheckDashboard() {
         const reply = await requestSummary(draft, focus.trim(), detectedLink, controller.signal);
         if (generation.current !== current || controller.signal.aborted) {release(); return;}
         removeThinking();
-        addMessage({role: 'assistant', summary: reply});
+        appendReply({role: 'assistant', summary: reply});
         setNotice('내용을 요약했습니다. 사실 확인은 검증으로 요청해 주세요.');
       } catch (error) {
         if (generation.current !== current || controller.signal.aborted) return;
         removeThinking();
-        addMessage({role: 'assistant', text: error instanceof FactCheckError ? `요약 실패: ${error.message}` : '요약 요청에 실패했습니다.', tone: 'error'});
+        appendReply({role: 'assistant', text: error instanceof FactCheckError ? `요약 실패: ${error.message}` : '요약 요청에 실패했습니다.', tone: 'error'});
       }
       setDraft(''); setFocus(''); setImage(null); release();
       return;
@@ -623,7 +640,7 @@ export default function FactCheckDashboard() {
     if (!image && !detectedLink && isIdentityQuestion(draft)) {
       removeThinking();
       const label = modelSelection === 'auto' ? 'Auto' : (MODEL_OPTIONS.find(model => model.id === modelSelection)?.label ?? modelSelection);
-      addMessage({role: 'assistant', text: jevMode ? `현재 ${label} 모드에서 JEV를 함께 사용합니다. 답변 아래에 Jev 점수도 표시됩니다.` : `현재 ${label} 모드입니다.`});
+      appendReply({role: 'assistant', text: jevMode ? `현재 ${label} 모드에서 JEV를 함께 사용합니다. 답변 아래에 Jev 점수도 표시됩니다.` : `현재 ${label} 모드입니다.`});
       setDraft(''); setFocus(''); setImage(null); release();
       return;
     }
@@ -635,7 +652,7 @@ export default function FactCheckDashboard() {
     }
     if (gate?.action === 'reply' && gate.reply) {
       removeThinking();
-      addMessage({role: 'assistant', text: gate.reply});
+      appendReply({role: 'assistant', text: gate.reply});
       setDraft(''); setFocus(''); setImage(null); release();
       return;
     }
@@ -644,13 +661,13 @@ export default function FactCheckDashboard() {
       const fallback = classifyChatInput(draft, {hasPrevious: !sample && liveResult !== null, hasAttachment: !!(image || detectedLink)});
       if (fallback.kind === 'meta') {
         removeThinking();
-        addMessage({role: 'assistant', text: fallback.topic === 'history' ? describeHistory(messages, liveResult, DEMO_TEXT) : metaReply(fallback.topic)});
+        appendReply({role: 'assistant', text: fallback.topic === 'history' ? describeHistory(messages, liveResult, DEMO_TEXT) : metaReply(fallback.topic)});
         setDraft(''); setFocus(''); setImage(null); release();
         return;
       }
       if (fallback.kind === 'followup' && !prevHasClaims) {
         removeThinking();
-        addMessage({role: 'assistant', text: '이전 검증에서 검증 가능한 주장을 찾지 못했습니다. 확인할 원문·링크·이미지를 보내주시면 바로 검증하겠습니다.'});
+        appendReply({role: 'assistant', text: '이전 검증에서 검증 가능한 주장을 찾지 못했습니다. 확인할 원문·링크·이미지를 보내주시면 바로 검증하겠습니다.'});
         setDraft(''); release();
         return;
       }
@@ -729,6 +746,7 @@ export default function FactCheckDashboard() {
       if (!(followUp && !result.claims.length)) setNotice(result.claims.length ? '검증이 완료되었습니다. 아래에서 출처와 남은 불확실성을 확인해 주세요.' : '검증 가능한 주장을 찾지 못했습니다. 결과의 경고를 확인해 주세요.');
       const reply = composeAssistantReply(result, jevResult);
       const finalMessage: ChatMessage = {id: `message-${messageCounter.current++}`, role: 'assistant', ...reply};
+      saveChat(finalMessage,storageEpoch,result);
       if (progressMessageId) {
         setMessages(messages => [...messages.map(message => message.id === progressMessageId && message.progress
           ? {...message, progress: {...message.progress, status: '검증 완료', statusElapsedSeconds: elapsedSeconds(), completed: true}}
@@ -744,6 +762,7 @@ export default function FactCheckDashboard() {
       if (error instanceof FactCheckError && /CONFIG|KEY_MISSING/i.test(error.code)) setConfigured(false);
       setNotice(message);
       if (progressMessageId) {
+        saveChat({role:'assistant',text:message,tone:'error'},storageEpoch);
         const errorId = `message-${messageCounter.current++}`;
         setMessages(messages => {
           const target = messages.find(item => item.id === progressMessageId);
@@ -753,11 +772,40 @@ export default function FactCheckDashboard() {
           return [...messages.filter(item => item.id !== progressMessageId), {id: errorId, role: 'assistant', text: message, tone: 'error'}];
         });
       } else {
-        addMessage({role: 'assistant', text: message, tone: 'error'});
+        appendReply({role: 'assistant', text: message, tone: 'error'});
       }
     } finally {
       if (generation.current === current) request.current = null;
     }
+  }
+
+  function restoredMessage(item:StoredMessage):ChatMessage {
+    if(item.snapshot){const result=restoreSnapshot(item.snapshot);return {id:item.id,role:item.role,...composeAssistantReply(result),meta:`과거 검증 결과 · ${result.checkedAt}`};}
+    return {id:item.id,role:item.role,text:item.content,...(item.status==='failed'?{tone:'error' as const}:{}),meta:item.status==='cancelled'?'중단된 요청':undefined};
+  }
+
+  function restorePage(page:MessagePage,earlier=false) {
+    const restored=page.messages.map(restoredMessage);
+    setMessages(current=>earlier?[...restored,...current.filter(item=>!restored.some(old=>old.id===item.id))]:restored.length?restored:[WELCOME_MESSAGE]);
+    const last=[...page.messages].reverse().find(item=>item.snapshot)?.snapshot;
+    if(last&&(!earlier||!liveResult)){const result=restoreSnapshot(last);setLiveResult(result);dispatch({type:'load',snapshot:result});setNotice(`과거 검증 결과입니다 (${result.checkedAt}). 현재 사실로 재검증한 결과가 아닙니다.`);}
+    else if(!earlier){setLiveResult(null);dispatch({type:'reset'});setNotice('저장된 대화를 불러왔습니다. 저장을 켜면 이어지는 대화도 저장됩니다.');}
+  }
+
+  async function selectConversation(id:string) {
+    stop();dispatch({type:'cancel'});const current=generation.current;
+    setMessages([WELCOME_MESSAGE]);setDraft('');setFocus('');setImage(null);setSample(false);
+    const page=await storage.loadConversation(id);
+    if(page&&generation.current===current)restorePage(page);
+  }
+
+  async function earlierConversation() {
+    const current=generation.current;const page=await storage.loadEarlier();
+    if(page&&generation.current===current)restorePage(page,true);
+  }
+
+  function deleteConversation(id:string) {
+    reset();void storage.deleteConversation(id);
   }
 
   function download() {
@@ -808,12 +856,14 @@ export default function FactCheckDashboard() {
           if (index === 2) setDialog('guide');
         }}
       />
+      <ConversationHistory storage={storage} onNew={reset} onSelect={id=>void selectConversation(id)} onDelete={deleteConversation}/>
       <div className="sidebar-bottom"><div className="principle-card"><Icon name="shield"/><strong>결론보다, 근거를 먼저.</strong><p>확인된 내용과 아직 모르는 내용을 함께 살펴보세요.</p><button onClick={() => setDialog('guide')}>검증 원칙 보기 <Icon name="arrow" size={15}/></button></div><div className="local-status"><span/>{serviceLabel}</div><p className="sidebar-foot">TRUE OR NOT / EVIDENCE WORKSPACE</p></div>
     </aside>
     <div className="main-shell">
       <header className="topbar"><div className="breadcrumb"><span className="mobile-brand"><img src="/true-or-not-logo-04.png" alt="" width={26} height={15}/>True or Not</span><strong></strong></div><div className="topbar-actions"><button className="text-button" aria-label="사용 가이드" onClick={() => setDialog('guide')}><Icon name="book"/><span>사용 가이드</span></button><span className="profile-mark" aria-label="로컬 워크스페이스">F</span></div></header>
       <main id="workspace-main" className="page-content">
         <section className="composer panel-host chat-hero" aria-labelledby="chat-heading">
+          <details className="conversation-mobile"><summary>대화 기록 · 저장 설정</summary><ConversationHistory storage={storage} onNew={reset} onSelect={id=>void selectConversation(id)} onDelete={deleteConversation}/></details>
           <div className="chat-intro chat-intro--wordmark">
             <h1 id="chat-heading" className="sr-only">True or Not</h1>
             <TechText
@@ -828,6 +878,8 @@ export default function FactCheckDashboard() {
             />
           </div>
           <div className="chat-thread-wrap">
+          {storage.loading&&<p role="status">저장된 대화를 불러오고 있습니다.</p>}
+          {storage.beforeSequence&&<button type="button" className="conversation-earlier" onClick={()=>void earlierConversation()}>이전 메시지 불러오기</button>}
           <div className={`chat-thread${scrolled ? ' is-scrolled' : ''}${atBottom ? ' is-at-bottom' : ''}`} ref={threadRef} onScroll={handleThreadScroll} aria-live="polite">
             {messages.map(message => <motion.div key={message.id} className={`chat-message ${message.role === 'user' ? 'is-user' : 'is-assistant'} ${message.answer ? 'has-answer' : ''} ${message.scoreMode === 'jev' ? 'has-fact-score' : ''} ${message.progress ? 'has-progress' : ''} ${message.tone === 'error' ? 'is-error' : ''}`} initial={reduce ? false : {opacity: 0, y: 10}} animate={{opacity: 1, y: 0}} transition={{duration: reduce ? 0 : .22}}>
               {message.role === 'assistant' && <span className="chat-avatar"><Icon name="lens" size={16}/></span>}
