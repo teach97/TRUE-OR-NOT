@@ -1,7 +1,7 @@
 # Graph Report - my-app  (2026-10-04)
 
 ## Corpus Check
-- 223 files · ~235,994 words
+- 223 files · ~236,124 words
 - Verdict: corpus is large enough that graph structure adds value.
 - Unclassified: 23 file(s) not represented in the graph (top: (none) 8, .css 8, .example 2)
 
@@ -11,7 +11,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `865f5c99`
+- Built from commit: `057e7033`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -808,11 +808,11 @@ Nodes (6): scripts, build, dev, start, test, typecheck
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `14. 알려진 한계와 기술 부채` connect `build_runtime_workflow` to `True or Not 고도화 기획서 v4`, `fact-check/route.ts`, `run_jev_fast_check`, `test_runtime_assembly.py`?**
-  _High betweenness centrality (0.298) - this node is a cross-community bridge._
+  _High betweenness centrality (0.288) - this node is a cross-community bridge._
 - **Why does `limitedText()` connect `fact-check/route.ts` to `build_runtime_workflow`, `agent.ts`?**
-  _High betweenness centrality (0.255) - this node is a cross-community bridge._
+  _High betweenness centrality (0.245) - this node is a cross-community bridge._
 - **Why does `run_jev_fast_check()` connect `run_jev_fast_check` to `contracts.py`, `verify_claims_jev`, `search_tavily`, `fetch_youtube_data`, `test_providers.py`, `test_runtime_assembly.py`, `make_runtime_adapters`, `main.py`, `search.py`, `test_jev.py`, `ProviderCallError`, `test_runtime.py`, `Settings`, `build_runtime_workflow`, `search_sources`, `runtime.py`, `test_verification.py`, `read_sources`, `summarize.py`?**
-  _High betweenness centrality (0.173) - this node is a cross-community bridge._
+  _High betweenness centrality (0.168) - this node is a cross-community bridge._
 - **Are the 9 inferred relationships involving `LLMProvider` (e.g. with `synthesize_answer()` and `extract_claims()`) actually correct?**
   _`LLMProvider` has 9 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 9 inferred relationships involving `make_runtime_adapters()` (e.g. with `JevError` and `extract()`) actually correct?**

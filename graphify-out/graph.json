@@ -16274,7 +16274,7 @@
       "node_kind": "heading",
       "norm_label": "\u110c\u1165\u11bc\u1105\u1175\u110b\u116a \u1106\u1175\u1100\u1165\u11b7\u110c\u1173\u11bc",
       "source_file": "docs/qa/\uc2e4\ud589\uae30\ub85d/2026-10-04-CI.md",
-      "source_location": "L44"
+      "source_location": "L51"
     },
     {
       "id": "docs_qa_\uc2e4\ud589\uae30\ub85d_2026_10_04_ci_\ud14c\uc2a4\ud2b8_\ubc1c\uacac_\uac80\uc99d",
@@ -17877,7 +17877,7 @@
       "node_kind": "heading",
       "norm_label": "\u1102\u1161\u11b7\u110b\u1173\u11ab \u110c\u1161\u11a8\u110b\u1165\u11b8",
       "source_file": "docs/\uc791\uc5c5\ud604\ud669.md",
-      "source_location": "L33"
+      "source_location": "L34"
     },
     {
       "id": "docs_\uc791\uc5c5\ud604\ud669_\uba3c\uc800_\ubcfc_\uc791\uc5c5",
@@ -68389,7 +68389,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/qa/\uc2e4\ud589\uae30\ub85d/2026-10-04-CI.md",
-      "source_location": "L44",
+      "source_location": "L51",
       "weight": 1.0
     },
     {
@@ -69247,7 +69247,7 @@
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/\uc791\uc5c5\ud604\ud669.md",
-      "source_location": "L33",
+      "source_location": "L34",
       "weight": 1.0
     },
     {
@@ -74396,7 +74396,7 @@
     },
     {
       "source": "docs_\uc791\uc5c5\ud604\ud669",
-      "target": "docs_qa_\uc2e4\ud589\uae30\ub85d_2026_10_04_\ub300\ud654\uc800\uc7a5",
+      "target": "docs_qa_\uc2e4\ud589\uae30\ub85d_2026_10_04_ci",
       "relation": "references",
       "_origin": "ast",
       "confidence": "EXTRACTED",
@@ -74407,13 +74407,13 @@
     },
     {
       "source": "docs_\uc791\uc5c5\ud604\ud669",
-      "target": "docs_qa_\uc2e4\ud589\uae30\ub85d_2026_10_04_ci",
+      "target": "docs_qa_\uc2e4\ud589\uae30\ub85d_2026_10_04_\ub300\ud654\uc800\uc7a5",
       "relation": "references",
       "_origin": "ast",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
       "source_file": "docs/\uc791\uc5c5\ud604\ud669.md",
-      "source_location": "L47",
+      "source_location": "L28",
       "weight": 1.0
     },
     {
@@ -80308,5 +80308,5 @@
       "relation": "composes_horizontal_wordmark"
     }
   ],
-  "built_at_commit": "865f5c9925a3994d20c0f933a485d28fb294e8fc"
+  "built_at_commit": "057e70338153ef74eee063b75b85666580551e86"
 }

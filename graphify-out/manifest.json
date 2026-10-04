@@ -1314,9 +1314,9 @@
     "semantic_hash": ""
   },
   "docs/qa/\uac80\uc99d\uae30\uc900.md": {
-    "mtime": 1791112891.2378712,
-    "seen": 1791112932.3718169,
-    "ast_hash": "408045634383b411b4930116d8cf6057",
+    "mtime": 1791113180.1067028,
+    "seen": 1791113382.3819568,
+    "ast_hash": "6825647dfafeb57e308a2c10e58dcc1a",
     "semantic_hash": ""
   },
   "docs/qa/\uc2e4\ud589\uae30\ub85d/2026-10-01-mini.md": {
@@ -1368,9 +1368,9 @@
     "semantic_hash": ""
   },
   "docs/\uc791\uc5c5\ud604\ud669.md": {
-    "mtime": 1791112892.1242783,
-    "seen": 1791112932.374041,
-    "ast_hash": "8cb53f20cdeb41c21ce5334e29540c85",
+    "mtime": 1791113368.5084164,
+    "seen": 1791113382.3847988,
+    "ast_hash": "93284652e8dc7128a43b979b1d475bc7",
     "semantic_hash": ""
   },
   "render.yaml": {
@@ -1458,9 +1458,9 @@
     "semantic_hash": ""
   },
   "docs/qa/\uc2e4\ud589\uae30\ub85d/2026-10-04-CI.md": {
-    "mtime": 1791112893.0157413,
-    "seen": 1791112932.3730354,
-    "ast_hash": "0df00085cce09d1e75694b7257355e62",
+    "mtime": 1791113369.3815627,
+    "seen": 1791113382.3829641,
+    "ast_hash": "2a7d01b1c8473ddd59b7e52f60245c5b",
     "semantic_hash": ""
   }
 }
