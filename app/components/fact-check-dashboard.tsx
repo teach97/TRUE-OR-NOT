@@ -380,6 +380,7 @@ export default function FactCheckDashboard() {
   const [mobileTab, setMobileTab] = useState('results');
   const [dialog, setDialog] = useState<string | null>(null);
   const [externalConsent, setExternalConsent] = useState(false);
+  const [storageConsentDraft, setStorageConsentDraft] = useState(false);
   const externalConsentRef = useRef(false);
   const screenConsent = useRef(false);
   const pendingConsent = useRef(false);
@@ -526,12 +527,22 @@ export default function FactCheckDashboard() {
     addMessage({role:'assistant',text:'검증을 중단했습니다.',storageStatus:'cancelled'});
   }
 
+  function openConsentDialog(kind: 'external-consent' | 'storage-consent') {
+    setStorageConsentDraft(storage.consent);
+    setDialog(kind);
+  }
+
+  function applyStorageConsent() {
+    if (storage.consent !== storageConsentDraft) storage.setConsent(storageConsentDraft);
+  }
+
   function acceptExternalConsent() {
     screenConsent.current = false;
     try { localStorage.setItem(EXTERNAL_CONSENT_KEY, EXTERNAL_CONSENT_VERSION); }
     catch { screenConsent.current = true; setNotice('브라우저 저장이 차단되어 전송 동의는 현재 화면에서만 유지됩니다.'); }
     externalConsentRef.current = true;
     setExternalConsent(true);
+    applyStorageConsent();
     const resume = pendingConsent.current;
     pendingConsent.current = false;
     setDialog(null);
@@ -665,7 +676,7 @@ export default function FactCheckDashboard() {
     const consent = hasExternalConsent();
     if (!consent && (image || detectedLink || !isIdentityQuestion(draft))) {
       pendingConsent.current = true;
-      setDialog('external-consent');
+      openConsentDialog('external-consent');
       return;
     }
 
@@ -944,7 +955,7 @@ export default function FactCheckDashboard() {
       <header className="topbar"><div className="breadcrumb"><span className="mobile-brand"><img src="/true-or-not-logo-04.png" alt="" width={26} height={15}/>True or Not</span><strong></strong></div><div className="topbar-actions"><button className="text-button" aria-label="사용 가이드" onClick={() => setDialog('guide')}><Icon name="book"/><span>사용 가이드</span></button><span className="profile-mark" aria-label="로컬 워크스페이스">F</span></div></header>
       <main id="workspace-main" className="page-content">
         <section className="composer panel-host chat-hero" aria-labelledby="chat-heading">
-          <details className="conversation-mobile"><summary>대화 기록 · 저장 설정</summary><ConversationHistory storage={storage} onNew={reset} onSelect={id=>void selectConversation(id)} onDelete={deleteConversation}/></details>
+          <details className="conversation-mobile"><summary>대화 기록</summary><ConversationHistory storage={storage} onNew={reset} onSelect={id=>void selectConversation(id)} onDelete={deleteConversation}/></details>
           <div className="chat-intro chat-intro--wordmark">
             <h1 id="chat-heading" className="sr-only">True or Not</h1>
             <TechText
@@ -1003,7 +1014,7 @@ export default function FactCheckDashboard() {
                 </div>
               </div>
             </BorderGlow>
-            <div className="chat-footer"><div>{sample && <span className="sample-state"><Icon name="shield" size={14}/>합성 예시는 외부로 전송하지 않습니다.</span>}<button type="button" className="sample-chip" onClick={() => externalConsent ? revokeExternalConsent() : setDialog('external-consent')}>{externalConsent ? '외부 전송 동의 철회' : '외부 전송 안내'}</button></div><button type="button" className="sample-chip" onClick={loadSample}>예시로 시작하기 <Icon name="arrow" size={14}/></button></div>
+            <div className="chat-footer"><div>{sample && <span className="sample-state"><Icon name="shield" size={14}/>합성 예시는 외부로 전송하지 않습니다.</span>}<button type="button" className="sample-chip" onClick={() => externalConsent ? revokeExternalConsent() : openConsentDialog('external-consent')}>{externalConsent ? '외부 전송 동의 철회' : '외부 전송 안내'}</button></div><button type="button" className="sample-chip" onClick={loadSample}>예시로 시작하기 <Icon name="arrow" size={14}/></button></div>
           </form>
           <div className={`chat-status ${busy ? 'is-busy' : ''}`} role="status" aria-live="polite">{busy ? notice || '검증을 진행하고 있습니다.' : notice || (configured === false && jevConfigured !== true ? configurationHelp : '원문을 입력하거나 예시로 시작해 근거를 확인해 보세요.')}</div>
         </section>
@@ -1061,14 +1072,18 @@ export default function FactCheckDashboard() {
             </div></>
           </> : <Panel className="dashboard-empty"><div className="empty-orbit"><Icon name="lens" size={31}/></div><h3>검증 결과가 이곳에 쌓입니다.</h3><p>대화창에 원문을 보내면 주장별 신뢰지수와 근거 출처를 연결해 보여드립니다.</p><div className="empty-preview-stats"><span><strong>--</strong><small>신뢰지수</small></span><span><strong>--</strong><small>검토 출처</small></span><span><strong>--</strong><small>연결 근거</small></span></div><button className="secondary-button" onClick={loadSample}>예시 대시보드 보기 <Icon name="arrow"/></button></Panel>}
         </section>
-        <footer className="page-footer"><span><span className="footer-mark">F</span>True or Not <span className="footer-divider">/</span>판단을 대신하지 않고, 근거를 연결합니다.</span><span className="footer-links"><a href="/privacy">개인정보 처리방침</a><a href="/terms">이용약관</a><a href="https://www.youtube.com/t/terms" target="_blank" rel="noopener noreferrer">YouTube 약관</a><a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">Google 개인정보</a></span><button className="text-button" onClick={() => setDialog('guide')}>검증 원칙<Icon name="arrow" size={15}/></button></footer>
+        <footer className="page-footer"><span><span className="footer-mark">F</span>True or Not <span className="footer-divider">/</span>판단을 대신하지 않고, 근거를 연결합니다.</span><span className="footer-links"><button type="button" className="text-button" onClick={() => openConsentDialog('storage-consent')}>대화 저장 설정</button><a href="/privacy#conversation-storage" target="_blank" rel="noopener noreferrer">개인정보 처리방침</a><a href="/terms">이용약관</a><a href="https://www.youtube.com/t/terms" target="_blank" rel="noopener noreferrer">YouTube 약관</a><a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">Google 개인정보</a></span><button className="text-button" onClick={() => setDialog('guide')}>검증 원칙<Icon name="arrow" size={15}/></button></footer>
       </main>
     </div>
-    <Modal open={dialog !== null} title={dialog === 'external-consent' ? '외부 서비스 전송 동의' : activeDocument?.title || (dialog === 'guide' ? '근거를 읽는 세 가지 원칙' : '검증 안내')} onClose={() => {pendingConsent.current = false; setDialog(null);}} footer={dialog === 'external-consent' ? <div className="dialog-done"><button type="button" className="secondary-button" onClick={() => {pendingConsent.current = false; setDialog(null);}}>동의하지 않음</button><button type="button" className="secondary-button" onClick={acceptExternalConsent}>동의하고 시작</button></div> : undefined}>
-      {dialog === 'external-consent' ? <div className="about-copy">
+    <Modal open={dialog !== null} title={dialog === 'external-consent' ? '외부 서비스 전송 동의' : dialog === 'storage-consent' ? '대화 저장 설정' : activeDocument?.title || (dialog === 'guide' ? '근거를 읽는 세 가지 원칙' : '검증 안내')} onClose={() => {pendingConsent.current = false; setDialog(null);}} footer={dialog === 'external-consent' ? <div className="dialog-done"><button type="button" className="secondary-button" onClick={() => {pendingConsent.current = false; setDialog(null);}}>동의하지 않음</button><button type="button" className="secondary-button" onClick={acceptExternalConsent}>동의하고 시작</button></div> : dialog === 'storage-consent' ? <div className="dialog-done"><button type="button" className="secondary-button" onClick={() => setDialog(null)}>취소</button><button type="button" className="secondary-button" onClick={() => {applyStorageConsent(); setDialog(null);}}>설정 저장</button></div> : undefined}>
+      {dialog === 'external-consent' || dialog === 'storage-consent' ? <div className="about-copy">
+        {dialog === 'external-consent' ? <>
         <p>의도 분석·검증·요약을 위해 입력한 텍스트, 확인 요청, 링크, 첨부 이미지와 필요한 이전 대화 맥락을 서버로 전송합니다. 설정된 AI 서비스(OpenAI·Google Gemini·AI Gateway), TypeSafe JEV, 검색 서비스(Tavily 및 모델 제공자의 검색 기능)가 요청 처리에 사용될 수 있습니다. 링크와 검색된 공개 페이지는 서버에서 읽으며 YouTube 기능은 Google 서비스에 영상 ID를 전송해 자막·공개 영상 정보·댓글을 조회할 수 있습니다.</p>
         <p>민감정보·제3자의 비공개 정보는 입력하지 마세요. 외부 제공자의 처리·보관 정책은 <a href="/privacy" target="_blank" rel="noopener noreferrer">개인정보 처리방침</a>과 <a href="/terms" target="_blank" rel="noopener noreferrer">이용약관</a>에서 확인해 주세요. 이 안내는 법적 검토 완료를 의미하지 않습니다.</p>
         <p>전송 동의는 이 브라우저에서 안내 버전만 저장해 다음 질문과 새로고침 후에도 유지합니다. 동의 철회·사이트 데이터 삭제·안내 범위 변경 시 다시 확인하며, 브라우저 저장이 차단되면 현재 화면에서만 유지합니다. 거절하면 외부 호출을 하지 않고 입력을 보존합니다. 대화 저장은 별도 선택이며 자동으로 켜지지 않습니다.</p>
+        </> : <p>대화 저장은 외부 전송 동의와 별개입니다. 저장을 꺼도 기존 기록은 남으며 대화 목록의 삭제 버튼으로 지울 수 있습니다.</p>}
+        <label className="conversation-consent"><input type="checkbox" checked={storageConsentDraft} onChange={event => setStorageConsentDraft(event.target.checked)}/>이 브라우저에서 대화 저장 <span>(선택)</span></label>
+        <p>기본 꺼짐이며 확정한 이후의 메시지와 최종 검증 결과만 서버 DB에 저장합니다. 새로고침하면 새 메시지 저장은 다시 꺼지며 기존 기록은 익명 쿠키가 유효한 동안 복원할 수 있습니다. 자세한 저장 항목·쿠키 만료·삭제·무료 DB 보관 제한은 <a href="/privacy#conversation-storage" target="_blank" rel="noopener noreferrer">개인정보 처리방침의 대화 저장 안내</a>에서 확인할 수 있습니다. 이후에는 웹 하단의 ‘대화 저장 설정’에서 변경할 수 있습니다.</p>
       </div> : activeDocument ? <><p className="dialog-notice">합성 예시 문서 · 외부 출처 링크가 아닙니다.</p><dl className="document-metadata"><dt>작성 주체</dt><dd>{activeDocument.publisher}</dd><dt>설정 날짜</dt><dd>{activeDocument.date}</dd><dt>원자료 관계</dt><dd>그룹 {activeDocument.group} · {activeDocument.relation}</dd></dl><div className="document-fulltext">{activeDocument.text}</div></> : dialog === 'guide' ? <ol className="guide-list"><li><span>01</span><div><h3>주장을 작게 나누세요.</h3><p>누가, 언제, 어디서, 어떤 조건으로 한 말인지 원문과 함께 확인하세요.</p></div></li><li><span>02</span><div><h3>출처의 수보다 관계를 보세요.</h3><p>같은 발표를 옮긴 여러 문서는 하나의 원자료를 공유할 수 있습니다.</p></div></li><li><span>03</span><div><h3>모르는 것은 남겨 두세요.</h3><p>근거가 없다고 거짓은 아닙니다. 의견과 미래 예측을 확정된 사실처럼 판정하지 않습니다.</p></div></li></ol> : <div className="about-copy"><p>최초 전송 동의 후 원문과 확인 요청은 서버, 외부 AI 및 검색 서비스로 전송됩니다. 채팅에 붙인 링크의 페이지는 서버에서 직접 가져오고, 첨부한 이미지는 주장 추출을 위해 AI 제공자에게 보내며 대화 DB에는 저장하지 않습니다. YouTube 자막·영상 정보·공개 댓글을 조회할 수 있으며 댓글은 LLM 입력 및 판정 근거로 사용하지 않습니다.</p><p>대화 저장은 별도 선택입니다. 저장하지 않은 결과와 YouTube API 정보는 현재 화면 메모리에만 유지되며 새로고침하면 사라집니다. YouTube API 제목·댓글은 대화 저장과 JSON 내보내기에서 제외됩니다. 자세한 내용은 <a href="/privacy">개인정보 처리방침</a>과 <a href="/terms">이용약관</a>을 확인해 주세요.</p></div>}
     </Modal>
   </div></MotionConfig>;

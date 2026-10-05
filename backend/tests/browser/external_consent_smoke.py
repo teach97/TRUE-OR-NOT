@@ -62,11 +62,11 @@ with sync_playwright() as runtime:
 
     try:
         page.goto(BASE, wait_until="networkidle")
-        storage = page.locator(".sidebar").get_by_label("이 브라우저에서 대화 저장")
-        expect(storage).not_to_be_checked()
+        expect(page.locator(".sidebar").get_by_label("이 브라우저에서 대화 저장")).to_have_count(0)
         send(LONG_TEXT)
         dialog = page.get_by_role("dialog", name="외부 서비스 전송 동의", exact=True)
         expect(dialog).to_be_visible()
+        expect(dialog.get_by_label("이 브라우저에서 대화 저장")).not_to_be_checked()
         assert posts == []
         expect(page.get_by_label("확인할 원문", exact=True)).to_have_value(LONG_TEXT)
         dialog.get_by_role("button", name="동의하지 않음", exact=True).click()
@@ -77,7 +77,10 @@ with sync_playwright() as runtime:
         expect(dialog).not_to_be_visible()
         expect(page.get_by_role("button", name="팩트 검증 시작", exact=True)).to_be_visible()
         assert [path for path, _ in posts] == ["/api/fact-check"]
-        expect(storage).not_to_be_checked()
+        page.locator(".page-footer").get_by_role("button", name="대화 저장 설정", exact=True).click()
+        storage_dialog = page.get_by_role("dialog", name="대화 저장 설정", exact=True)
+        expect(storage_dialog.get_by_label("이 브라우저에서 대화 저장")).not_to_be_checked()
+        storage_dialog.get_by_role("button", name="취소", exact=True).click()
         send("안녕하세요")
         expect(page.locator(".chat-thread")).to_contain_text("모의 응답입니다.")
         assert posts[-1][0] == "/api/intent"

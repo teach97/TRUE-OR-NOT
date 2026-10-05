@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-10-04T01:56:28.609389+00:00",
+  "generated_at": "2026-10-05T07:38:51.519781+00:00",
   "nodes": {
     "app_components_fact_check_dashboard": {
-      "code_fingerprint": "fa309ddb43a378bcb29a4b4f4dd651b97bb0e184e825c34c9a2d930a2b64f118",
+      "code_fingerprint": "626c3ae162912d43ae36dc4dea45ddba084a6e54107f381bd420437cb0e5a7f6",
       "label": "fact-check-dashboard.tsx",
       "last": "2026-09-24T14:54:58.543528+00:00",
       "provenance": [
@@ -12,13 +12,13 @@
           "q": "지금 레이아웃이 이상해 애니메이션 위치도 이상한곳에 걸쳐지고"
         }
       ],
-      "score": 0.803676874,
+      "score": 0.781018505,
       "source_file": "app/components/fact-check-dashboard.tsx",
       "status": "tentative",
       "uses": 1
     },
     "app_components_fact_check_dashboard_modelselection": {
-      "code_fingerprint": "fa309ddb43a378bcb29a4b4f4dd651b97bb0e184e825c34c9a2d930a2b64f118",
+      "code_fingerprint": "626c3ae162912d43ae36dc4dea45ddba084a6e54107f381bd420437cb0e5a7f6",
       "label": "ModelSelection",
       "last": "2026-09-24T14:54:58.543528+00:00",
       "provenance": [
@@ -28,7 +28,7 @@
           "q": "지금 레이아웃이 이상해 애니메이션 위치도 이상한곳에 걸쳐지고"
         }
       ],
-      "score": 0.803676874,
+      "score": 0.781018505,
       "source_file": "app/components/fact-check-dashboard.tsx",
       "status": "tentative",
       "uses": 1
@@ -44,7 +44,7 @@
           "q": "지금 레이아웃이 이상해 애니메이션 위치도 이상한곳에 걸쳐지고"
         }
       ],
-      "score": 0.803676874,
+      "score": 0.781018505,
       "source_file": "app/components/glide-select.tsx",
       "status": "tentative",
       "uses": 1
@@ -60,7 +60,7 @@
           "q": "지금 레이아웃이 이상해 애니메이션 위치도 이상한곳에 걸쳐지고"
         }
       ],
-      "score": 0.803676874,
+      "score": 0.781018505,
       "source_file": "app/components/glide-select.tsx",
       "status": "tentative",
       "uses": 1
@@ -76,7 +76,7 @@
           "q": "점수 판정이 이상해"
         }
       ],
-      "score": 0.80429748,
+      "score": 0.781621613,
       "source_file": "app/lib/fact-score.ts",
       "status": "tentative",
       "uses": 1
@@ -98,14 +98,14 @@
           "q": "jev 키 입력되있음 env에 AI_GATEWAY_API_KEY=; Vercel AI Gateway Jev"
         }
       ],
-      "score": 0.001039988,
+      "score": 0.001010667,
       "source_file": "backend/jev.py",
       "status": "contested",
       "uses": 1,
       "verdict": "useful"
     },
     "backend_main_agent_status": {
-      "code_fingerprint": "c7024e8fe5ca1a257ecb8b1024f85dc06fd811e2e0f214ed5012c631d26e5232",
+      "code_fingerprint": "e95d8e8b352623c76b577add944e866ef7c18e79ee6259daa475e088636de57b",
       "label": "agent_status()",
       "last": "2026-09-24T14:39:01.880631+00:00",
       "provenance": [
@@ -120,13 +120,13 @@
           "q": "미설정으로 뜨는데? API 입력은 되있는데"
         }
       ],
-      "score": 1.606852733,
+      "score": 1.561550119,
       "source_file": "backend/main.py",
       "status": "preferred",
       "uses": 2
     },
     "backend_main_fact_check_stream": {
-      "code_fingerprint": "c7024e8fe5ca1a257ecb8b1024f85dc06fd811e2e0f214ed5012c631d26e5232",
+      "code_fingerprint": "e95d8e8b352623c76b577add944e866ef7c18e79ee6259daa475e088636de57b",
       "label": "fact_check_stream()",
       "last": "2026-09-23T06:26:10.543579+00:00",
       "provenance": [
@@ -136,13 +136,13 @@
           "q": "지금 또 검증실패 뜸"
         }
       ],
-      "score": 0.778935817,
+      "score": 0.756974982,
       "source_file": "backend/main.py",
       "status": "tentative",
       "uses": 1
     },
     "backend_readme_env_config": {
-      "code_fingerprint": "25df51f459351b6d035e1496e7ff7f7369371d6f219813c9904bdb531042c00c",
+      "code_fingerprint": "a88d18dbfa2ec3ffd705dd3003d4466a5ab584bc733ab570b85ab6a40a1b421f",
       "label": "Backend Environment Keys Configuration",
       "last": "2026-09-24T14:39:01.880631+00:00",
       "provenance": [
@@ -157,7 +157,7 @@
           "q": "미설정으로 뜨는데? API 입력은 되있는데"
         }
       ],
-      "score": 1.606852733,
+      "score": 1.561550119,
       "source_file": "backend/README.md",
       "status": "preferred",
       "uses": 2
@@ -173,7 +173,7 @@
           "q": "지금 또 검증실패 뜸"
         }
       ],
-      "score": 0.778935817,
+      "score": 0.756974982,
       "source_file": "backend/runtime.py",
       "status": "tentative",
       "uses": 1
@@ -194,7 +194,7 @@
           "q": "지금 jev가 제대로 작동하지 않아"
         }
       ],
-      "score": 1.608100257,
+      "score": 1.562762471,
       "source_file": "backend/runtime.py",
       "status": "preferred",
       "uses": 2
@@ -210,7 +210,7 @@
           "q": "점수 판정이 이상해"
         }
       ],
-      "score": 0.80429748,
+      "score": 0.781621613,
       "source_file": "backend/scoring.py",
       "status": "tentative",
       "uses": 1
@@ -226,7 +226,7 @@
           "q": "지금 또 검증실패 뜸"
         }
       ],
-      "score": 0.778935817,
+      "score": 0.756974982,
       "source_file": "backend/streaming.py",
       "status": "tentative",
       "uses": 1
@@ -242,13 +242,13 @@
           "q": "지금 jev가 제대로 작동하지 않아"
         }
       ],
-      "score": 0.803802777,
+      "score": 0.781140857,
       "source_file": "backend/verification.py",
       "status": "tentative",
       "uses": 1
     },
     "handoff_nextjs_proxy_route": {
-      "code_fingerprint": "62f20bd2ccf5cf229ba80449af2150e53cd74d2ec274e9a1f0b47095b1beb9f6",
+      "code_fingerprint": "8ca97a2129fb09767c0e26117cc2fea22ddd6059dbce47eb124d4f3460c7bba3",
       "label": "Next.js → FastAPI Proxy Route (6-B, app/api/fact-check/route.ts)",
       "last": "2026-09-24T14:39:01.880631+00:00",
       "provenance": [
@@ -263,7 +263,7 @@
           "q": "미설정으로 뜨는데? API 입력은 되있는데"
         }
       ],
-      "score": 1.606852733,
+      "score": 1.561550119,
       "source_file": "HANDOFF.md",
       "status": "preferred",
       "uses": 2

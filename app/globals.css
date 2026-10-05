@@ -761,8 +761,7 @@ button, p, h3, dd { overflow-wrap: anywhere; }
 .conversation-new, .conversation-earlier { padding: 9px 12px; border: 1px solid #555; border-radius: 9px; background: #222; color: #fff; }
 .conversation-consent { display: flex; gap: 7px; align-items: center; margin: 12px 0; }
 .conversation-consent input { accent-color: #fff; }
-.conversation-history details, .conversation-empty { color: #aaa; font-size: 11px; line-height: 1.7; }
-.conversation-history details p { margin: 9px 0; }
+.conversation-empty { color: #aaa; font-size: 11px; line-height: 1.7; }
 .conversation-history ul { padding: 0; max-height: 220px; overflow-y: auto; list-style: none; }
 .conversation-history li { display: flex; align-items: center; gap: 4px; margin: 5px 0; border-radius: 7px; }
 .conversation-history li.is-active { background: #333; }

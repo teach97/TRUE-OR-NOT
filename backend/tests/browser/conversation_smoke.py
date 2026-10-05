@@ -11,9 +11,12 @@ with sync_playwright() as runtime:
     try:
         page.goto('http://127.0.0.1:3017',wait_until='networkidle')
         history=page.locator('.sidebar .conversation-history')
-        consent=history.get_by_label('이 브라우저에서 대화 저장')
-        expect(consent).not_to_be_checked()
-        consent.check()
+        def set_storage(enabled):
+            page.locator('.page-footer').get_by_role('button',name='대화 저장 설정',exact=True).click()
+            dialog=page.get_by_role('dialog',name='대화 저장 설정',exact=True)
+            dialog.get_by_label('이 브라우저에서 대화 저장').set_checked(enabled)
+            dialog.get_by_role('button',name='설정 저장',exact=True).click()
+        set_storage(True)
         editor=page.get_by_label('확인할 원문',exact=True)
         title='너는 어떤 모델이야?'
         editor.fill(title);editor.press('Enter')
@@ -32,10 +35,13 @@ with sync_playwright() as runtime:
         assert stored['messages'][0]['role']=='user' and stored['messages'][1]['role']=='assistant'
         assert not provider_requests
         page.reload(wait_until='networkidle')
-        expect(consent).not_to_be_checked()
+        page.locator('.page-footer').get_by_role('button',name='대화 저장 설정',exact=True).click()
+        storage_dialog=page.get_by_role('dialog',name='대화 저장 설정',exact=True)
+        expect(storage_dialog.get_by_label('이 브라우저에서 대화 저장')).not_to_be_checked()
+        storage_dialog.get_by_role('button',name='취소',exact=True).click()
         history.get_by_role('button',name=title,exact=True).click()
         expect(page.locator('.chat-thread')).to_contain_text('현재 Auto 모드입니다.',timeout=15000)
-        consent.check()
+        set_storage(True)
         failed={'once':True}
         def fail_once(route):
             if failed['once']:
@@ -52,7 +58,7 @@ with sync_playwright() as runtime:
             page.wait_for_timeout(100)
         assert len(stored['messages'])==4
         assert not provider_requests
-        consent.uncheck();editor.fill(title);editor.press('Enter')
+        set_storage(False);editor.fill(title);editor.press('Enter')
         page.wait_for_timeout(500)
         assert len(context.request.get('http://127.0.0.1:3017/api/conversations/'+identifier).json()['messages'])==4
         page.on('dialog',lambda dialog:dialog.accept())

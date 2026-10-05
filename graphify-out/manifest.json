@@ -42,9 +42,9 @@
     "semantic_hash": ""
   },
   "app/components/fact-check-dashboard.tsx": {
-    "mtime": 1791128507.517158,
-    "seen": 1791128715.3552706,
-    "ast_hash": "1fc1a968c71d0bb1e3015200beff4822",
+    "mtime": 1791187033.7920084,
+    "seen": 1791187192.4864874,
+    "ast_hash": "95aa3836e7569efc9ab3be7f46fb2f6c",
     "semantic_hash": ""
   },
   "app/components/fact-check-reply.test.mjs": {
@@ -186,9 +186,9 @@
     "semantic_hash": ""
   },
   "app/privacy/page.tsx": {
-    "mtime": 1791128023.6485791,
-    "seen": 1791128315.993505,
-    "ast_hash": "bfe8833810e8347e609226694de35130",
+    "mtime": 1791186289.1282258,
+    "seen": 1791186798.5385547,
+    "ast_hash": "aedf9c85f04721d006360ada7d1f44e3",
     "semantic_hash": ""
   },
   "app/root.tsx": {
@@ -450,9 +450,9 @@
     "semantic_hash": ""
   },
   "next-env.d.ts": {
-    "mtime": 1791128684.9134786,
-    "seen": 1791128715.3675864,
-    "ast_hash": "6da4baac2c929961c2b1d9efa97aadb9",
+    "mtime": 1791187089.9030955,
+    "seen": 1791187192.5112743,
+    "ast_hash": "0e4a65e8b2b9aa3ed0f8957b9406bd41",
     "semantic_hash": ""
   },
   "next.config.ts": {
@@ -582,9 +582,9 @@
     "semantic_hash": ""
   },
   "HANDOFF.md": {
-    "mtime": 1791128288.5958886,
-    "seen": 1791128316.009943,
-    "ast_hash": "ba144e7c1d9a6c305c78d7a8e4474077",
+    "mtime": 1791187163.158419,
+    "seen": 1791187192.5186367,
+    "ast_hash": "296845a3c76ee5e3830e8e6e41cfc557",
     "semantic_hash": ""
   },
   "README.md": {
@@ -1014,9 +1014,9 @@
     "semantic_hash": ""
   },
   "app/components/conversation-history.tsx": {
-    "mtime": 1791081930.8530715,
-    "seen": 1791090921.2824032,
-    "ast_hash": "983b925a0962d9c6a40c011291405f8f",
+    "mtime": 1791186287.8448145,
+    "seen": 1791186798.5285616,
+    "ast_hash": "ce253a1b970b7c698ca4a14722c8c10c",
     "semantic_hash": ""
   },
   "app/components/conversation-message.test.mjs": {
@@ -1350,9 +1350,9 @@
     "semantic_hash": ""
   },
   "docs/\uae30\ud68d\uc11c.md": {
-    "mtime": 1791128285.226774,
-    "seen": 1791128316.0147297,
-    "ast_hash": "2e6811ec12faaeddad098909f234aed3",
+    "mtime": 1791186668.2271678,
+    "seen": 1791186798.5697653,
+    "ast_hash": "2b9512136477818842bc20819aff1199",
     "semantic_hash": ""
   },
   "docs/\ubc30\ud3ec.md": {
@@ -1368,9 +1368,9 @@
     "semantic_hash": ""
   },
   "docs/\uc791\uc5c5\ud604\ud669.md": {
-    "mtime": 1791128286.067443,
-    "seen": 1791128316.0147297,
-    "ast_hash": "325edd65edd1959161f02efc31a2598f",
+    "mtime": 1791186668.8384335,
+    "seen": 1791186798.570267,
+    "ast_hash": "2fe4033bce375f7005a75c06c34316cf",
     "semantic_hash": ""
   },
   "render.yaml": {
@@ -1434,9 +1434,9 @@
     "semantic_hash": ""
   },
   "backend/tests/browser/conversation_smoke.py": {
-    "mtime": 1791092283.175521,
-    "seen": 1791092488.9370599,
-    "ast_hash": "e25ca0fb4449f3d002b7fc7ef71f038b",
+    "mtime": 1791186337.7308161,
+    "seen": 1791186798.5458367,
+    "ast_hash": "9d242ca9247bab0ee3c78996933fd1c1",
     "semantic_hash": ""
   },
   "docs/qa/\uc2e4\ud589\uae30\ub85d/2026-10-04-\ub300\ud654\uc800\uc7a5.md": {
@@ -1476,9 +1476,9 @@
     "semantic_hash": ""
   },
   "backend/tests/browser/external_consent_smoke.py": {
-    "mtime": 1791128565.347285,
-    "seen": 1791128715.3635154,
-    "ast_hash": "7aaf3169bb896332d94db30b2926126f",
+    "mtime": 1791186337.119018,
+    "seen": 1791186798.5458367,
+    "ast_hash": "f420bd6a06db27b3371c6f65bd70da57",
     "semantic_hash": ""
   },
   "backend/tests/test_external_consent.py": {
@@ -1488,9 +1488,21 @@
     "semantic_hash": ""
   },
   "docs/qa/\uc2e4\ud589\uae30\ub85d/2026-10-05-\ucd5c\ucd08\ub3d9\uc758.md": {
-    "mtime": 1791128703.173687,
-    "seen": 1791128715.3737316,
-    "ast_hash": "ce1603137d15bfde4db2bd7491459a77",
+    "mtime": 1791128887.6268294,
+    "seen": 1791186798.568769,
+    "ast_hash": "0bec91ab1b7b6cf4919274236d5b3931",
+    "semantic_hash": ""
+  },
+  "backend/tests/browser/storage_consent_smoke.py": {
+    "mtime": 1791186978.1871214,
+    "seen": 1791187192.5027192,
+    "ast_hash": "db0743c8352f5fec52b7fab8e09f892a",
+    "semantic_hash": ""
+  },
+  "docs/qa/\uc2e4\ud589\uae30\ub85d/2026-10-05-\uc800\uc7a5\uc120\ud0dd\uc548\ub0b4.md": {
+    "mtime": 1791187163.7530541,
+    "seen": 1791187192.524828,
+    "ast_hash": "67064483b280b8b94d46954876ad60e1",
     "semantic_hash": ""
   }
 }
