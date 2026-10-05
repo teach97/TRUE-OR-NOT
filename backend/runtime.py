@@ -58,6 +58,7 @@ def _http_status_from_exception(error: BaseException) -> int | None:
 
 class Settings(BaseModel):
     api_key: SecretStr
+    explabs_api_key: SecretStr = SecretStr("")
     gemini_api_key: SecretStr = SecretStr("")
     youtube_api_key: SecretStr = SecretStr("")
     tavily_api_key: SecretStr = SecretStr("")
@@ -70,6 +71,7 @@ def load_settings(env_path: Path | None = None) -> Settings:
     path = env_path if env_path is not None else Path(__file__).with_name(".env")
     values = dotenv_values(path, encoding="utf-8-sig", interpolate=False)
     key = os.environ.get("OPENAI_API_KEY", values.get("OPENAI_API_KEY") or "")
+    explabs_key = os.environ.get("EXPLABS_API_KEY", values.get("EXPLABS_API_KEY") or "")
     gemini_key = os.environ.get("GEMINI_API_KEY", values.get("GEMINI_API_KEY") or "")
     youtube_key = os.environ.get("YOUTUBE_API_KEY", values.get("YOUTUBE_API_KEY") or "")
     tavily_key = os.environ.get("TAVILY_API_KEY", values.get("TAVILY_API_KEY") or "")
@@ -77,6 +79,7 @@ def load_settings(env_path: Path | None = None) -> Settings:
     finnhub_key = os.environ.get("FINNHUB_API_KEY", values.get("FINNHUB_API_KEY") or "")
     return Settings(
         api_key=SecretStr(key.strip()),
+        explabs_api_key=SecretStr(explabs_key.strip()),
         gemini_api_key=SecretStr(gemini_key.strip()),
         youtube_api_key=SecretStr(youtube_key.strip()),
         tavily_api_key=SecretStr(tavily_key.strip()),
@@ -105,7 +108,7 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
     async def with_fallback(state: FactCheckState, operation, failure_code: str):
         preference = state.get("modelPreference", "auto")
         try:
-            providers = providers_for_preference(settings, preference)
+            providers = providers_for_preference(settings, preference, search=failure_code == "SEARCH_FAILED")
         except ValueError as exc:
             if str(exc) == "MODEL_UNAVAILABLE":
                 raise
@@ -657,7 +660,7 @@ async def run_jev_fast_check(
                     _logger.warning("Jev Tavily search unavailable reason=%s", type(exc).__name__)
             if search_result is None:
                 try:
-                    providers = providers_for_preference(settings, model_preference)
+                    providers = providers_for_preference(settings, model_preference, search=True)
                     search_result, _ = await run_with_fallback(providers, search_once)
                 except (ProviderCallError, ValueError) as exc:
                     _logger.warning("Jev LLM search unavailable reason=%s", type(exc).__name__)

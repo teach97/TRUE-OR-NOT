@@ -32,6 +32,7 @@ Copy-Item .env.example .env
 
 | 변수 | 용도 |
 |---|---|
+| `EXPLABS_API_KEY` | DeepSeek V4.1 Flash MAX를 Experiential 게이트웨이로 호출합니다. 서버 전용입니다. 키는 Experiential Settings → API Keys에서 생성합니다. |
 | `GEMINI_API_KEY` | Gemini 3.8 Flash 및 Gemini 3.7 Flash 사용에 필요합니다. |
 | `OPENAI_API_KEY` | GPT-6 Luna 사용과 OpenAI 웹 검색 경로에 필요합니다. |
 | `TYPESAFE_API_KEY` | JEV 고속 판정(TypeSafe System One) 사용에 필요합니다. 없으면 JEV 스위치가 비활성화되고 일반 LLM 검증만 동작합니다. |
@@ -40,13 +41,18 @@ Copy-Item .env.example .env
 | `YOUTUBE_API_KEY` | 선택 사항입니다. 검색 결과에 YouTube 영상이 있을 때 영상 정보와 공개 댓글을 가져오는 데 사용합니다. |
 | `FINNHUB_API_KEY` | 선택 사항입니다. 주가 조회 어댑터에 사용합니다. |
 
-Gemini 또는 OpenAI 키 중 하나 이상을 설정해야 LLM 검증을 시작할 수 있습니다. 두 제공자 키를 모두 설정하고 모델을 `auto`로 선택하면 다음 순서로 시도합니다.
+Experiential·OpenAI·Gemini 키 중 하나 이상을 설정해야 LLM 검증을 시작할 수 있습니다. 모델을 `auto`로 선택하면 키가 설정된 모델만 다음 순서로 시도합니다.
 
-1. GPT-6 Luna (`max`, Fast 처리; 추출·검색·판정·개요·요약 전 경로 동일)
-2. Gemini 3.8 Flash (`high`)
-3. Gemini 3.7 Flash (`high`)
+1. DeepSeek V4.1 Flash (`deepseek-v4.1-flash`, `reasoning_effort=max`)
+2. GPT-6 Luna (`max`, Fast 처리; 추출·검색·판정·개요·요약 전 경로 동일)
+3. Gemini 3.8 Flash (`high`)
+4. Gemini 3.7 Flash (`high`)
 
-`auto`가 아닌 특정 모델을 선택하면 그 모델만 호출합니다. 선택한 모델이 설정되어 있지 않거나 응답하지 않으면 다른 모델로 자동 전환하지 않습니다.
+`auto`가 아닌 특정 모델을 선택하면 구조화 LLM 호출은 그 모델만 호출합니다. 선택한 모델이 설정되어 있지 않거나 응답하지 않으면 다른 모델로 자동 전환하지 않습니다. DeepSeek는 공급자 내장 웹 검색이 없어 검색 단계만 기존 Tavily 또는 GPT/Gemini 검색을 사용합니다. DeepSeek 단독 설정으로 검색이 필요한 검증을 실행하려면 `TAVILY_API_KEY` 또는 기존 검색 모델의 키도 필요합니다.
+
+DeepSeek의 모든 텍스트·이미지 구조화 호출은 `https://api.experientiallabs.ai/v1/chat/completions`와 `EXPLABS_API_KEY`만 사용합니다. GPT/Gemini의 엔드포인트와 키는 변경하지 않습니다. DeepSeek에는 JSON 모드와 스키마 안내를 보내고 기존 Pydantic 검증을 유지합니다. MAX 추론과 JSON 출력의 공통 예산은 최소 6,000토큰이며 중단·거절·MAX 무시·스키마 오류는 실패로 처리합니다. [공식 호환성 안내](https://platform.experientiallabs.ai/docs/openai-compatibility)와 [연결 QA 기록](../docs/qa/실행기록/2026-10-05-DeepSeek.md)을 참고하세요.
+
+현재 Render Blueprint의 `EXPLABS_API_KEY`는 `sync: false`입니다. 기존 서비스에 새 변수를 추가해도 자동으로 값을 묻거나 로컬 키를 복사하지 않으므로, 배포 시 백엔드 Environment에 직접 설정해야 합니다. 프런트엔드에는 설정하지 않습니다.
 
 ## 검색·검증 흐름
 
@@ -77,7 +83,7 @@ SerpApi는 확인된 무료 쿼터 안에서만 호출하도록 제한되어 있
 }
 ```
 
-`consent`는 반드시 `true`여야 합니다. 텍스트는 1~12,000자, 확인 초점은 최대 500자입니다. 모델 선택값은 `auto`, `gemini-3.8-flash`, `gemini-3.7-flash`, `gpt-6-luna` 중 하나입니다.
+`consent`는 반드시 `true`여야 합니다. 텍스트는 1~12,000자, 확인 초점은 최대 500자입니다. 모델 선택값은 `auto`, `deepseek-v4.1-flash`, `gemini-3.8-flash`, `gemini-3.7-flash`, `gpt-6-luna` 중 하나입니다.
 
 `/api/intent`도 `consent: true`를 필수로 받습니다. 모든 외부 POST 경로는 누락·false·문자열·숫자·null 동의를 외부 클라이언트 생성 전에 422로 거부합니다. 브라우저는 최초 안내에서 사용자가 선택한 동의를 동일 사이트의 다음 질문·새로고침에 재사용하며 철회·사이트 데이터 삭제·안내 버전 변경 시 다시 확인합니다. 전송 동의와 아래의 대화 보관 동의는 별개이고 `consent`는 이용자 인증 수단이 아닙니다.
 

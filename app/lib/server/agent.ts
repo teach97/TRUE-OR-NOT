@@ -176,7 +176,7 @@ export function validateRequest(value: unknown): FactCheckRequest {
   if (!keySet.has('consent') || !keySet.has('focus') || !keySet.has('text') || ![...keySet].every(key => allowed.has(key))) throw new Error('INVALID_REQUEST');
   const modelPreference = v.modelPreference ?? 'auto';
   const validPreference = modelPreference === 'auto' ||
-    ['gemini-3.8-flash', 'gemini-3.7-flash', 'gpt-6-luna'].includes(modelPreference as string);
+    ['deepseek-v4.1-flash', 'gemini-3.8-flash', 'gemini-3.7-flash', 'gpt-6-luna'].includes(modelPreference as string);
   let linkUrl: string | null = null;
   if (v.linkUrl !== undefined && v.linkUrl !== null) {
     if (typeof v.linkUrl !== 'string') throw new Error('INVALID_REQUEST');

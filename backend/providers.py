@@ -15,10 +15,11 @@ import httpx
 from schemas import MODEL_CATALOG, ModelPreference
 
 
-ProviderKind = Literal["openai", "gemini"]
+ProviderKind = Literal["experiential", "openai", "gemini"]
 Reasoning = Literal["max", "high"]
 _MAX_RESPONSE_BYTES = 1_000_000
 _SEARCH_TIMEOUT_SECONDS = 120
+_EXPERIENTIAL_BASE_URL = "https://api.experientiallabs.ai/v1"
 # OpenAI Fast-mode processing tier (service_tier). Priority-priced at 2x
 # standard rates; the project must allow it or the API returns 400.
 _SERVICE_TIER = "fast"
@@ -50,7 +51,10 @@ def configured_providers(settings: Any) -> tuple[LLMProvider, ...]:
     """Return configured providers in the user-requested priority order."""
     openai_key = _secret_value(getattr(settings, "api_key", ""))
     gemini_key = _secret_value(getattr(settings, "gemini_api_key", ""))
+    explabs_key = _secret_value(getattr(settings, "explabs_api_key", ""))
     providers: list[LLMProvider] = []
+    if explabs_key:
+        providers.append(LLMProvider("experiential", "deepseek-v4.1-flash", "max", explabs_key))
     if openai_key:
         providers.append(LLMProvider("openai", "gpt-6-luna", "max", openai_key))
     if gemini_key:
@@ -64,10 +68,15 @@ def configured_providers(settings: Any) -> tuple[LLMProvider, ...]:
 
 
 def providers_for_preference(
-    settings: Any, preference: ModelPreference = "auto"
+    settings: Any, preference: ModelPreference = "auto", *, search: bool = False
 ) -> tuple[LLMProvider, ...]:
     """Return the automatic chain or exactly one explicitly selected model."""
     providers = configured_providers(settings)
+    if search:
+        # DeepSeek does not supply the provider-native web-search tools.
+        providers = tuple(provider for provider in providers if provider.kind != "experiential")
+        if preference == "deepseek-v4.1-flash":
+            preference = "auto"
     if preference == "auto":
         return providers
     selected = tuple(provider for provider in providers if provider.model == preference)
@@ -147,6 +156,11 @@ def _openai_schema(schema: dict[str, Any]) -> dict[str, Any]:
 
 
 def _endpoint_and_headers(provider: LLMProvider) -> tuple[str, dict[str, str]]:
+    if provider.kind == "experiential":
+        return (
+            f"{_EXPERIENTIAL_BASE_URL}/chat/completions",
+            {"Authorization": f"Bearer {provider.api_key}"},
+        )
     if provider.kind == "openai":
         return (
             "https://api.openai.com/v1/responses",
@@ -167,6 +181,19 @@ def _structured_payload(
     max_output_tokens: int,
 ) -> dict[str, Any]:
     serialized_input = json.dumps(input_data, ensure_ascii=False)
+    if provider.kind == "experiential":
+        return {
+            "model": provider.model,
+            "reasoning_effort": provider.reasoning,
+            "store": False,
+            # MAX reasoning and final JSON share this output budget.
+            "max_tokens": max(6000, max_output_tokens),
+            "messages": [
+                {"role": "system", "content": instructions + "\nReturn only a JSON object matching this schema: " + json.dumps(schema, ensure_ascii=False)},
+                {"role": "user", "content": serialized_input},
+            ],
+            "response_format": {"type": "json_object"},
+        }
     if provider.kind == "openai":
         return {
             "model": provider.model,
@@ -248,16 +275,34 @@ def _search_payload(
     }
 
 
-def _response_json(response: httpx.Response) -> dict[str, Any]:
+def _response_json(response: httpx.Response, *, chat_completion: bool = False) -> dict[str, Any]:
     response.raise_for_status()
     if len(response.content) > _MAX_RESPONSE_BYTES:
         raise ProviderCallError("Response too large")
     data = response.json()
     if not isinstance(data, dict):
         raise ProviderCallError("Invalid response")
-    if data.get("status") != "completed":
+    if not chat_completion and data.get("status") != "completed":
         raise ProviderCallError("Incomplete response")
     return data
+
+
+def _experiential_text(data: dict[str, Any]) -> str:
+    """Keep final JSON only; never treat reasoning or partial output as an answer."""
+    ignored = data.get("x-experiential-ignored-parameters", [])
+    if "reasoning_effort" in ignored or "reasoning" in ignored:
+        raise ProviderCallError("Requested reasoning was not honored")
+    choices = data.get("choices")
+    if not isinstance(choices, list) or len(choices) != 1 or not isinstance(choices[0], dict):
+        raise ProviderCallError("Invalid structured response")
+    choice = choices[0]
+    message = choice.get("message")
+    if choice.get("finish_reason") != "stop" or not isinstance(message, dict):
+        raise ProviderCallError("Incomplete response")
+    text = message.get("content")
+    if message.get("refusal") or message.get("tool_calls") or not isinstance(text, str) or not text.strip():
+        raise ProviderCallError("Invalid structured response")
+    return text
 
 
 def _openai_text(data: dict[str, Any]) -> str:
@@ -318,7 +363,9 @@ async def request_structured(
             headers=headers,
             timeout=90,
         )
-        data = _response_json(response)
+        data = _response_json(response, chat_completion=provider.kind == "experiential")
+        if provider.kind == "experiential":
+            return _experiential_text(data)
         return _openai_text(data) if provider.kind == "openai" else _gemini_text(data)
     except ProviderCallError:
         raise
@@ -336,6 +383,11 @@ def _structured_image_input(
     image: dict[str, Any],
 ) -> list[dict[str, Any]]:
     """Build the multimodal input parts for each provider's wire format."""
+    if provider.kind == "experiential":
+        return [
+            {"type": "text", "text": serialized_input},
+            {"type": "image_url", "image_url": {"url": f"data:{image['mime']};base64,{image['data']}"}},
+        ]
     if provider.kind == "openai":
         return [{
             "role": "user",
@@ -382,9 +434,13 @@ async def request_structured_image(
         schema=schema,
         max_output_tokens=max_output_tokens,
     )
-    payload["input"] = _structured_image_input(
+    image_input = _structured_image_input(
         provider, json.dumps(input_data, ensure_ascii=False), image
     )
+    if provider.kind == "experiential":
+        payload["messages"][1]["content"] = image_input
+    else:
+        payload["input"] = image_input
     try:
         response = await client.post(
             endpoint,
@@ -392,7 +448,9 @@ async def request_structured_image(
             headers=headers,
             timeout=90,
         )
-        data = _response_json(response)
+        data = _response_json(response, chat_completion=provider.kind == "experiential")
+        if provider.kind == "experiential":
+            return _experiential_text(data)
         return _openai_text(data) if provider.kind == "openai" else _gemini_text(data)
     except ProviderCallError:
         raise
@@ -408,6 +466,8 @@ async def request_search(
     input_data: dict[str, Any],
 ) -> dict[str, Any]:
     """Call a provider's search-grounded endpoint with a bounded response."""
+    if provider.kind == "experiential":
+        raise ProviderCallError("Provider-native web search is unavailable")
     if not provider.api_key.strip():
         raise ProviderCallError("Missing provider key")
     endpoint, headers = _endpoint_and_headers(provider)

@@ -4,6 +4,7 @@ import type { FactScoreBand } from './fact-score';
 export const FACT_CHECK_MODEL = 'gpt-6-luna';
 export const FACT_CHECK_REASONING = 'max';
 export const MODEL_OPTIONS = [
+  {id: 'deepseek-v4.1-flash', label: 'DeepSeek V4.1 Flash Max'},
   {id: 'gpt-6-luna', label: 'GPT-6 Luna Max · Fast'},
   {id: 'gemini-3.8-flash', label: 'Gemini 3.8 Flash'},
   {id: 'gemini-3.7-flash', label: 'Gemini 3.7 Flash'},

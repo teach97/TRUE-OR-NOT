@@ -127,7 +127,7 @@ async def agent_status(response: Response):
         engine="langgraph",
         model=primary.model if primary else None,
         reasoning=primary.reasoning if primary else None,
-        webSearch=configured,
+        webSearch=bool(settings.tavily_api_key.get_secret_value().strip()) or any(provider.kind != "experiential" for provider in providers),
         modelOptions=configured_model_options(settings),
         phase="workflow-ready" if configured else "api-foundation",
     )

@@ -198,7 +198,7 @@ function SummaryReply({summary}: {summary: ContentSummary}) {
 }
 const WELCOME_MESSAGE: ChatMessage = {id: 'welcome', role: 'assistant', text: '확인하고 싶은 주장이나 원문을 보내주세요. 문장을 나누고, 직접 확인할 수 있는 출처와 인용을 연결하겠습니다.'};
 const EXTERNAL_CONSENT_KEY = 'ton_external_consent';
-const EXTERNAL_CONSENT_VERSION = '2026-10-05-v1';
+const EXTERNAL_CONSENT_VERSION = '2026-10-05-v2';
 
 function readExternalConsent() {
   try { return localStorage.getItem(EXTERNAL_CONSENT_KEY) === EXTERNAL_CONSENT_VERSION; }
@@ -450,7 +450,7 @@ export default function FactCheckDashboard() {
     scrollThreadToBottom();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [messages, busy]);
-  const configurationHelp = '서버 설정이 필요합니다. backend/.env에 OPENAI_API_KEY, GEMINI_API_KEY 또는 AI_GATEWAY_API_KEY를 설정한 뒤 서버를 다시 시작해 주세요. 키를 화면이나 채팅에 입력하지 마세요.';
+  const configurationHelp = '서버 설정이 필요합니다. backend/.env 또는 백엔드 실행 환경에 EXPLABS_API_KEY, OPENAI_API_KEY, GEMINI_API_KEY 또는 AI_GATEWAY_API_KEY를 설정한 뒤 서버를 다시 시작해 주세요. 키를 화면이나 채팅에 입력하지 마세요.';
   const serviceLabel = configured === true ? 'LLM fallback 설정됨 · 접근 미확인' : configured === false ? 'LLM 키 미설정' : configError ? '설정 확인 실패' : '서버 설정 확인 중';
   const modelLabel = MODEL_OPTIONS.find(model => model.id === configuredModel)?.label
     ?? (configured === false ? '모델 미설정' : '모델 확인 중');
@@ -460,7 +460,7 @@ export default function FactCheckDashboard() {
     ...modelOptions.map(model => ({
       value: model.id,
       label: model.label,
-      tag: model.id.startsWith('gemini-') ? 'Gemini' : 'OpenAI',
+      tag: model.id.startsWith('deepseek-') ? 'Experiential' : model.id.startsWith('gemini-') ? 'Gemini' : 'OpenAI',
       disabled: !model.configured,
     })),
   ];
@@ -1082,7 +1082,7 @@ export default function FactCheckDashboard() {
     <Modal open={dialog !== null} title={dialog === 'external-consent' ? '외부 서비스 전송 동의' : dialog === 'storage-consent' ? '대화 저장 설정' : activeDocument?.title || (dialog === 'guide' ? '근거를 읽는 세 가지 원칙' : '검증 안내')} onClose={() => {pendingConsent.current = false; setDialog(null);}} footer={dialog === 'external-consent' ? <div className="dialog-done"><button type="button" className="secondary-button" onClick={() => {pendingConsent.current = false; setDialog(null);}}>동의하지 않음</button><button type="button" className="secondary-button" onClick={acceptExternalConsent}>동의하고 시작</button></div> : dialog === 'storage-consent' ? <div className="dialog-done"><button type="button" className="secondary-button" onClick={() => setDialog(null)}>취소</button><button type="button" className="secondary-button" onClick={() => {applyStorageConsent(); setDialog(null);}}>설정 저장</button></div> : undefined}>
       {dialog === 'external-consent' || dialog === 'storage-consent' ? <div className="about-copy">
         {dialog === 'external-consent' ? <>
-        <p>의도 분석·검증·요약을 위해 입력한 텍스트, 확인 요청, 링크, 첨부 이미지와 필요한 이전 대화 맥락을 서버로 전송합니다. 설정된 AI 서비스(OpenAI·Google Gemini·AI Gateway), TypeSafe JEV, 검색 서비스(Tavily 및 모델 제공자의 검색 기능)가 요청 처리에 사용될 수 있습니다. 링크와 검색된 공개 페이지는 서버에서 읽으며 YouTube 기능은 Google 서비스에 영상 ID를 전송해 자막·공개 영상 정보·댓글을 조회할 수 있습니다.</p>
+        <p>의도 분석·검증·요약을 위해 입력한 텍스트, 확인 요청, 링크, 첨부 이미지와 필요한 이전 대화 맥락을 서버로 전송합니다. 설정된 AI 서비스(Experiential 게이트웨이를 통한 DeepSeek·OpenAI·Google Gemini·AI Gateway), TypeSafe JEV, 검색 서비스(Tavily 및 모델 제공자의 검색 기능)가 요청 처리에 사용될 수 있습니다. 링크와 검색된 공개 페이지는 서버에서 읽으며 YouTube 기능은 Google 서비스에 영상 ID를 전송해 자막·공개 영상 정보·댓글을 조회할 수 있습니다.</p>
         <p>민감정보·제3자의 비공개 정보는 입력하지 마세요. 외부 제공자의 처리·보관 정책은 <a href="/privacy" target="_blank" rel="noopener noreferrer">개인정보 처리방침</a>과 <a href="/terms" target="_blank" rel="noopener noreferrer">이용약관</a>에서 확인해 주세요. 이 안내는 법적 검토 완료를 의미하지 않습니다.</p>
         <p>전송 동의는 이 브라우저에서 안내 버전만 저장해 다음 질문과 새로고침 후에도 유지합니다. 동의 철회·사이트 데이터 삭제·안내 범위 변경 시 다시 확인하며, 브라우저 저장이 차단되면 현재 화면에서만 유지합니다. 거절하면 외부 호출을 하지 않고 입력을 보존합니다. 대화 저장은 별도 선택이며 자동으로 켜지지 않습니다.</p>
         </> : <p>대화 저장은 외부 전송 동의와 별개입니다. 저장을 꺼도 기존 기록은 남으며 대화 목록의 삭제 버튼으로 지울 수 있습니다.</p>}

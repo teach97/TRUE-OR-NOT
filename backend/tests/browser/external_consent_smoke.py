@@ -27,7 +27,7 @@ with sync_playwright() as runtime:
             value = {"items": [], "nextCursor": None} if path.startswith("/api/conversations") else {
                 "configured": True, "jevConfigured": True, "model": "gpt-6-luna",
                 "modelOptions": [{"id": model, "configured": True} for model in
-                                 ["gpt-6-luna", "gemini-3.8-flash", "gemini-3.7-flash"]],
+                                 ["deepseek-v4.1-flash", "gpt-6-luna", "gemini-3.8-flash", "gemini-3.7-flash"]],
             }
         else:
             body = request.post_data_json
@@ -62,6 +62,13 @@ with sync_playwright() as runtime:
 
     try:
         page.goto(BASE, wait_until="networkidle")
+        page.get_by_role("combobox", name="답변 모델 선택").click()
+        for model in ["DeepSeek V4.1 Flash Max", "GPT-6 Luna Max", "Gemini 3.8 Flash", "Gemini 3.7 Flash"]:
+            expect(page.get_by_role("option").filter(has_text=model)).to_be_visible()
+        page.get_by_role("option").filter(has_text="DeepSeek V4.1 Flash Max").click()
+        expect(page.get_by_role("combobox", name="답변 모델 선택")).to_contain_text("DeepSeek V4.1 Flash Max")
+        page.get_by_role("combobox", name="답변 모델 선택").click()
+        page.get_by_role("option").filter(has_text="Auto").click()
         expect(page.locator(".sidebar").get_by_label("이 브라우저에서 대화 저장")).to_have_count(0)
         send(LONG_TEXT)
         dialog = page.get_by_role("dialog", name="외부 서비스 전송 동의", exact=True)
@@ -187,6 +194,15 @@ with sync_playwright() as runtime:
         assert dialog.evaluate("element => {const box = element.getBoundingClientRect(); return box.left >= 0 && box.right <= innerWidth && element.scrollWidth <= element.clientWidth;}")
         dialog.get_by_role("button", name="동의하지 않음", exact=True).click()
         page.set_viewport_size({"width": 1400, "height": 1000})
+        page.evaluate("() => {localStorage.setItem('ton_external_consent', '2026-10-05-v1'); localStorage.setItem('ton_storage_consent', '2026-10-05-v1');}")
+        page.reload(wait_until="networkidle")
+        before = len(posts)
+        send("새 게이트웨이 안내 재확인")
+        expect(dialog).to_be_visible()
+        expect(dialog).to_contain_text("Experiential")
+        expect(dialog.get_by_label("이 브라우저에서 대화 저장")).to_be_checked()
+        assert len(posts) == before
+        dialog.get_by_role("button", name="동의하지 않음", exact=True).click()
         page.add_init_script("Object.defineProperty(window, 'localStorage', {get() {throw new DOMException('blocked', 'SecurityError');}})")
         page.reload(wait_until="networkidle")
         before = len(posts)
@@ -203,7 +219,8 @@ with sync_playwright() as runtime:
         print({"browserPassed": True, "mockedPosts": len(posts), "realProviderCalls": 0,
                "checks": ["reject preserves input", "all four paths", "reload", "storage separate",
                           "revoke", "cross-tab revoke", "policy change", "mobile dialog", "blocked storage",
-                          "stale memory", "follow-up consent check", "pending cancel", "late reply ignored"]})
+                          "stale memory", "follow-up consent check", "pending cancel", "late reply ignored",
+                          "four models preserved", "gateway consent revision preserves storage choice"]})
     finally:
         context.close()
         browser.close()

@@ -47,6 +47,7 @@ test('validates request consent, lengths and unknown fields', async () => {
   const { validateRequest } = await import('./agent.ts');
   assert.deepEqual(validateRequest({text:'hello',focus:'',consent:true}), {text:'hello',focus:'',consent:true,modelPreference:'auto'});
   assert.equal(validateRequest({text:'hello',focus:'',consent:true,modelPreference:'gpt-6-luna'}).modelPreference,'gpt-6-luna');
+  assert.equal(validateRequest({text:'hello',focus:'',consent:true,modelPreference:'deepseek-v4.1-flash'}).modelPreference,'deepseek-v4.1-flash');
   assert.deepEqual(validateRequest({text:'https://example.com/a',focus:'',consent:true,linkUrl:'https://example.com/a'}), {text:'https://example.com/a',focus:'',consent:true,modelPreference:'auto',linkUrl:'https://example.com/a'});
   assert.deepEqual(validateRequest({text:'',focus:'',consent:true,image:{mime:'image/jpeg',data:'eA=='}}), {text:'',focus:'',consent:true,modelPreference:'auto',image:{mime:'image/jpeg',data:'eA=='}});
   assert.deepEqual(validateRequest({text:'hi',focus:'',consent:true,jevMode:true}), {text:'hi',focus:'',consent:true,modelPreference:'auto',jevMode:true});

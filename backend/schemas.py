@@ -6,9 +6,10 @@ from urllib.parse import urlsplit
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 
-ModelId = Literal["gemini-3.8-flash", "gemini-3.7-flash", "gpt-6-luna"]
-ModelPreference = Literal["auto", "gemini-3.8-flash", "gemini-3.7-flash", "gpt-6-luna"]
+ModelId = Literal["deepseek-v4.1-flash", "gemini-3.8-flash", "gemini-3.7-flash", "gpt-6-luna"]
+ModelPreference = Literal["auto", "deepseek-v4.1-flash", "gemini-3.8-flash", "gemini-3.7-flash", "gpt-6-luna"]
 MODEL_CATALOG: tuple[tuple[ModelId, str], ...] = (
+    ("deepseek-v4.1-flash", "DeepSeek V4.1 Flash Max"),
     ("gpt-6-luna", "GPT-6 Luna Max"),
     ("gemini-3.8-flash", "Gemini 3.8 Flash"),
     ("gemini-3.7-flash", "Gemini 3.7 Flash"),
