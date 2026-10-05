@@ -102,6 +102,7 @@ with sync_playwright() as runtime:
         first.get_by_label(LABEL).check()
         assert writes == [] and provider_posts == []
         first.get_by_role('button', name='동의하지 않음', exact=True).click()
+        assert page.evaluate("localStorage.getItem('ton_storage_consent')") is None
         expect(page.get_by_label('확인할 원문', exact=True)).to_have_value('저장 선택을 시험합니다.')
         setting = settings()
         expect(setting.get_by_label(LABEL)).not_to_be_checked()
@@ -114,6 +115,7 @@ with sync_playwright() as runtime:
         setting = settings()
         setting.get_by_label(LABEL).check()
         setting.get_by_role('button', name='대화상자 닫기', exact=True).click()
+        assert page.evaluate("localStorage.getItem('ton_storage_consent')") is None
         setting = settings()
         expect(setting.get_by_label(LABEL)).not_to_be_checked()
         setting.get_by_label(LABEL).check()
@@ -181,12 +183,108 @@ with sync_playwright() as runtime:
         setting.get_by_role('button', name='취소', exact=True).click()
         page.reload(wait_until='networkidle')
         setting = settings()
+        expect(setting.get_by_label(LABEL)).to_be_checked()
+        setting.get_by_role('button', name='취소', exact=True).click()
+        saved_before_reload = len(saved)
+        send('새로고침 이후에도 저장합니다.')
+        expect(page.locator('.chat-loader-row')).not_to_be_visible()
+        for _ in range(100):
+            if len(saved) == saved_before_reload + 2:
+                break
+            page.wait_for_timeout(20)
+        assert [(item['role'], item['content']) for item in saved[saved_before_reload:]] == [
+            ('user', '새로고침 이후에도 저장합니다.'), ('assistant', '합성 저장 시험 답변입니다.'),
+        ]
+        setting = settings()
+        setting.get_by_label(LABEL).uncheck()
+        setting.get_by_role('button', name='취소', exact=True).click()
+        page.reload(wait_until='networkidle')
+        setting = settings()
+        expect(setting.get_by_label(LABEL)).to_be_checked()
+        setting.get_by_label(LABEL).uncheck()
+        setting.get_by_role('button', name='설정 저장', exact=True).click()
+        page.reload(wait_until='networkidle')
+        setting = settings()
+        expect(setting.get_by_label(LABEL)).not_to_be_checked()
+        setting.get_by_role('button', name='취소', exact=True).click()
+        writes_before_disabled = len(writes)
+        send('새로고침 이후 저장을 끈 상태입니다.')
+        expect(page.locator('.chat-loader-row')).not_to_be_visible()
+        assert len(writes) == writes_before_disabled
+
+        setting = settings()
+        setting.get_by_label(LABEL).check()
+        setting.get_by_role('button', name='설정 저장', exact=True).click()
+        other = context.new_page()
+        other.goto(BASE, wait_until='networkidle')
+        other.locator('.page-footer').get_by_role('button', name='대화 저장 설정', exact=True).click()
+        other_setting = other.get_by_role('dialog', name='대화 저장 설정', exact=True)
+        expect(other_setting.get_by_label(LABEL)).to_be_checked()
+        other_setting.get_by_label(LABEL).uncheck()
+        other_setting.get_by_role('button', name='설정 저장', exact=True).click()
+        writes_before_tab = len(writes)
+        send('다른 탭에서 저장을 껐습니다.')
+        expect(page.locator('.chat-loader-row')).not_to_be_visible()
+        assert len(writes) == writes_before_tab
+        setting = settings()
+        expect(setting.get_by_label(LABEL)).not_to_be_checked()
+        setting.get_by_label(LABEL).check()
+        setting.get_by_role('button', name='설정 저장', exact=True).click()
+        other.evaluate('localStorage.clear()')
+        expect(page.get_by_role('button', name='외부 전송 안내', exact=True)).to_be_visible()
+        setting = settings()
+        expect(setting.get_by_label(LABEL)).not_to_be_checked()
+        setting.get_by_role('button', name='취소', exact=True).click()
+        other.evaluate("localStorage.setItem('ton_storage_consent', 'old-policy')")
+        page.reload(wait_until='networkidle')
+        setting = settings()
+        expect(setting.get_by_label(LABEL)).not_to_be_checked()
+        setting.get_by_role('button', name='취소', exact=True).click()
+        # 저장 해제 기록을 지우지 못한 경고는 확정 직후에도 화면에 남아야 합니다.
+        setting = settings()
+        setting.get_by_label(LABEL).check()
+        setting.get_by_role('button', name='설정 저장', exact=True).click()
+        page.evaluate("() => {Storage.prototype.removeItem = function() {throw new DOMException('blocked', 'SecurityError');};}")
+        setting = settings()
+        setting.get_by_label(LABEL).uncheck()
+        setting.get_by_role('button', name='설정 저장', exact=True).click()
+        expect(setting).not_to_be_visible()
+        expect(page.locator('p[role="alert"]')).to_contain_text('현재 화면에서만 적용')
+        page.reload(wait_until='networkidle')
+        setting = settings()
+        expect(setting.get_by_label(LABEL)).to_be_checked()
+        setting.get_by_label(LABEL).uncheck()
+        setting.get_by_role('button', name='설정 저장', exact=True).click()
+        expect(page.locator('p[role="alert"]')).not_to_be_visible()
+        page.reload(wait_until='networkidle')
+        setting = settings()
+        expect(setting.get_by_label(LABEL)).not_to_be_checked()
+        setting.get_by_role('button', name='취소', exact=True).click()
+        other.close()
+
+        page.add_init_script("Object.defineProperty(window, 'localStorage', {get() {throw new DOMException('blocked', 'SecurityError');}})")
+        page.reload(wait_until='networkidle')
+        setting = settings()
+        expect(setting.get_by_label(LABEL)).not_to_be_checked()
+        setting.get_by_label(LABEL).check()
+        setting.get_by_role('button', name='설정 저장', exact=True).click()
+        expect(page.locator('p[role="alert"]')).to_contain_text('현재 화면에서만 적용')
+        setting = settings()
+        expect(setting.get_by_label(LABEL)).to_be_checked()
+        expect(setting.get_by_role('status')).to_contain_text('현재 화면에서만 적용')
+        setting.get_by_role('button', name='취소', exact=True).click()
+        page.reload(wait_until='networkidle')
+        setting = settings()
         expect(setting.get_by_label(LABEL)).not_to_be_checked()
         print({'storageConsentPassed': True, 'realProviderCalls': 0, 'realDBCalls': 0,
                'checks': ['sidebar removal', 'default off', 'reject', 'close', 'confirm', 'future only',
                           'cancel preserves', 'disable preserves history', 'first dialog opt-in',
-                          'footer policy anchor', 'mobile settings', 'reload default off',
-                          'unchanged external consent preserves slow history', 'unchanged storage preserves slow history']})
+                          'footer policy anchor', 'mobile settings', 'reload preserves consent',
+                          'unchanged external consent preserves slow history', 'unchanged storage preserves slow history',
+                          'save after reload', 'cancel preserves persisted choice', 'disabled choice survives reload',
+                          'same-browser new tab', 'cross-tab disable', 'site data clear', 'old receipt rejected',
+                          'failed revoke warning remains visible and recovers',
+                          'blocked storage warning and page-only fallback']})
     finally:
         context.close()
         browser.close()

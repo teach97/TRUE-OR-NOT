@@ -27,6 +27,7 @@ import TechText from './tech-text';
 import BorderGlow from './border-glow';
 import ConversationHistory from './conversation-history';
 import {useConversationStorage} from './use-conversation-storage';
+import {writeStorageConsent} from './conversation-consent';
 import {toStoredMessage} from './conversation-message';
 import {restoreSnapshot} from '../lib/conversation-contract';
 import type {MessagePage,StoredMessage} from '../lib/conversation-contract';
@@ -381,6 +382,7 @@ export default function FactCheckDashboard() {
   const [dialog, setDialog] = useState<string | null>(null);
   const [externalConsent, setExternalConsent] = useState(false);
   const [storageConsentDraft, setStorageConsentDraft] = useState(false);
+  const [storagePreferenceSaved, setStoragePreferenceSaved] = useState(true);
   const externalConsentRef = useRef(false);
   const screenConsent = useRef(false);
   const pendingConsent = useRef(false);
@@ -533,6 +535,7 @@ export default function FactCheckDashboard() {
   }
 
   function applyStorageConsent() {
+    setStoragePreferenceSaved(writeStorageConsent(storageConsentDraft));
     if (storage.consent !== storageConsentDraft) storage.setConsent(storageConsentDraft);
   }
 
@@ -1016,6 +1019,7 @@ export default function FactCheckDashboard() {
             </BorderGlow>
             <div className="chat-footer"><div>{sample && <span className="sample-state"><Icon name="shield" size={14}/>합성 예시는 외부로 전송하지 않습니다.</span>}<button type="button" className="sample-chip" onClick={() => externalConsent ? revokeExternalConsent() : openConsentDialog('external-consent')}>{externalConsent ? '외부 전송 동의 철회' : '외부 전송 안내'}</button></div><button type="button" className="sample-chip" onClick={loadSample}>예시로 시작하기 <Icon name="arrow" size={14}/></button></div>
           </form>
+          {!storagePreferenceSaved && <p className="dialog-notice" role="alert">브라우저 저장이 차단되어 선택 변경은 현재 화면에서만 적용됩니다. 이전 저장 설정이 남아 있으면 새로고침 후 다시 적용될 수 있으므로 사이트 데이터 설정도 확인해 주세요.</p>}
           <div className={`chat-status ${busy ? 'is-busy' : ''}`} role="status" aria-live="polite">{busy ? notice || '검증을 진행하고 있습니다.' : notice || (configured === false && jevConfigured !== true ? configurationHelp : '원문을 입력하거나 예시로 시작해 근거를 확인해 보세요.')}</div>
         </section>
 
@@ -1083,7 +1087,8 @@ export default function FactCheckDashboard() {
         <p>전송 동의는 이 브라우저에서 안내 버전만 저장해 다음 질문과 새로고침 후에도 유지합니다. 동의 철회·사이트 데이터 삭제·안내 범위 변경 시 다시 확인하며, 브라우저 저장이 차단되면 현재 화면에서만 유지합니다. 거절하면 외부 호출을 하지 않고 입력을 보존합니다. 대화 저장은 별도 선택이며 자동으로 켜지지 않습니다.</p>
         </> : <p>대화 저장은 외부 전송 동의와 별개입니다. 저장을 꺼도 기존 기록은 남으며 대화 목록의 삭제 버튼으로 지울 수 있습니다.</p>}
         <label className="conversation-consent"><input type="checkbox" checked={storageConsentDraft} onChange={event => setStorageConsentDraft(event.target.checked)}/>이 브라우저에서 대화 저장 <span>(선택)</span></label>
-        <p>기본 꺼짐이며 확정한 이후의 메시지와 최종 검증 결과만 서버 DB에 저장합니다. 새로고침하면 새 메시지 저장은 다시 꺼지며 기존 기록은 익명 쿠키가 유효한 동안 복원할 수 있습니다. 자세한 저장 항목·쿠키 만료·삭제·무료 DB 보관 제한은 <a href="/privacy#conversation-storage" target="_blank" rel="noopener noreferrer">개인정보 처리방침의 대화 저장 안내</a>에서 확인할 수 있습니다. 이후에는 웹 하단의 ‘대화 저장 설정’에서 변경할 수 있습니다.</p>
+        {!storagePreferenceSaved && <p role="status">브라우저 저장이 차단되어 선택 변경은 현재 화면에서만 적용됩니다. 이전 저장 설정이 남아 있으면 새로고침 후 다시 적용될 수 있으므로 사이트 데이터 설정도 확인해 주세요.</p>}
+        <p>처음에는 꺼짐이며 확정한 이후의 메시지와 최종 검증 결과만 서버 DB에 저장합니다. 저장 선택은 이 브라우저에서 새로고침 후에도 유지하며 사이트 데이터 삭제·안내 버전 변경 시 다시 꺼집니다. 기존 기록은 익명 쿠키가 유효한 동안 복원할 수 있습니다. 자세한 저장 항목·쿠키 만료·삭제·무료 DB 보관 제한은 <a href="/privacy#conversation-storage" target="_blank" rel="noopener noreferrer">개인정보 처리방침의 대화 저장 안내</a>에서 확인할 수 있습니다. 이후에는 웹 하단의 ‘대화 저장 설정’에서 변경할 수 있습니다.</p>
       </div> : activeDocument ? <><p className="dialog-notice">합성 예시 문서 · 외부 출처 링크가 아닙니다.</p><dl className="document-metadata"><dt>작성 주체</dt><dd>{activeDocument.publisher}</dd><dt>설정 날짜</dt><dd>{activeDocument.date}</dd><dt>원자료 관계</dt><dd>그룹 {activeDocument.group} · {activeDocument.relation}</dd></dl><div className="document-fulltext">{activeDocument.text}</div></> : dialog === 'guide' ? <ol className="guide-list"><li><span>01</span><div><h3>주장을 작게 나누세요.</h3><p>누가, 언제, 어디서, 어떤 조건으로 한 말인지 원문과 함께 확인하세요.</p></div></li><li><span>02</span><div><h3>출처의 수보다 관계를 보세요.</h3><p>같은 발표를 옮긴 여러 문서는 하나의 원자료를 공유할 수 있습니다.</p></div></li><li><span>03</span><div><h3>모르는 것은 남겨 두세요.</h3><p>근거가 없다고 거짓은 아닙니다. 의견과 미래 예측을 확정된 사실처럼 판정하지 않습니다.</p></div></li></ol> : <div className="about-copy"><p>최초 전송 동의 후 원문과 확인 요청은 서버, 외부 AI 및 검색 서비스로 전송됩니다. 채팅에 붙인 링크의 페이지는 서버에서 직접 가져오고, 첨부한 이미지는 주장 추출을 위해 AI 제공자에게 보내며 대화 DB에는 저장하지 않습니다. YouTube 자막·영상 정보·공개 댓글을 조회할 수 있으며 댓글은 LLM 입력 및 판정 근거로 사용하지 않습니다.</p><p>대화 저장은 별도 선택입니다. 저장하지 않은 결과와 YouTube API 정보는 현재 화면 메모리에만 유지되며 새로고침하면 사라집니다. YouTube API 제목·댓글은 대화 저장과 JSON 내보내기에서 제외됩니다. 자세한 내용은 <a href="/privacy">개인정보 처리방침</a>과 <a href="/terms">이용약관</a>을 확인해 주세요.</p></div>}
     </Modal>
   </div></MotionConfig>;

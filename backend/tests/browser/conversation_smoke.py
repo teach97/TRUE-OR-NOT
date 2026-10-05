@@ -37,7 +37,7 @@ with sync_playwright() as runtime:
         page.reload(wait_until='networkidle')
         page.locator('.page-footer').get_by_role('button',name='대화 저장 설정',exact=True).click()
         storage_dialog=page.get_by_role('dialog',name='대화 저장 설정',exact=True)
-        expect(storage_dialog.get_by_label('이 브라우저에서 대화 저장')).not_to_be_checked()
+        expect(storage_dialog.get_by_label('이 브라우저에서 대화 저장')).to_be_checked()
         storage_dialog.get_by_role('button',name='취소',exact=True).click()
         history.get_by_role('button',name=title,exact=True).click()
         expect(page.locator('.chat-thread')).to_contain_text('현재 Auto 모드입니다.',timeout=15000)
