@@ -220,7 +220,8 @@ def test_forecast_synthesis_preserves_prediction_and_citations(monkeypatch):
         assert body["model"] in {"gpt-6-luna", "gemini-3.8-flash"}
         synthesis_input = json.loads(body["input"])
         assert synthesis_input["question"] == question
-        assert {item["id"]: item["text"] for item in synthesis_input["sources"]} == source_texts
+        assert {item["id"]: item["passages"][0]["text"] for item in synthesis_input["sources"]} == source_texts
+        assert all(item["contextOnly"] for item in synthesis_input["sources"])
         return httpx.Response(200, json={
             "status": "completed",
             "steps": [{

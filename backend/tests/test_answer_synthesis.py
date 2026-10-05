@@ -78,7 +78,7 @@ def completed_response(value):
     })
 
 
-def test_eligible_sources_excludes_unverified_empty_and_youtube_and_bounds_text():
+def test_eligible_sources_excludes_unverified_empty_and_youtube_and_preserves_original_text():
     long_text = "A" * 6_100
     state = {
         "sources": [
@@ -103,7 +103,7 @@ def test_eligible_sources_excludes_unverified_empty_and_youtube_and_bounds_text(
     eligible = eligible_sources(state)
 
     assert [item["id"] for item in eligible] == ["s1", "s2", "s3", "s4", "s5", "s6"]
-    assert len(eligible[0]["text"]) == 6_000
+    assert eligible[0]["text"] == long_text
     assert set(eligible[0]) == {"id", "url", "title", "publisher", "publishedAt", "text"}
     serialized = json.dumps(eligible, ensure_ascii=False)
     assert "DO-NOT-SEND" not in serialized
@@ -166,7 +166,9 @@ def test_synthesis_uses_only_verified_source_projection_and_preserves_forecast()
             "title": "Source s1",
             "publisher": "Example Research",
             "publishedAt": "2026-01-02",
-            "text": state["sourceTexts"]["s1"][:6_000],
+            "selection": "complete", "contextOnly": True,
+            "passages": [{"start": 0, "end": len(state["sourceTexts"]["s1"]),
+                          "text": state["sourceTexts"]["s1"]}],
         }]
         assert "DO-NOT-SEND" not in request.content.decode()
         return completed_response(draft(quote=SOURCE_TEXT[:35]))

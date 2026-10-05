@@ -528,7 +528,7 @@ def test_verify_claims_sends_only_verified_source_text():
         assert body["max_output_tokens"] >= 12000
         assert body["text"]["format"]["strict"] is True
         assert [source["id"] for source in input_data["sources"]] == ["s1"]
-        assert input_data["sources"][0]["text"] == quote
+        assert input_data["sources"][0]["passages"] == [{"start": 0, "end": len(quote), "text": quote}]
         assert "snippet" not in request.content.decode()
         assert "YouTube API raw comment" not in request.content.decode()
         assert "YouTube API title" not in request.content.decode()
@@ -592,7 +592,7 @@ def test_verify_claims_bounds_source_text_sent_to_model():
     def handler(request):
         body = json.loads(request.content)
         input_data = json.loads(body["input"])
-        assert len(input_data["sources"][0]["text"]) <= 6000
+        assert sum(len(passage["text"]) for passage in input_data["sources"][0]["passages"]) <= 6000
         return httpx.Response(200, json={
             "status": "completed",
             "output": [{
