@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-05T12:34:54.745404+00:00",
+  "generated_at": "2026-10-05T13:59:41.192723+00:00",
   "nodes": {
     "app_components_fact_check_dashboard": {
       "code_fingerprint": "288ec9e764c3822b9d5cdb68933d3e7ed7d4a9ecb9704b829bb2a89f9afb84f3",
@@ -12,7 +12,7 @@
           "q": "지금 레이아웃이 이상해 애니메이션 위치도 이상한곳에 걸쳐지고"
         }
       ],
-      "score": 0.777317305,
+      "score": 0.776260711,
       "source_file": "app/components/fact-check-dashboard.tsx",
       "status": "tentative",
       "uses": 1
@@ -28,7 +28,7 @@
           "q": "지금 레이아웃이 이상해 애니메이션 위치도 이상한곳에 걸쳐지고"
         }
       ],
-      "score": 0.777317305,
+      "score": 0.776260711,
       "source_file": "app/components/fact-check-dashboard.tsx",
       "status": "tentative",
       "uses": 1
@@ -44,7 +44,7 @@
           "q": "지금 레이아웃이 이상해 애니메이션 위치도 이상한곳에 걸쳐지고"
         }
       ],
-      "score": 0.777317305,
+      "score": 0.776260711,
       "source_file": "app/components/glide-select.tsx",
       "status": "tentative",
       "uses": 1
@@ -60,7 +60,7 @@
           "q": "지금 레이아웃이 이상해 애니메이션 위치도 이상한곳에 걸쳐지고"
         }
       ],
-      "score": 0.777317305,
+      "score": 0.776260711,
       "source_file": "app/components/glide-select.tsx",
       "status": "tentative",
       "uses": 1
@@ -76,7 +76,7 @@
           "q": "점수 판정이 이상해"
         }
       ],
-      "score": 0.777917555,
+      "score": 0.776860146,
       "source_file": "app/lib/fact-score.ts",
       "status": "tentative",
       "uses": 1
@@ -98,7 +98,7 @@
           "q": "jev 키 입력되있음 env에 AI_GATEWAY_API_KEY=; Vercel AI Gateway Jev"
         }
       ],
-      "score": 0.001005878,
+      "score": 0.00100451,
       "source_file": "backend/jev.py",
       "status": "contested",
       "uses": 1,
@@ -120,7 +120,7 @@
           "q": "미설정으로 뜨는데? API 입력은 되있는데"
         }
       ],
-      "score": 1.554150027,
+      "score": 1.552037498,
       "source_file": "backend/main.py",
       "status": "preferred",
       "uses": 2
@@ -136,7 +136,7 @@
           "q": "지금 또 검증실패 뜸"
         }
       ],
-      "score": 0.753387723,
+      "score": 0.752363656,
       "source_file": "backend/main.py",
       "status": "tentative",
       "uses": 1
@@ -152,7 +152,7 @@
           "q": "Add DeepSeek V4.1 Flash MAX through Experiential first in the existing LLM fallback chain"
         }
       ],
-      "score": 0.998462437,
+      "score": 0.997105244,
       "source_file": "backend/providers.py",
       "status": "tentative",
       "uses": 1
@@ -160,18 +160,23 @@
     "backend_providers_request_structured": {
       "code_fingerprint": "f66fb746f2b5f0544dbfd8ddf3a79b64e90d05e8208d6fd19099a0c5ba415864",
       "label": "request_structured()",
-      "last": "2026-10-05T11:47:44.907806+00:00",
+      "last": "2026-10-05T12:47:50.549502+00:00",
       "provenance": [
+        {
+          "date": "2026-10-05T12:47:50.549502+00:00",
+          "outcome": "useful",
+          "q": "Measure True or Not backend latency with model and reasoning settings held fixed"
+        },
         {
           "date": "2026-10-05T11:47:44.907806+00:00",
           "outcome": "useful",
           "q": "DeepSeek 출력 한도를 조정할 수 있는가?"
         }
       ],
-      "score": 0.999243537,
+      "score": 1.996733204,
       "source_file": "backend/providers.py",
-      "status": "tentative",
-      "uses": 1
+      "status": "preferred",
+      "uses": 2
     },
     "backend_providers_request_structured_image": {
       "code_fingerprint": "f66fb746f2b5f0544dbfd8ddf3a79b64e90d05e8208d6fd19099a0c5ba415864",
@@ -184,7 +189,7 @@
           "q": "DeepSeek 출력 한도를 조정할 수 있는가?"
         }
       ],
-      "score": 0.999243537,
+      "score": 0.997885283,
       "source_file": "backend/providers.py",
       "status": "tentative",
       "uses": 1
@@ -200,7 +205,7 @@
           "q": "Add DeepSeek V4.1 Flash MAX through Experiential first in the existing LLM fallback chain"
         }
       ],
-      "score": 0.998462437,
+      "score": 0.997105244,
       "source_file": "backend/providers.py",
       "status": "tentative",
       "uses": 1
@@ -216,7 +221,7 @@
           "q": "DeepSeek 출력 한도를 조정할 수 있는가?"
         }
       ],
-      "score": 0.999243537,
+      "score": 0.997885283,
       "source_file": "backend/providers.py",
       "status": "tentative",
       "uses": 1
@@ -237,7 +242,7 @@
           "q": "미설정으로 뜨는데? API 입력은 되있는데"
         }
       ],
-      "score": 1.554150027,
+      "score": 1.552037498,
       "source_file": "backend/README.md",
       "status": "preferred",
       "uses": 2
@@ -245,15 +250,36 @@
     "backend_runtime": {
       "code_fingerprint": "cc5b5494ea97a2e562fbc86d02a42712eccbddb2d4507663671238c7221adae7",
       "label": "runtime.py",
-      "last": "2026-10-05T10:59:00.656047+00:00",
+      "last": "2026-10-05T12:47:50.549502+00:00",
       "provenance": [
+        {
+          "date": "2026-10-05T12:47:50.549502+00:00",
+          "outcome": "useful",
+          "q": "Measure True or Not backend latency with model and reasoning settings held fixed"
+        },
         {
           "date": "2026-10-05T10:59:00.656047+00:00",
           "outcome": "useful",
           "q": "Add DeepSeek V4.1 Flash MAX through Experiential first in the existing LLM fallback chain"
         }
       ],
-      "score": 0.998462437,
+      "score": 1.995953165,
+      "source_file": "backend/runtime.py",
+      "status": "preferred",
+      "uses": 2
+    },
+    "backend_runtime_build_runtime_workflow": {
+      "code_fingerprint": "cc5b5494ea97a2e562fbc86d02a42712eccbddb2d4507663671238c7221adae7",
+      "label": "build_runtime_workflow()",
+      "last": "2026-10-05T12:47:50.549502+00:00",
+      "provenance": [
+        {
+          "date": "2026-10-05T12:47:50.549502+00:00",
+          "outcome": "useful",
+          "q": "Measure True or Not backend latency with model and reasoning settings held fixed"
+        }
+      ],
+      "score": 0.998847921,
       "source_file": "backend/runtime.py",
       "status": "tentative",
       "uses": 1
@@ -269,7 +295,7 @@
           "q": "지금 또 검증실패 뜸"
         }
       ],
-      "score": 0.753387723,
+      "score": 0.752363656,
       "source_file": "backend/runtime.py",
       "status": "tentative",
       "uses": 1
@@ -290,7 +316,7 @@
           "q": "지금 jev가 제대로 작동하지 않아"
         }
       ],
-      "score": 1.555356633,
+      "score": 1.553242464,
       "source_file": "backend/runtime.py",
       "status": "preferred",
       "uses": 2
@@ -306,7 +332,7 @@
           "q": "점수 판정이 이상해"
         }
       ],
-      "score": 0.777917555,
+      "score": 0.776860146,
       "source_file": "backend/scoring.py",
       "status": "tentative",
       "uses": 1
@@ -322,7 +348,23 @@
           "q": "지금 또 검증실패 뜸"
         }
       ],
-      "score": 0.753387723,
+      "score": 0.752363656,
+      "source_file": "backend/streaming.py",
+      "status": "tentative",
+      "uses": 1
+    },
+    "backend_streaming_stream_events": {
+      "code_fingerprint": "ecba47ceb6ba7c95bdd29f555261e894c4e162e753c77ed855b04326f0a4e926",
+      "label": "stream_events()",
+      "last": "2026-10-05T12:47:50.549502+00:00",
+      "provenance": [
+        {
+          "date": "2026-10-05T12:47:50.549502+00:00",
+          "outcome": "useful",
+          "q": "Measure True or Not backend latency with model and reasoning settings held fixed"
+        }
+      ],
+      "score": 0.998847921,
       "source_file": "backend/streaming.py",
       "status": "tentative",
       "uses": 1
@@ -338,13 +380,13 @@
           "q": "지금 jev가 제대로 작동하지 않아"
         }
       ],
-      "score": 0.777439078,
+      "score": 0.776382319,
       "source_file": "backend/verification.py",
       "status": "tentative",
       "uses": 1
     },
     "handoff_nextjs_proxy_route": {
-      "code_fingerprint": "a5f7c94359f0a04a0825d8cbd766776243d0c5c341ca7586f51753760d200e98",
+      "code_fingerprint": "7e70adaa941e20e6d023c77fa0abfcb668b4177ac78d51e3c12a5178b2d00630",
       "label": "Next.js → FastAPI Proxy Route (6-B, app/api/fact-check/route.ts)",
       "last": "2026-09-24T14:39:01.880631+00:00",
       "provenance": [
@@ -359,7 +401,7 @@
           "q": "미설정으로 뜨는데? API 입력은 되있는데"
         }
       ],
-      "score": 1.554150027,
+      "score": 1.552037498,
       "source_file": "HANDOFF.md",
       "status": "preferred",
       "uses": 2
