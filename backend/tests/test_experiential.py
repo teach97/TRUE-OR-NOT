@@ -59,7 +59,7 @@ def completion(content='{"reply":"연결 확인"}', **extra):
             'usage': {'prompt_tokens': 10, 'completion_tokens': 20, 'total_tokens': 30}, **extra}
 
 
-def call(response, *, image=None):
+def call(response, *, image=None, max_output_tokens=400):
     seen = []
 
     def handle(request):
@@ -69,7 +69,7 @@ def call(response, *, image=None):
     async def run():
         async with httpx.AsyncClient(transport=httpx.MockTransport(handle)) as client:
             kwargs = dict(instructions='Return a JSON reply.', input_data={'text': '합성 입력'},
-                          schema={'type': 'object', 'properties': {'reply': {'type': 'string'}}, 'required': ['reply'], 'additionalProperties': False}, max_output_tokens=400)
+                          schema={'type': 'object', 'properties': {'reply': {'type': 'string'}}, 'required': ['reply'], 'additionalProperties': False}, max_output_tokens=max_output_tokens)
             provider = LLMProvider('experiential', 'deepseek-v4.1-flash', 'max', 'gateway-test-only')
             if image is not None:
                 return await request_structured_image(provider, client, image=image, **kwargs)
@@ -90,11 +90,21 @@ def test_structured_call_uses_gateway_max_json_mode_and_only_gateway_credential(
     assert body['model'] == 'deepseek-v4.1-flash'
     assert body['reasoning_effort'] == 'max'
     assert body['response_format'] == {'type': 'json_object'}
-    assert body['max_tokens'] == 6000
+    assert body['max_tokens'] == 16000
     assert body['store'] is False
     assert 'service_tier' not in body and 'input' not in body and 'tools' not in body
     assert '"required": ["reply"]' in body['messages'][0]['content']
     assert json.loads(body['messages'][1]['content']) == {'text': '합성 입력'}
+
+
+@pytest.mark.parametrize('requested,expected', [(400, 16000), (4000, 16000), (12000, 16000), (20000, 20000)])
+@pytest.mark.parametrize('image', [None, {'mime': 'image/png', 'data': 'dGVzdA=='}])
+def test_max_reasoning_budget_has_room_for_final_json_and_preserves_larger_requests(requested, expected, image):
+    raw, seen = call(completion(), image=image, max_output_tokens=requested)
+    assert json.loads(raw)['reply'] == '연결 확인'
+    body = json.loads(seen[0].content)
+    assert body['max_tokens'] == expected
+    assert body['reasoning_effort'] == 'max'
 
 
 def test_image_uses_chat_completions_multimodal_message_without_responses_input():

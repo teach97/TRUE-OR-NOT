@@ -186,8 +186,8 @@ def _structured_payload(
             "model": provider.model,
             "reasoning_effort": provider.reasoning,
             "store": False,
-            # MAX reasoning and final JSON share this output budget.
-            "max_tokens": max(6000, max_output_tokens),
+            # Leave room for final JSON after MAX reasoning consumes tokens.
+            "max_tokens": max(16_000, max_output_tokens),
             "messages": [
                 {"role": "system", "content": instructions + "\nReturn only a JSON object matching this schema: " + json.dumps(schema, ensure_ascii=False)},
                 {"role": "user", "content": serialized_input},

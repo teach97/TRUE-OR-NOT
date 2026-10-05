@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-10-05T10:32:31.042535+00:00",
+  "generated_at": "2026-10-05T11:43:10.500848+00:00",
   "nodes": {
     "app_components_fact_check_dashboard": {
-      "code_fingerprint": "f60dafbdc3ccd26513e9fcc881305aa94457ae7fea273261d7fa67bf9d827b8a",
+      "code_fingerprint": "288ec9e764c3822b9d5cdb68933d3e7ed7d4a9ecb9704b829bb2a89f9afb84f3",
       "label": "fact-check-dashboard.tsx",
       "last": "2026-09-24T14:54:58.543528+00:00",
       "provenance": [
@@ -12,13 +12,13 @@
           "q": "지금 레이아웃이 이상해 애니메이션 위치도 이상한곳에 걸쳐지고"
         }
       ],
-      "score": 0.77884533,
+      "score": 0.777962848,
       "source_file": "app/components/fact-check-dashboard.tsx",
       "status": "tentative",
       "uses": 1
     },
     "app_components_fact_check_dashboard_modelselection": {
-      "code_fingerprint": "f60dafbdc3ccd26513e9fcc881305aa94457ae7fea273261d7fa67bf9d827b8a",
+      "code_fingerprint": "288ec9e764c3822b9d5cdb68933d3e7ed7d4a9ecb9704b829bb2a89f9afb84f3",
       "label": "ModelSelection",
       "last": "2026-09-24T14:54:58.543528+00:00",
       "provenance": [
@@ -28,7 +28,7 @@
           "q": "지금 레이아웃이 이상해 애니메이션 위치도 이상한곳에 걸쳐지고"
         }
       ],
-      "score": 0.77884533,
+      "score": 0.777962848,
       "source_file": "app/components/fact-check-dashboard.tsx",
       "status": "tentative",
       "uses": 1
@@ -44,7 +44,7 @@
           "q": "지금 레이아웃이 이상해 애니메이션 위치도 이상한곳에 걸쳐지고"
         }
       ],
-      "score": 0.77884533,
+      "score": 0.777962848,
       "source_file": "app/components/glide-select.tsx",
       "status": "tentative",
       "uses": 1
@@ -60,7 +60,7 @@
           "q": "지금 레이아웃이 이상해 애니메이션 위치도 이상한곳에 걸쳐지고"
         }
       ],
-      "score": 0.77884533,
+      "score": 0.777962848,
       "source_file": "app/components/glide-select.tsx",
       "status": "tentative",
       "uses": 1
@@ -76,7 +76,7 @@
           "q": "점수 판정이 이상해"
         }
       ],
-      "score": 0.77944676,
+      "score": 0.778563596,
       "source_file": "app/lib/fact-score.ts",
       "status": "tentative",
       "uses": 1
@@ -98,14 +98,14 @@
           "q": "jev 키 입력되있음 env에 AI_GATEWAY_API_KEY=; Vercel AI Gateway Jev"
         }
       ],
-      "score": 0.001007855,
+      "score": 0.001006713,
       "source_file": "backend/jev.py",
       "status": "contested",
       "uses": 1,
       "verdict": "useful"
     },
     "backend_main_agent_status": {
-      "code_fingerprint": "e95d8e8b352623c76b577add944e866ef7c18e79ee6259daa475e088636de57b",
+      "code_fingerprint": "865c641c61c392454f258d890186da84cd139d01ee1d86e1c4078fd9bbf630f4",
       "label": "agent_status()",
       "last": "2026-09-24T14:39:01.880631+00:00",
       "provenance": [
@@ -120,13 +120,13 @@
           "q": "미설정으로 뜨는데? API 입력은 되있는데"
         }
       ],
-      "score": 1.557205124,
+      "score": 1.55544071,
       "source_file": "backend/main.py",
       "status": "preferred",
       "uses": 2
     },
     "backend_main_fact_check_stream": {
-      "code_fingerprint": "e95d8e8b352623c76b577add944e866ef7c18e79ee6259daa475e088636de57b",
+      "code_fingerprint": "865c641c61c392454f258d890186da84cd139d01ee1d86e1c4078fd9bbf630f4",
       "label": "fact_check_stream()",
       "last": "2026-09-23T06:26:10.543579+00:00",
       "provenance": [
@@ -136,13 +136,45 @@
           "q": "지금 또 검증실패 뜸"
         }
       ],
-      "score": 0.754868708,
+      "score": 0.754013393,
       "source_file": "backend/main.py",
       "status": "tentative",
       "uses": 1
     },
+    "backend_providers": {
+      "code_fingerprint": "03b07b82dc8f0aaebb95ae45696fb65ab2267d1205e089e8ef73033a1c40d0a6",
+      "label": "providers.py",
+      "last": "2026-10-05T10:59:00.656047+00:00",
+      "provenance": [
+        {
+          "date": "2026-10-05T10:59:00.656047+00:00",
+          "outcome": "useful",
+          "q": "Add DeepSeek V4.1 Flash MAX through Experiential first in the existing LLM fallback chain"
+        }
+      ],
+      "score": 0.999291635,
+      "source_file": "backend/providers.py",
+      "status": "tentative",
+      "uses": 1
+    },
+    "backend_providers_run_with_fallback": {
+      "code_fingerprint": "03b07b82dc8f0aaebb95ae45696fb65ab2267d1205e089e8ef73033a1c40d0a6",
+      "label": "run_with_fallback()",
+      "last": "2026-10-05T10:59:00.656047+00:00",
+      "provenance": [
+        {
+          "date": "2026-10-05T10:59:00.656047+00:00",
+          "outcome": "useful",
+          "q": "Add DeepSeek V4.1 Flash MAX through Experiential first in the existing LLM fallback chain"
+        }
+      ],
+      "score": 0.999291635,
+      "source_file": "backend/providers.py",
+      "status": "tentative",
+      "uses": 1
+    },
     "backend_readme_env_config": {
-      "code_fingerprint": "a88d18dbfa2ec3ffd705dd3003d4466a5ab584bc733ab570b85ab6a40a1b421f",
+      "code_fingerprint": "d01fde7edfe2aa0d2ab8dabcf6910d17a099b053f959be9d2f868e647dcb6c5a",
       "label": "Backend Environment Keys Configuration",
       "last": "2026-09-24T14:39:01.880631+00:00",
       "provenance": [
@@ -157,13 +189,29 @@
           "q": "미설정으로 뜨는데? API 입력은 되있는데"
         }
       ],
-      "score": 1.557205124,
+      "score": 1.55544071,
       "source_file": "backend/README.md",
       "status": "preferred",
       "uses": 2
     },
+    "backend_runtime": {
+      "code_fingerprint": "cc5b5494ea97a2e562fbc86d02a42712eccbddb2d4507663671238c7221adae7",
+      "label": "runtime.py",
+      "last": "2026-10-05T10:59:00.656047+00:00",
+      "provenance": [
+        {
+          "date": "2026-10-05T10:59:00.656047+00:00",
+          "outcome": "useful",
+          "q": "Add DeepSeek V4.1 Flash MAX through Experiential first in the existing LLM fallback chain"
+        }
+      ],
+      "score": 0.999291635,
+      "source_file": "backend/runtime.py",
+      "status": "tentative",
+      "uses": 1
+    },
     "backend_runtime_make_runtime_adapters_with_fallback": {
-      "code_fingerprint": "177b5e477bf8c4d93b9041aacb6ca2074a5eb41214238320e0488f02eabfec3d",
+      "code_fingerprint": "cc5b5494ea97a2e562fbc86d02a42712eccbddb2d4507663671238c7221adae7",
       "label": "with_fallback()",
       "last": "2026-09-23T06:26:10.543579+00:00",
       "provenance": [
@@ -173,13 +221,13 @@
           "q": "지금 또 검증실패 뜸"
         }
       ],
-      "score": 0.754868708,
+      "score": 0.754013393,
       "source_file": "backend/runtime.py",
       "status": "tentative",
       "uses": 1
     },
     "backend_runtime_run_jev_fast_check": {
-      "code_fingerprint": "177b5e477bf8c4d93b9041aacb6ca2074a5eb41214238320e0488f02eabfec3d",
+      "code_fingerprint": "cc5b5494ea97a2e562fbc86d02a42712eccbddb2d4507663671238c7221adae7",
       "label": "run_jev_fast_check()",
       "last": "2026-09-24T15:43:05.072764+00:00",
       "provenance": [
@@ -194,7 +242,7 @@
           "q": "지금 jev가 제대로 작동하지 않아"
         }
       ],
-      "score": 1.558414102,
+      "score": 1.556648318,
       "source_file": "backend/runtime.py",
       "status": "preferred",
       "uses": 2
@@ -210,7 +258,7 @@
           "q": "점수 판정이 이상해"
         }
       ],
-      "score": 0.77944676,
+      "score": 0.778563596,
       "source_file": "backend/scoring.py",
       "status": "tentative",
       "uses": 1
@@ -226,7 +274,7 @@
           "q": "지금 또 검증실패 뜸"
         }
       ],
-      "score": 0.754868708,
+      "score": 0.754013393,
       "source_file": "backend/streaming.py",
       "status": "tentative",
       "uses": 1
@@ -242,13 +290,13 @@
           "q": "지금 jev가 제대로 작동하지 않아"
         }
       ],
-      "score": 0.778967342,
+      "score": 0.778084722,
       "source_file": "backend/verification.py",
       "status": "tentative",
       "uses": 1
     },
     "handoff_nextjs_proxy_route": {
-      "code_fingerprint": "cbc64d0451f93df37cd0e24b5becac99313c2823ae1c06d49c611516847c7fc9",
+      "code_fingerprint": "dc8ad6810f798ef5aa658255324316ee7c2bd7d021ff9c2f05b54dd58bb3ece4",
       "label": "Next.js → FastAPI Proxy Route (6-B, app/api/fact-check/route.ts)",
       "last": "2026-09-24T14:39:01.880631+00:00",
       "provenance": [
@@ -263,7 +311,7 @@
           "q": "미설정으로 뜨는데? API 입력은 되있는데"
         }
       ],
-      "score": 1.557205124,
+      "score": 1.55544071,
       "source_file": "HANDOFF.md",
       "status": "preferred",
       "uses": 2
