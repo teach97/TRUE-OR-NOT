@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-05T11:43:10.500848+00:00",
+  "generated_at": "2026-10-05T12:34:54.745404+00:00",
   "nodes": {
     "app_components_fact_check_dashboard": {
       "code_fingerprint": "288ec9e764c3822b9d5cdb68933d3e7ed7d4a9ecb9704b829bb2a89f9afb84f3",
@@ -12,7 +12,7 @@
           "q": "지금 레이아웃이 이상해 애니메이션 위치도 이상한곳에 걸쳐지고"
         }
       ],
-      "score": 0.777962848,
+      "score": 0.777317305,
       "source_file": "app/components/fact-check-dashboard.tsx",
       "status": "tentative",
       "uses": 1
@@ -28,7 +28,7 @@
           "q": "지금 레이아웃이 이상해 애니메이션 위치도 이상한곳에 걸쳐지고"
         }
       ],
-      "score": 0.777962848,
+      "score": 0.777317305,
       "source_file": "app/components/fact-check-dashboard.tsx",
       "status": "tentative",
       "uses": 1
@@ -44,7 +44,7 @@
           "q": "지금 레이아웃이 이상해 애니메이션 위치도 이상한곳에 걸쳐지고"
         }
       ],
-      "score": 0.777962848,
+      "score": 0.777317305,
       "source_file": "app/components/glide-select.tsx",
       "status": "tentative",
       "uses": 1
@@ -60,7 +60,7 @@
           "q": "지금 레이아웃이 이상해 애니메이션 위치도 이상한곳에 걸쳐지고"
         }
       ],
-      "score": 0.777962848,
+      "score": 0.777317305,
       "source_file": "app/components/glide-select.tsx",
       "status": "tentative",
       "uses": 1
@@ -76,7 +76,7 @@
           "q": "점수 판정이 이상해"
         }
       ],
-      "score": 0.778563596,
+      "score": 0.777917555,
       "source_file": "app/lib/fact-score.ts",
       "status": "tentative",
       "uses": 1
@@ -98,7 +98,7 @@
           "q": "jev 키 입력되있음 env에 AI_GATEWAY_API_KEY=; Vercel AI Gateway Jev"
         }
       ],
-      "score": 0.001006713,
+      "score": 0.001005878,
       "source_file": "backend/jev.py",
       "status": "contested",
       "uses": 1,
@@ -120,7 +120,7 @@
           "q": "미설정으로 뜨는데? API 입력은 되있는데"
         }
       ],
-      "score": 1.55544071,
+      "score": 1.554150027,
       "source_file": "backend/main.py",
       "status": "preferred",
       "uses": 2
@@ -136,13 +136,13 @@
           "q": "지금 또 검증실패 뜸"
         }
       ],
-      "score": 0.754013393,
+      "score": 0.753387723,
       "source_file": "backend/main.py",
       "status": "tentative",
       "uses": 1
     },
     "backend_providers": {
-      "code_fingerprint": "03b07b82dc8f0aaebb95ae45696fb65ab2267d1205e089e8ef73033a1c40d0a6",
+      "code_fingerprint": "f66fb746f2b5f0544dbfd8ddf3a79b64e90d05e8208d6fd19099a0c5ba415864",
       "label": "providers.py",
       "last": "2026-10-05T10:59:00.656047+00:00",
       "provenance": [
@@ -152,13 +152,45 @@
           "q": "Add DeepSeek V4.1 Flash MAX through Experiential first in the existing LLM fallback chain"
         }
       ],
-      "score": 0.999291635,
+      "score": 0.998462437,
+      "source_file": "backend/providers.py",
+      "status": "tentative",
+      "uses": 1
+    },
+    "backend_providers_request_structured": {
+      "code_fingerprint": "f66fb746f2b5f0544dbfd8ddf3a79b64e90d05e8208d6fd19099a0c5ba415864",
+      "label": "request_structured()",
+      "last": "2026-10-05T11:47:44.907806+00:00",
+      "provenance": [
+        {
+          "date": "2026-10-05T11:47:44.907806+00:00",
+          "outcome": "useful",
+          "q": "DeepSeek 출력 한도를 조정할 수 있는가?"
+        }
+      ],
+      "score": 0.999243537,
+      "source_file": "backend/providers.py",
+      "status": "tentative",
+      "uses": 1
+    },
+    "backend_providers_request_structured_image": {
+      "code_fingerprint": "f66fb746f2b5f0544dbfd8ddf3a79b64e90d05e8208d6fd19099a0c5ba415864",
+      "label": "request_structured_image()",
+      "last": "2026-10-05T11:47:44.907806+00:00",
+      "provenance": [
+        {
+          "date": "2026-10-05T11:47:44.907806+00:00",
+          "outcome": "useful",
+          "q": "DeepSeek 출력 한도를 조정할 수 있는가?"
+        }
+      ],
+      "score": 0.999243537,
       "source_file": "backend/providers.py",
       "status": "tentative",
       "uses": 1
     },
     "backend_providers_run_with_fallback": {
-      "code_fingerprint": "03b07b82dc8f0aaebb95ae45696fb65ab2267d1205e089e8ef73033a1c40d0a6",
+      "code_fingerprint": "f66fb746f2b5f0544dbfd8ddf3a79b64e90d05e8208d6fd19099a0c5ba415864",
       "label": "run_with_fallback()",
       "last": "2026-10-05T10:59:00.656047+00:00",
       "provenance": [
@@ -168,13 +200,29 @@
           "q": "Add DeepSeek V4.1 Flash MAX through Experiential first in the existing LLM fallback chain"
         }
       ],
-      "score": 0.999291635,
+      "score": 0.998462437,
+      "source_file": "backend/providers.py",
+      "status": "tentative",
+      "uses": 1
+    },
+    "backend_providers_structured_payload": {
+      "code_fingerprint": "f66fb746f2b5f0544dbfd8ddf3a79b64e90d05e8208d6fd19099a0c5ba415864",
+      "label": "_structured_payload()",
+      "last": "2026-10-05T11:47:44.907806+00:00",
+      "provenance": [
+        {
+          "date": "2026-10-05T11:47:44.907806+00:00",
+          "outcome": "useful",
+          "q": "DeepSeek 출력 한도를 조정할 수 있는가?"
+        }
+      ],
+      "score": 0.999243537,
       "source_file": "backend/providers.py",
       "status": "tentative",
       "uses": 1
     },
     "backend_readme_env_config": {
-      "code_fingerprint": "d01fde7edfe2aa0d2ab8dabcf6910d17a099b053f959be9d2f868e647dcb6c5a",
+      "code_fingerprint": "7fb9d08bdd957671c073324139d45316444e812e7ed02a594c4abe3575813c75",
       "label": "Backend Environment Keys Configuration",
       "last": "2026-09-24T14:39:01.880631+00:00",
       "provenance": [
@@ -189,7 +237,7 @@
           "q": "미설정으로 뜨는데? API 입력은 되있는데"
         }
       ],
-      "score": 1.55544071,
+      "score": 1.554150027,
       "source_file": "backend/README.md",
       "status": "preferred",
       "uses": 2
@@ -205,7 +253,7 @@
           "q": "Add DeepSeek V4.1 Flash MAX through Experiential first in the existing LLM fallback chain"
         }
       ],
-      "score": 0.999291635,
+      "score": 0.998462437,
       "source_file": "backend/runtime.py",
       "status": "tentative",
       "uses": 1
@@ -221,7 +269,7 @@
           "q": "지금 또 검증실패 뜸"
         }
       ],
-      "score": 0.754013393,
+      "score": 0.753387723,
       "source_file": "backend/runtime.py",
       "status": "tentative",
       "uses": 1
@@ -242,7 +290,7 @@
           "q": "지금 jev가 제대로 작동하지 않아"
         }
       ],
-      "score": 1.556648318,
+      "score": 1.555356633,
       "source_file": "backend/runtime.py",
       "status": "preferred",
       "uses": 2
@@ -258,7 +306,7 @@
           "q": "점수 판정이 이상해"
         }
       ],
-      "score": 0.778563596,
+      "score": 0.777917555,
       "source_file": "backend/scoring.py",
       "status": "tentative",
       "uses": 1
@@ -274,7 +322,7 @@
           "q": "지금 또 검증실패 뜸"
         }
       ],
-      "score": 0.754013393,
+      "score": 0.753387723,
       "source_file": "backend/streaming.py",
       "status": "tentative",
       "uses": 1
@@ -290,13 +338,13 @@
           "q": "지금 jev가 제대로 작동하지 않아"
         }
       ],
-      "score": 0.778084722,
+      "score": 0.777439078,
       "source_file": "backend/verification.py",
       "status": "tentative",
       "uses": 1
     },
     "handoff_nextjs_proxy_route": {
-      "code_fingerprint": "dc8ad6810f798ef5aa658255324316ee7c2bd7d021ff9c2f05b54dd58bb3ece4",
+      "code_fingerprint": "a5f7c94359f0a04a0825d8cbd766776243d0c5c341ca7586f51753760d200e98",
       "label": "Next.js → FastAPI Proxy Route (6-B, app/api/fact-check/route.ts)",
       "last": "2026-09-24T14:39:01.880631+00:00",
       "provenance": [
@@ -311,7 +359,7 @@
           "q": "미설정으로 뜨는데? API 입력은 되있는데"
         }
       ],
-      "score": 1.55544071,
+      "score": 1.554150027,
       "source_file": "HANDOFF.md",
       "status": "preferred",
       "uses": 2
