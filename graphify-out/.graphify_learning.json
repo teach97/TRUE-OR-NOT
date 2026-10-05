@@ -1,5 +1,5 @@
 {
-  "generated_at": "2026-10-05T13:59:41.192723+00:00",
+  "generated_at": "2026-10-05T14:20:46.433182+00:00",
   "nodes": {
     "app_components_fact_check_dashboard": {
       "code_fingerprint": "288ec9e764c3822b9d5cdb68933d3e7ed7d4a9ecb9704b829bb2a89f9afb84f3",
@@ -12,7 +12,7 @@
           "q": "지금 레이아웃이 이상해 애니메이션 위치도 이상한곳에 걸쳐지고"
         }
       ],
-      "score": 0.776260711,
+      "score": 0.775998109,
       "source_file": "app/components/fact-check-dashboard.tsx",
       "status": "tentative",
       "uses": 1
@@ -28,7 +28,7 @@
           "q": "지금 레이아웃이 이상해 애니메이션 위치도 이상한곳에 걸쳐지고"
         }
       ],
-      "score": 0.776260711,
+      "score": 0.775998109,
       "source_file": "app/components/fact-check-dashboard.tsx",
       "status": "tentative",
       "uses": 1
@@ -44,7 +44,7 @@
           "q": "지금 레이아웃이 이상해 애니메이션 위치도 이상한곳에 걸쳐지고"
         }
       ],
-      "score": 0.776260711,
+      "score": 0.775998109,
       "source_file": "app/components/glide-select.tsx",
       "status": "tentative",
       "uses": 1
@@ -60,7 +60,7 @@
           "q": "지금 레이아웃이 이상해 애니메이션 위치도 이상한곳에 걸쳐지고"
         }
       ],
-      "score": 0.776260711,
+      "score": 0.775998109,
       "source_file": "app/components/glide-select.tsx",
       "status": "tentative",
       "uses": 1
@@ -76,8 +76,40 @@
           "q": "점수 판정이 이상해"
         }
       ],
-      "score": 0.776860146,
+      "score": 0.776597341,
       "source_file": "app/lib/fact-score.ts",
+      "status": "tentative",
+      "uses": 1
+    },
+    "backend_answer_synthesis_synthesisdraft": {
+      "code_fingerprint": "aade6d4d0fd53144dda72a9ad31ecad7d8485622a69b394e6fd295629b1c234f",
+      "label": "SynthesisDraft",
+      "last": "2026-10-05T14:08:35.110785+00:00",
+      "provenance": [
+        {
+          "date": "2026-10-05T14:08:35.110785+00:00",
+          "outcome": "useful",
+          "q": "사실 판정이랑 최종 답변 생성이 굉장히 오래 걸리네 구조 자체를 파악하고 어떻게 최적화 해야할지 알려줘"
+        }
+      ],
+      "score": 0.99980445,
+      "source_file": "backend/answer_synthesis.py",
+      "status": "tentative",
+      "uses": 1
+    },
+    "backend_answer_synthesis_synthesize_answer": {
+      "code_fingerprint": "aade6d4d0fd53144dda72a9ad31ecad7d8485622a69b394e6fd295629b1c234f",
+      "label": "synthesize_answer()",
+      "last": "2026-10-05T14:08:35.110785+00:00",
+      "provenance": [
+        {
+          "date": "2026-10-05T14:08:35.110785+00:00",
+          "outcome": "useful",
+          "q": "사실 판정이랑 최종 답변 생성이 굉장히 오래 걸리네 구조 자체를 파악하고 어떻게 최적화 해야할지 알려줘"
+        }
+      ],
+      "score": 0.99980445,
+      "source_file": "backend/answer_synthesis.py",
       "status": "tentative",
       "uses": 1
     },
@@ -98,7 +130,7 @@
           "q": "jev 키 입력되있음 env에 AI_GATEWAY_API_KEY=; Vercel AI Gateway Jev"
         }
       ],
-      "score": 0.00100451,
+      "score": 0.001004171,
       "source_file": "backend/jev.py",
       "status": "contested",
       "uses": 1,
@@ -120,7 +152,7 @@
           "q": "미설정으로 뜨는데? API 입력은 되있는데"
         }
       ],
-      "score": 1.552037498,
+      "score": 1.551512458,
       "source_file": "backend/main.py",
       "status": "preferred",
       "uses": 2
@@ -136,7 +168,7 @@
           "q": "지금 또 검증실패 뜸"
         }
       ],
-      "score": 0.752363656,
+      "score": 0.752109138,
       "source_file": "backend/main.py",
       "status": "tentative",
       "uses": 1
@@ -152,7 +184,7 @@
           "q": "Add DeepSeek V4.1 Flash MAX through Experiential first in the existing LLM fallback chain"
         }
       ],
-      "score": 0.997105244,
+      "score": 0.996767933,
       "source_file": "backend/providers.py",
       "status": "tentative",
       "uses": 1
@@ -173,7 +205,7 @@
           "q": "DeepSeek 출력 한도를 조정할 수 있는가?"
         }
       ],
-      "score": 1.996733204,
+      "score": 1.996057728,
       "source_file": "backend/providers.py",
       "status": "preferred",
       "uses": 2
@@ -189,7 +221,7 @@
           "q": "DeepSeek 출력 한도를 조정할 수 있는가?"
         }
       ],
-      "score": 0.997885283,
+      "score": 0.997547708,
       "source_file": "backend/providers.py",
       "status": "tentative",
       "uses": 1
@@ -205,7 +237,7 @@
           "q": "Add DeepSeek V4.1 Flash MAX through Experiential first in the existing LLM fallback chain"
         }
       ],
-      "score": 0.997105244,
+      "score": 0.996767933,
       "source_file": "backend/providers.py",
       "status": "tentative",
       "uses": 1
@@ -221,7 +253,7 @@
           "q": "DeepSeek 출력 한도를 조정할 수 있는가?"
         }
       ],
-      "score": 0.997885283,
+      "score": 0.997547708,
       "source_file": "backend/providers.py",
       "status": "tentative",
       "uses": 1
@@ -242,7 +274,7 @@
           "q": "미설정으로 뜨는데? API 입력은 되있는데"
         }
       ],
-      "score": 1.552037498,
+      "score": 1.551512458,
       "source_file": "backend/README.md",
       "status": "preferred",
       "uses": 2
@@ -263,7 +295,7 @@
           "q": "Add DeepSeek V4.1 Flash MAX through Experiential first in the existing LLM fallback chain"
         }
       ],
-      "score": 1.995953165,
+      "score": 1.995277953,
       "source_file": "backend/runtime.py",
       "status": "preferred",
       "uses": 2
@@ -279,7 +311,7 @@
           "q": "Measure True or Not backend latency with model and reasoning settings held fixed"
         }
       ],
-      "score": 0.998847921,
+      "score": 0.99851002,
       "source_file": "backend/runtime.py",
       "status": "tentative",
       "uses": 1
@@ -295,7 +327,7 @@
           "q": "지금 또 검증실패 뜸"
         }
       ],
-      "score": 0.752363656,
+      "score": 0.752109138,
       "source_file": "backend/runtime.py",
       "status": "tentative",
       "uses": 1
@@ -316,7 +348,7 @@
           "q": "지금 jev가 제대로 작동하지 않아"
         }
       ],
-      "score": 1.553242464,
+      "score": 1.552717017,
       "source_file": "backend/runtime.py",
       "status": "preferred",
       "uses": 2
@@ -332,7 +364,7 @@
           "q": "점수 판정이 이상해"
         }
       ],
-      "score": 0.776860146,
+      "score": 0.776597341,
       "source_file": "backend/scoring.py",
       "status": "tentative",
       "uses": 1
@@ -348,7 +380,7 @@
           "q": "지금 또 검증실패 뜸"
         }
       ],
-      "score": 0.752363656,
+      "score": 0.752109138,
       "source_file": "backend/streaming.py",
       "status": "tentative",
       "uses": 1
@@ -356,16 +388,53 @@
     "backend_streaming_stream_events": {
       "code_fingerprint": "ecba47ceb6ba7c95bdd29f555261e894c4e162e753c77ed855b04326f0a4e926",
       "label": "stream_events()",
-      "last": "2026-10-05T12:47:50.549502+00:00",
+      "last": "2026-10-05T14:08:35.110785+00:00",
       "provenance": [
+        {
+          "date": "2026-10-05T14:08:35.110785+00:00",
+          "outcome": "useful",
+          "q": "사실 판정이랑 최종 답변 생성이 굉장히 오래 걸리네 구조 자체를 파악하고 어떻게 최적화 해야할지 알려줘"
+        },
         {
           "date": "2026-10-05T12:47:50.549502+00:00",
           "outcome": "useful",
           "q": "Measure True or Not backend latency with model and reasoning settings held fixed"
         }
       ],
-      "score": 0.998847921,
+      "score": 1.99831447,
       "source_file": "backend/streaming.py",
+      "status": "preferred",
+      "uses": 2
+    },
+    "backend_verification_ground_judgments": {
+      "code_fingerprint": "624e4e212fb357e517777748015aed98dc5600e11516d92fe15ccbae11726fc6",
+      "label": "ground_judgments()",
+      "last": "2026-10-05T14:08:35.110785+00:00",
+      "provenance": [
+        {
+          "date": "2026-10-05T14:08:35.110785+00:00",
+          "outcome": "useful",
+          "q": "사실 판정이랑 최종 답변 생성이 굉장히 오래 걸리네 구조 자체를 파악하고 어떻게 최적화 해야할지 알려줘"
+        }
+      ],
+      "score": 0.99980445,
+      "source_file": "backend/verification.py",
+      "status": "tentative",
+      "uses": 1
+    },
+    "backend_verification_verify_claims": {
+      "code_fingerprint": "624e4e212fb357e517777748015aed98dc5600e11516d92fe15ccbae11726fc6",
+      "label": "verify_claims()",
+      "last": "2026-10-05T14:08:35.110785+00:00",
+      "provenance": [
+        {
+          "date": "2026-10-05T14:08:35.110785+00:00",
+          "outcome": "useful",
+          "q": "사실 판정이랑 최종 답변 생성이 굉장히 오래 걸리네 구조 자체를 파악하고 어떻게 최적화 해야할지 알려줘"
+        }
+      ],
+      "score": 0.99980445,
+      "source_file": "backend/verification.py",
       "status": "tentative",
       "uses": 1
     },
@@ -380,13 +449,29 @@
           "q": "지금 jev가 제대로 작동하지 않아"
         }
       ],
-      "score": 0.776382319,
+      "score": 0.776119676,
       "source_file": "backend/verification.py",
       "status": "tentative",
       "uses": 1
     },
+    "backend_workflow_build_workflow": {
+      "code_fingerprint": "c411ae84b2cd23df0a887fd1298c037bdec1c1ed8ddda1cbea7dddb2e602a706",
+      "label": "build_workflow()",
+      "last": "2026-10-05T14:08:35.110785+00:00",
+      "provenance": [
+        {
+          "date": "2026-10-05T14:08:35.110785+00:00",
+          "outcome": "useful",
+          "q": "사실 판정이랑 최종 답변 생성이 굉장히 오래 걸리네 구조 자체를 파악하고 어떻게 최적화 해야할지 알려줘"
+        }
+      ],
+      "score": 0.99980445,
+      "source_file": "backend/workflow.py",
+      "status": "tentative",
+      "uses": 1
+    },
     "handoff_nextjs_proxy_route": {
-      "code_fingerprint": "7e70adaa941e20e6d023c77fa0abfcb668b4177ac78d51e3c12a5178b2d00630",
+      "code_fingerprint": "18d4ab725c7f706e984757b5758ef58b7a416575d6c611f552036798060709df",
       "label": "Next.js → FastAPI Proxy Route (6-B, app/api/fact-check/route.ts)",
       "last": "2026-09-24T14:39:01.880631+00:00",
       "provenance": [
@@ -401,7 +486,7 @@
           "q": "미설정으로 뜨는데? API 입력은 되있는데"
         }
       ],
-      "score": 1.552037498,
+      "score": 1.551512458,
       "source_file": "HANDOFF.md",
       "status": "preferred",
       "uses": 2

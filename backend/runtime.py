@@ -12,7 +12,7 @@ from dotenv import dotenv_values
 from langgraph.graph import END, START, StateGraph
 from pydantic import BaseModel, SecretStr
 
-from answer_synthesis import eligible_sources, insufficient_answer, synthesize_answer
+from answer_synthesis import direct_fact_answer, eligible_sources, insufficient_answer, synthesize_answer
 from contracts import (
     FactCheckProgressCitation,
     FactCheckProgressClaim,
@@ -384,6 +384,9 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
                 "answerModel": None,
                 "answerReasoning": None,
             }
+        direct_answer = direct_fact_answer(state)
+        if direct_answer is not None:
+            return {"answer": direct_answer, "answerModel": None, "answerReasoning": None}
         if not eligible_sources(state):
             return {
                 "answer": insufficient_answer(),
