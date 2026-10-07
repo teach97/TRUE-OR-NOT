@@ -384,3 +384,143 @@ def test_invalid_citation_from_first_provider_retries_and_uses_next_provider_met
     assert used_provider.model == "gemini-3.7-flash"
     assert answer["model"] == "gemini-3.7-flash"
     assert answer["reasoning"] == "high"
+
+
+def test_synthesis_corrects_whitespace_and_quote_drift():
+    state = state_with_source()
+    drifted = "The  2030   forecast depends on progre"
+
+    def handler(request):
+        return completed_response(draft(quote=drifted))
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            return await synthesize_answer(
+                state,
+                client=client,
+                provider=LLMProvider("gemini", "gemini-3.8-flash", "high", "test-only"),
+            )
+
+    answer = asyncio.run(run())
+
+    assert answer["overview"]["citations"][0]["quote"] == SOURCE_TEXT[:35]
+
+
+def test_synthesis_corrects_wrapped_quotation_marks():
+    text = "그는 “사실이다”라고 말했다. 나머지는 배경 설명이다."
+    state = state_with_source(text=text)
+    wrapped = '"그는 "사실이다"라고 말했다."'
+
+    def handler(request):
+        return completed_response(draft(quote=wrapped))
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            return await synthesize_answer(
+                state,
+                client=client,
+                provider=LLMProvider("gemini", "gemini-3.8-flash", "high", "test-only"),
+            )
+
+    answer = asyncio.run(run())
+
+    assert answer["overview"]["citations"][0]["quote"] == "그는 “사실이다”라고 말했다."
+
+
+def test_synthesis_drops_bad_item_but_keeps_grounded_answer():
+    state = state_with_source()
+    value = draft()
+    value["sections"][0]["items"][0]["citations"] = [
+        {"sourceId": "s1", "quote": "원문에는 없는 인용 문장입니다."}
+    ]
+
+    def handler(request):
+        return completed_response(value)
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            return await synthesize_answer(
+                state,
+                client=client,
+                provider=LLMProvider("gemini", "gemini-3.8-flash", "high", "test-only"),
+            )
+
+    answer = asyncio.run(run())
+
+    assert answer["status"] == "grounded"
+    assert answer["sections"] == []
+    assert answer["overview"]["citations"][0]["quote"] == SOURCE_TEXT[:35]
+
+
+@pytest.mark.parametrize("ellipsis", ["…", "⋯"])
+@pytest.mark.parametrize(("text", "quote", "expected_quote"), [
+    (
+        "Background{ellipsis} The 2030   forecast depends on progress.",
+        "The 2030 forecast depends on progress.",
+        "The 2030   forecast depends on progress.",
+    ),
+    (
+        "Background{ellipsis} The 2030   forecast depends on progress. Additional context.",
+        "The 2030 forecast depends on progress.",
+        "The 2030   forecast depends on progress.",
+    ),
+    (
+        "Intro{ellipsis}{ellipsis} not eligible for treatment. More context.",
+        "not  eligible for treatment.",
+        "not eligible for treatment.",
+    ),
+    (
+        "Background{ellipsis} The 2030   forecast depends on progress.",
+        "Background... The 2030 forecast depends on progress.",
+        "Background{ellipsis} The 2030   forecast depends on progress.",
+    ),
+])
+def test_synthesis_preserves_source_span_around_expanded_ellipsis(ellipsis, text, quote, expected_quote):
+    state = state_with_source(text=text.format(ellipsis=ellipsis))
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(
+            lambda request: completed_response(draft(quote=quote)),
+        )) as client:
+            return await synthesize_answer(
+                state,
+                client=client,
+                provider=LLMProvider("gemini", "gemini-3.8-flash", "high", "test-only"),
+            )
+
+    answer = asyncio.run(run())
+
+    assert answer["status"] == "grounded"
+    assert answer["overview"]["citations"][0]["quote"] == expected_quote.format(ellipsis=ellipsis)
+
+
+def test_synthesis_drops_oversized_corrected_quote_without_provider_fallback():
+    state = state_with_source(text="Alpha  " * 330 + "final conclusion.")
+    value = draft(quote="final conclusion.")
+    value["overview"]["citations"].append({
+        "sourceId": "s1", "quote": "Alpha " * 330 + "final conclusion.",
+    })
+    providers = (
+        LLMProvider("gemini", "gemini-3.8-flash", "high", "test-only"),
+        LLMProvider("gemini", "gemini-3.7-flash", "high", "test-only"),
+    )
+    attempts = []
+
+    def handler(request):
+        attempts.append(json.loads(request.content)["model"])
+        return completed_response(value)
+
+    async def run():
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
+            return await run_with_fallback(
+                providers,
+                lambda provider: synthesize_answer(state, client=client, provider=provider),
+            )
+
+    answer, used_provider = asyncio.run(run())
+
+    assert attempts == ["gemini-3.8-flash"]
+    assert used_provider == providers[0]
+    assert answer["status"] == "grounded"
+    assert answer["overview"]["citations"] == [{"sourceId": "s1", "quote": "final conclusion."}]
+    assert answer["conclusion"]["citations"] == [{"sourceId": "s1", "quote": "final conclusion."}]
