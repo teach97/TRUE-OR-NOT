@@ -40,6 +40,9 @@ test('requires a well-formed answer and source-grounded citations', async () => 
  await assert.rejects(readFactCheckStream(response(JSON.stringify({type:'result',result:youtube}))),/결과/);
  const accepted=await readFactCheckStream(response(JSON.stringify({type:'result',result:groundedResult()})));
  assert.equal(accepted.answer.status,'grounded');
+ const failed=await readFactCheckStream(response(JSON.stringify({type:'result',result:{...result,answer:{...insufficientAnswer,status:'synthesis_failed'}}})));
+ assert.equal(failed.answer.status,'synthesis_failed');
+ await assert.rejects(readFactCheckStream(response(JSON.stringify({type:'result',result:{...result,answer:{...insufficientAnswer,status:'synthesis_failed',sections:[{kind:'supporting',title:'제목',items:[{text:'본문',citations:[]}]}]}}}))),/결과/);
 });
 test('accepts bounded matched section text and rejects malformed expanded content', async () => {
  const evidence={id:'e1',claimId:'c1',sourceId:'s1',quote:'확인된 근거 문장입니다.',quoteVerified:true,relation:'supports',sectionTitle:'4. 텔러린 앱',sectionText:'텔러린 앱은 여러 기능을 제공합니다.',sectionTruncated:false};

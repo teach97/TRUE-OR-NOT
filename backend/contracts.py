@@ -180,7 +180,7 @@ class AnswerSection(_ContractModel):
 
 
 class FactCheckAnswer(_ContractModel):
-    status: Literal["grounded", "insufficient_evidence"]
+    status: Literal["grounded", "insufficient_evidence", "synthesis_failed"]
     overview: AnswerBlock | None
     sections: list[AnswerSection] = Field(max_length=4)
     conclusion: AnswerBlock | None
@@ -198,8 +198,8 @@ class FactCheckAnswer(_ContractModel):
             or any(not block.citations for block in blocks)
         ):
             raise ValueError("Grounded answers need cited overview and conclusion")
-        if self.status == "insufficient_evidence" and self.sections:
-            raise ValueError("Insufficient answers cannot assert evidence sections")
+        if self.status in {"insufficient_evidence", "synthesis_failed"} and self.sections:
+            raise ValueError("Unusable answers cannot assert evidence sections")
         return self
 
 

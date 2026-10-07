@@ -395,11 +395,25 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
             }
 
         async def operation(provider, client):
-            return {
-                "answer": await synthesize_answer(
-                    state, client=client, provider=provider,
-                ),
-            }
+            try:
+                return {
+                    "answer": await synthesize_answer(
+                        state, client=client, provider=provider,
+                    ),
+                }
+            except ProviderCallError as exc:
+                if str(exc) != "Incomplete response" or provider.kind == "experiential":
+                    raise
+                # Token cap hit: retry once with a smaller budget instead of
+                # failing over to the next provider with the same oversized ask.
+                # Experiential ignores small caps (16,000 floor), so retrying
+                # there would repeat the identical request: let fallback handle it.
+                return {
+                    "answer": await synthesize_answer(
+                        state, client=client, provider=provider,
+                        max_output_tokens=2_000,
+                    ),
+                }
 
         update = await with_fallback(state, operation, "SYNTHESIS_FAILED")
         answer = update["answer"]
@@ -856,8 +870,9 @@ def build_runtime_workflow(
                 "sourceSections": {sid: sections for sid, sections in update.get("sourceSections", {}).items() if sid in ids}}
 
     async def synthesizing(state: FactCheckState):
+        sources_available = bool(eligible_sources(state))
         try:
-            if not eligible_sources(state):
+            if not sources_available:
                 update = {
                     "answer": insufficient_answer(),
                     "answerModel": None,
@@ -866,10 +881,12 @@ def build_runtime_workflow(
             else:
                 update = await runtime_adapters.synthesize(state)
         except ValueError as exc:
-            if str(exc) not in {"NOT_CONFIGURED", "SYNTHESIS_FAILED"}:
+            if str(exc) not in {"NOT_CONFIGURED", "SYNTHESIS_FAILED", "MODEL_FAILED"}:
                 raise
             update = {
-                "answer": insufficient_answer(),
+                "answer": insufficient_answer(
+                    status="synthesis_failed" if sources_available else "insufficient_evidence"
+                ),
                 "answerModel": None,
                 "answerReasoning": None,
             }

@@ -245,9 +245,8 @@ function AnswerOverview({answer, sources}: {answer: FactCheckAnswer; sources: Fa
   const citationState = createAnswerCitationDisplayState(sources);
   return <section className="ai-answer" aria-label="AI 개요">
     <div className="ai-answer-heading"><span className="answer-spark" aria-hidden="true">✦</span><h3><BlurText text="AI 개요"/></h3></div>
-    {answer.status === 'insufficient_evidence'
-      ? <p className="answer-insufficient" role="note">확인된 원문 근거가 부족해 AI 개요를 만들지 않았습니다. 아래 출처 목록과 주장별 판정에서 확인 가능한 내용을 살펴보세요.</p>
-      : <>
+    {answer.status === 'grounded'
+      ? <>
           {answer.overview && <div className="answer-overview-block"><AnswerBlockView block={answer.overview} sources={sources} citationState={citationState}/></div>}
           {answer.sections.map((section, sectionIndex) => <section className={`answer-section answer-section--${section.kind}`} key={`${section.kind}-${sectionIndex}`} aria-label={section.title}>
             <h4>{section.title}</h4>
@@ -256,7 +255,8 @@ function AnswerOverview({answer, sources}: {answer: FactCheckAnswer; sources: Fa
           {answer.conclusion && <section className="answer-conclusion" aria-label="정리">
             <h4>정리</h4><AnswerBlockView block={answer.conclusion} sources={sources} citationState={citationState}/>
           </section>}
-        </>}
+        </>
+      : <p className="answer-insufficient" role="note">{answer.status === 'synthesis_failed' ? 'AI 개요 생성에 실패했습니다. 주장별 판정과 출처는 그대로 확인할 수 있습니다.' : '확인된 원문 근거가 부족해 AI 개요를 만들지 않았습니다. 아래 출처 목록과 주장별 판정에서 확인 가능한 내용을 살펴보세요.'}</p>}
   </section>;
 }
 

@@ -95,10 +95,10 @@ def eligible_sources(state: FactCheckState) -> list[dict[str, str]]:
     return eligible
 
 
-def insufficient_answer() -> dict[str, object]:
+def insufficient_answer(status: str = "insufficient_evidence") -> dict[str, object]:
     """Return a fixed answer that makes no unsupported assertions."""
     return {
-        "status": "insufficient_evidence",
+        "status": status,
         "overview": None,
         "sections": [],
         "conclusion": None,
@@ -310,6 +310,7 @@ async def synthesize_answer(
     *,
     client: httpx.AsyncClient,
     provider: LLMProvider,
+    max_output_tokens: int = 4_000,
 ) -> dict[str, object]:
     """Generate and validate a grounded answer, leaving provider retries to runtime."""
     sources = eligible_sources(state)
@@ -323,7 +324,7 @@ async def synthesize_answer(
         instructions=_SYNTHESIS_INSTRUCTIONS,
         input_data=packet,
         schema=SynthesisDraft.model_json_schema(),
-        max_output_tokens=4_000,
+        max_output_tokens=max_output_tokens,
     )
     try:
         parsed = SynthesisDraft.model_validate_json(raw)

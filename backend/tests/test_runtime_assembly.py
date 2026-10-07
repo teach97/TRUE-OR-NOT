@@ -2,7 +2,8 @@
 import asyncio
 
 from contracts import FactCheckResponse
-from runtime import RuntimeAdapters, Settings, build_fact_check_result, build_runtime_workflow
+from providers import ProviderCallError
+from runtime import RuntimeAdapters, Settings, build_fact_check_result, build_runtime_workflow, make_runtime_adapters
 from pydantic import SecretStr
 
 
@@ -433,7 +434,7 @@ def test_all_synthesis_providers_failing_preserves_verified_result(monkeypatch):
     assert [evidence.id for evidence in result.evidence] == ["e1"]
     assert result.model == "gpt-6-luna"
     assert result.reasoning == "max"
-    assert result.answer.status == "insufficient_evidence"
+    assert result.answer.status == "synthesis_failed"
     assert result.answer.model is None
     assert result.answer.reasoning is None
 
@@ -527,3 +528,123 @@ def test_youtube_comment_warning_skipped_for_transcript_sources():
         "댓글" in warning
         for warning in _result_warnings(youtube, youtube_transcript_verified=True)
     )
+
+
+def test_incomplete_openai_synthesis_retries_with_smaller_cap(monkeypatch):
+    import json
+    import httpx
+    import pytest
+    import runtime
+    from runtime import make_runtime_adapters
+
+    caps = []
+    real_async_client = httpx.AsyncClient
+
+    def always_incomplete(request):
+        caps.append(json.loads(request.content)["max_output_tokens"])
+        return httpx.Response(200, json={"status": "incomplete", "output": []})
+
+    def mock_client(*args, **kwargs):
+        return real_async_client(
+            *args, transport=httpx.MockTransport(always_incomplete), **kwargs,
+        )
+
+    monkeypatch.setattr(runtime.httpx, "AsyncClient", mock_client)
+    adapters = make_runtime_adapters(Settings(api_key=SecretStr("openai-test-only")))
+
+    with pytest.raises(ValueError, match="SYNTHESIS_FAILED"):
+        asyncio.run(adapters.synthesize({
+            "sources": [{
+                "id": "s1", "url": "https://example.org/source", "title": "Example",
+                "publisher": "example.org", "accessStatus": "verified",
+                "sourceType": "기사",
+            }],
+            "sourceTexts": {"s1": "The source supports this claim."},
+        }))
+
+    assert caps == [4000, 2000]
+
+
+def test_single_model_synthesis_failure_preserves_verified_claims():
+    source = {
+        "id": "s1", "url": "https://example.org/source", "title": "Example source",
+        "publisher": "example.org", "publishedAt": None,
+        "retrievedAt": "2026-09-20T00:00:00+00:00", "accessStatus": "verified",
+        "sourceType": "기사", "originGroupId": None,
+    }
+
+    async def extract(state):
+        return {}
+
+    async def search(state):
+        return {"sources": [source]}
+
+    async def read(state):
+        return {"sources": [source], "sourceTexts": {"s1": "The source supports this claim."}}
+
+    async def verify(state):
+        return {
+            "claims": [{
+                "id": "c1", "quote": "Claim", "start": 0, "end": 5, "kind": "fact",
+                "verdictCode": "mostly_supported", "verdict": "대체로 확인됨",
+                "tone": "positive", "summary": "원문이 주장을 뒷받침합니다.",
+                "confirmed": ["Claim"], "unresolved": [], "warnings": [],
+                "evidenceIds": ["e1"],
+            }],
+            "evidence": [{
+                "id": "e1", "claimId": "c1", "sourceId": "s1",
+                "quote": "The source supports this claim.",
+                "quoteVerified": True, "relation": "supports",
+            }],
+            "llmModel": "gpt-6-luna", "llmReasoning": "max",
+        }
+
+    async def synthesize(state):
+        raise ValueError("MODEL_FAILED")
+
+    graph = build_runtime_workflow(
+        Settings(api_key=SecretStr("test-only")),
+        adapters=RuntimeAdapters(
+            extract=extract, search=search, read=read, verify=verify, synthesize=synthesize,
+        ),
+    )
+    state = asyncio.run(graph.ainvoke({"text": "Claim", "focus": "", "consent": True}))
+    result = FactCheckResponse.model_validate({"result": state["result"]}).result
+
+    assert [claim.id for claim in result.claims] == ["c1"]
+    assert [evidence.id for evidence in result.evidence] == ["e1"]
+    assert result.answer.status == "synthesis_failed"
+    assert result.answer.model is None
+    assert result.answer.reasoning is None
+
+
+def test_incomplete_synthesis_retries_once_with_smaller_budget(monkeypatch):
+    import runtime
+    from runtime import make_runtime_adapters
+
+    calls = []
+
+    async def fake_synthesize(state, client=None, provider=None, max_output_tokens=4000):
+        calls.append(max_output_tokens)
+        if len(calls) == 1:
+            raise ProviderCallError("Incomplete response")
+        return {
+            "status": "grounded", "overview": None, "sections": [],
+            "conclusion": None, "model": "gpt-6-luna", "reasoning": "max",
+        }
+
+    monkeypatch.setattr(runtime, "synthesize_answer", fake_synthesize)
+    adapters = make_runtime_adapters(Settings(api_key=SecretStr("openai-test-only")))
+
+    result = asyncio.run(adapters.synthesize({
+        "sources": [{
+            "id": "s1", "url": "https://example.org/source", "title": "Example",
+            "publisher": "example.org", "accessStatus": "verified",
+            "sourceType": "기사",
+        }],
+        "sourceTexts": {"s1": "The source supports this claim."},
+    }))
+
+    assert calls == [4000, 2000]
+    assert result["answerModel"] == "gpt-6-luna"
+    assert result["answerReasoning"] == "max"
