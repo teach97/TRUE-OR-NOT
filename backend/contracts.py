@@ -180,7 +180,7 @@ class AnswerSection(_ContractModel):
 
 
 class FactCheckAnswer(_ContractModel):
-    status: Literal["grounded", "insufficient_evidence", "synthesis_failed"]
+    status: Literal["grounded", "partial", "insufficient_evidence", "synthesis_failed"]
     overview: AnswerBlock | None
     sections: list[AnswerSection] = Field(max_length=4)
     conclusion: AnswerBlock | None
@@ -192,7 +192,7 @@ class FactCheckAnswer(_ContractModel):
         blocks = [block for block in (self.overview, self.conclusion) if block]
         blocks.extend(item for section in self.sections for item in section.items)
 
-        if self.status == "grounded" and (
+        if self.status in {"grounded", "partial"} and (
             self.overview is None
             or self.conclusion is None
             or any(not block.citations for block in blocks)

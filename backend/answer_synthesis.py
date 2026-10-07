@@ -1,5 +1,6 @@
 """Synthesize a user-facing answer from verified source text only."""
 
+import json
 from typing import Any, Literal
 
 import httpx
@@ -7,7 +8,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_valida
 
 from contracts import AnswerBlock, AnswerCitation, AnswerSection, FactCheckAnswer
 from evidence_context import claim_queries, quote_span, select_passages
-from providers import LLMProvider, ProviderCallError, request_structured
+from providers import LLMProvider, ProviderCallError, TokenLimitedText, request_structured
 from workflow import FactCheckState
 
 
@@ -396,6 +397,137 @@ def _validate_answer_grounding(
                 raise ProviderCallError("Answer citation is not grounded")
 
 
+def _complete_answer_prefix(raw: str) -> dict[str, Any]:
+    """Decode complete top-level values, not substrings inside unfinished strings."""
+    decoder = json.JSONDecoder()
+    text = raw.lstrip()
+    if not text.startswith("{"):
+        return {}
+    fields: dict[str, Any] = {}
+    pos = 1
+    try:
+        while pos < len(text):
+            pos += len(text[pos:]) - len(text[pos:].lstrip())
+            if text[pos:pos + 1] == "}":
+                break
+            key, pos = decoder.raw_decode(text, pos)
+            if key not in {"status", "overview", "sections", "conclusion"} or key in fields:
+                return {}
+            pos += len(text[pos:]) - len(text[pos:].lstrip())
+            if text[pos:pos + 1] != ":":
+                break
+            pos += 1
+            pos += len(text[pos:]) - len(text[pos:].lstrip())
+            if key == "sections" and text[pos:pos + 1] == "[":
+                fields[key] = []
+                pos += 1
+                while True:
+                    pos += len(text[pos:]) - len(text[pos:].lstrip())
+                    if text[pos:pos + 1] == "]":
+                        pos += 1
+                        break
+                    section, pos = decoder.raw_decode(text, pos)
+                    fields[key].append(section)
+                    pos += len(text[pos:]) - len(text[pos:].lstrip())
+                    if text[pos:pos + 1] != ",":
+                        if text[pos:pos + 1] == "]":
+                            pos += 1
+                        break
+                    pos += 1
+            else:
+                fields[key], pos = decoder.raw_decode(text, pos)
+            pos += len(text[pos:]) - len(text[pos:].lstrip())
+            if text[pos:pos + 1] != ",":
+                break
+            pos += 1
+    except (ValueError, TypeError):
+        pass
+    return fields if fields.get("status") == "grounded" else {}
+
+
+def _checked_block(value: Any, sources: list[dict[str, str]], passages: dict[str, list[str]]) -> AnswerBlock | None:
+    """Apply the normal citation checks to each complete recovered block."""
+    try:
+        draft = SynthesisDraft.model_validate({
+            "status": "grounded", "overview": value, "sections": [], "conclusion": value,
+        })
+        _rescue_citations(draft, sources, passages)
+        _validate_answer_grounding(draft, sources, passages)
+        if (len(draft.overview.text.encode("utf-16-le")) > 2400
+                or any(len(citation.quote.encode("utf-16-le")) > 4000
+                       or len(citation.sourceId.encode("utf-16-le")) > 200
+                       for citation in draft.overview.citations)):
+            return None
+        return draft.overview
+    except (ValidationError, ProviderCallError):
+        return None
+
+
+def _partial_answer(overview: AnswerBlock, sections: list[AnswerSection], conclusion: AnswerBlock | None,
+                    provider: LLMProvider | None = None) -> dict[str, object]:
+    return FactCheckAnswer.model_validate({
+        "status": "partial", "overview": overview, "sections": sections,
+        "conclusion": conclusion or AnswerBlock(
+            text="최종 생성이 중단되어 확인 가능한 내용만 표시합니다. 누락된 내용은 확정하지 않았습니다.",
+            citations=overview.citations,
+        ),
+        "model": provider.model if provider else None,
+        "reasoning": provider.reasoning if provider else None,
+    }).model_dump(mode="json")
+
+
+def _recover_limited_answer(raw: str, sources: list[dict[str, str]], passages: dict[str, list[str]],
+                            provider: LLMProvider) -> dict[str, object] | None:
+    fields = _complete_answer_prefix(raw)
+    overview = _checked_block(fields.get("overview"), sources, passages)
+    conclusion = _checked_block(fields.get("conclusion"), sources, passages)
+    sections = []
+    values = fields.get("sections", [])
+    if not isinstance(values, list):
+        values = []
+    for value in values[:max(1, len(sources))]:
+        try:
+            section = AnswerSection.model_validate(value)
+        except ValidationError:
+            continue
+        if len(section.title.encode("utf-16-le")) > 240:
+            continue
+        section.items = [checked for item in section.items
+                         if (checked := _checked_block(item.model_dump(), sources, passages)) is not None]
+        if section.items:
+            sections.append(section)
+    overview = overview or next((item for section in sections for item in section.items), conclusion)
+    return _partial_answer(overview, sections, conclusion, provider) if overview else None
+
+
+def _verified_claim_answer(packet: dict[str, Any], sources: list[dict[str, str]],
+                           passages: dict[str, list[str]]) -> dict[str, object] | None:
+    """Reuse linked, already checked fact summaries with all their qualifications."""
+    summaries, qualifications = [], []
+    for claim in packet["claims"]:
+        if claim.get("kind") != "fact" or claim.get("verdictCode") not in {
+            "mostly_supported", "partially_supported", "contradicted",
+        }:
+            continue
+        citations = [{"sourceId": item["sourceId"], "quote": item["quote"]}
+                     for item in packet["evidence"] if item["claimId"] == claim.get("id")][:3]
+        summary = _checked_block({"text": claim.get("summary"), "citations": citations}, sources, passages)
+        detail_text = "\n".join(text for key in ("confirmed", "unresolved", "warnings") for text in claim.get(key, []))
+        details = _checked_block({"text": detail_text, "citations": citations}, sources, passages) if detail_text else None
+        if summary and (not detail_text or details):
+            summaries.append(summary)
+            if details:
+                qualifications.append(details)
+    if not summaries:
+        return None
+    sections = []
+    if len(summaries) > 1:
+        sections.append(AnswerSection(kind="context", title="확인된 주장별 판정", items=summaries[1:]))
+    if qualifications:
+        sections.append(AnswerSection(kind="uncertainty", title="자료의 범위와 남은 사항", items=qualifications))
+    return _partial_answer(summaries[0], sections, None)
+
+
 async def synthesize_answer(
     state: FactCheckState,
     *,
@@ -416,19 +548,24 @@ async def synthesize_answer(
         input_data=packet,
         schema=SynthesisDraft.model_json_schema(),
         max_output_tokens=max_output_tokens,
+        allow_token_limit=True,
     )
-    try:
-        parsed = SynthesisDraft.model_validate_json(raw)
-    except ValidationError:
-        raise ProviderCallError("Invalid synthesis output") from None
-
-    _limit_sections_to_source_breadth(parsed, sources)
     passages = {
         source["id"]: [passage["text"] for passage in source["passages"]]
         for source in packet["sources"]
     }
-    _rescue_citations(parsed, sources, passages)
-    _validate_answer_grounding(parsed, sources, passages)
+    try:
+        parsed = SynthesisDraft.model_validate_json(raw)
+        _limit_sections_to_source_breadth(parsed, sources)
+        _rescue_citations(parsed, sources, passages)
+        _validate_answer_grounding(parsed, sources, passages)
+    except (ValidationError, ProviderCallError):
+        if isinstance(raw, TokenLimitedText):
+            recovered = (_recover_limited_answer(raw, sources, passages, provider)
+                         or _verified_claim_answer(packet, sources, passages))
+            if recovered:
+                return recovered
+        raise ProviderCallError("Invalid synthesis output") from None
     answer = FactCheckAnswer.model_validate({
         **parsed.model_dump(mode="json"),
         "model": provider.model,

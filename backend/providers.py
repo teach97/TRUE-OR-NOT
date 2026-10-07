@@ -37,6 +37,10 @@ class ProviderCallError(RuntimeError):
     """A provider attempt failed and the next configured provider may retry."""
 
 
+class TokenLimitedText(str):
+    """Final-channel text from an output-limit termination, never reasoning."""
+
+
 def openai_provider(api_key: str | None) -> LLMProvider:
     return LLMProvider("openai", "gpt-6-luna", "max", api_key or "")
 
@@ -275,20 +279,25 @@ def _search_payload(
     }
 
 
-def _response_json(response: httpx.Response, *, chat_completion: bool = False) -> dict[str, Any]:
+def _response_json(
+    response: httpx.Response, *, chat_completion: bool = False, allow_token_limit: bool = False,
+) -> dict[str, Any]:
     response.raise_for_status()
     if len(response.content) > _MAX_RESPONSE_BYTES:
         raise ProviderCallError("Response too large")
     data = response.json()
     if not isinstance(data, dict):
         raise ProviderCallError("Invalid response")
-    if not chat_completion and data.get("status") != "completed":
+    details = data.get("incomplete_details")
+    token_limited = (data.get("status") == "incomplete" and isinstance(details, dict)
+                     and details.get("reason") in {"max_output_tokens", "max_tokens"})
+    if not chat_completion and data.get("status") != "completed" and not (allow_token_limit and token_limited):
         raise ProviderCallError("Incomplete response")
     return data
 
 
-def _experiential_text(data: dict[str, Any]) -> str:
-    """Keep final JSON only; never treat reasoning or partial output as an answer."""
+def _experiential_text(data: dict[str, Any], *, allow_token_limit: bool = False) -> str:
+    """Keep final-channel text only; synthesis separately validates limited output."""
     ignored = data.get("x-experiential-ignored-parameters", [])
     if "reasoning_effort" in ignored or "reasoning" in ignored:
         raise ProviderCallError("Requested reasoning was not honored")
@@ -297,15 +306,20 @@ def _experiential_text(data: dict[str, Any]) -> str:
         raise ProviderCallError("Invalid structured response")
     choice = choices[0]
     message = choice.get("message")
-    if choice.get("finish_reason") != "stop" or not isinstance(message, dict):
+    limited = allow_token_limit and choice.get("finish_reason") == "length"
+    if (choice.get("finish_reason") != "stop" and not limited) or not isinstance(message, dict):
         raise ProviderCallError("Incomplete response")
     text = message.get("content")
+    if limited and text is None:
+        text = ""
+    if limited and not message.get("refusal") and not message.get("tool_calls") and isinstance(text, str):
+        return TokenLimitedText(text)
     if message.get("refusal") or message.get("tool_calls") or not isinstance(text, str) or not text.strip():
         raise ProviderCallError("Invalid structured response")
     return text
 
 
-def _openai_text(data: dict[str, Any]) -> str:
+def _openai_text(data: dict[str, Any], *, allow_empty: bool = False) -> str:
     parts = [
         part
         for item in data.get("output", [])
@@ -314,13 +328,17 @@ def _openai_text(data: dict[str, Any]) -> str:
     ]
     if any(part.get("type") == "refusal" for part in parts):
         raise ProviderCallError("Refusal")
+    if allow_empty and any(item.get("type") in {"function_call", "custom_tool_call"} for item in data.get("output", [])):
+        raise ProviderCallError("Invalid structured response")
     texts = [part.get("text") for part in parts if part.get("type") == "output_text"]
+    if not texts and allow_empty:
+        return ""
     if len(texts) != 1 or not isinstance(texts[0], str):
         raise ProviderCallError("Invalid structured response")
     return texts[0]
 
 
-def _gemini_text(data: dict[str, Any]) -> str:
+def _gemini_text(data: dict[str, Any], *, allow_empty: bool = False) -> str:
     output_text = data.get("output_text")
     if isinstance(output_text, str) and output_text.strip():
         return output_text
@@ -331,6 +349,8 @@ def _gemini_text(data: dict[str, Any]) -> str:
         for content in step.get("content", []):
             if content.get("type") == "text" and isinstance(content.get("text"), str):
                 texts.append(content["text"])
+    if not texts and allow_empty:
+        return ""
     if len(texts) != 1:
         raise ProviderCallError("Invalid structured response")
     return texts[0]
@@ -344,6 +364,7 @@ async def request_structured(
     input_data: dict[str, Any],
     schema: dict[str, Any],
     max_output_tokens: int,
+    allow_token_limit: bool = False,
 ) -> str:
     """Call a provider's structured-output endpoint and return only model text."""
     if not provider.api_key.strip():
@@ -363,10 +384,13 @@ async def request_structured(
             headers=headers,
             timeout=90,
         )
-        data = _response_json(response, chat_completion=provider.kind == "experiential")
+        data = _response_json(response, chat_completion=provider.kind == "experiential", allow_token_limit=allow_token_limit)
         if provider.kind == "experiential":
-            return _experiential_text(data)
-        return _openai_text(data) if provider.kind == "openai" else _gemini_text(data)
+            return _experiential_text(data, allow_token_limit=allow_token_limit)
+        limited = allow_token_limit and data.get("status") == "incomplete"
+        text = (_openai_text(data, allow_empty=limited) if provider.kind == "openai"
+                else _gemini_text(data, allow_empty=limited))
+        return TokenLimitedText(text) if limited else text
     except ProviderCallError:
         raise
     except (httpx.HTTPError, TimeoutError, ValueError, KeyError, TypeError) as exc:

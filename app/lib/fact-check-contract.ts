@@ -50,7 +50,7 @@ export type AnswerSection = {
   items: AnswerBlock[];
 };
 export type FactCheckAnswer = {
-  status: 'grounded' | 'insufficient_evidence' | 'synthesis_failed';
+  status: 'grounded' | 'partial' | 'insufficient_evidence' | 'synthesis_failed';
   overview: AnswerBlock | null;
   sections: AnswerSection[];
   conclusion: AnswerBlock | null;
