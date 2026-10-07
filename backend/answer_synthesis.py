@@ -5,7 +5,7 @@ from typing import Any, Literal
 import httpx
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
-from contracts import AnswerBlock, AnswerSection, FactCheckAnswer
+from contracts import AnswerBlock, AnswerCitation, AnswerSection, FactCheckAnswer
 from evidence_context import claim_queries, quote_span, select_passages
 from providers import LLMProvider, ProviderCallError, request_structured
 from workflow import FactCheckState
@@ -312,8 +312,8 @@ def _find_citation_span(text: str, quote: str) -> str | None:
                 folded_chars.append(" ")
                 index_map.append(pos)
         else:
-            folded_chars.append(folded)
-            index_map.append(pos)
+            folded_chars.extend(folded)
+            index_map.extend([pos] * len(folded))
     position = "".join(folded_chars).find(folded_quote)
     if position < 0:
         return None
@@ -352,8 +352,13 @@ def _rescue_citations(
                     continue
                 span = _find_citation_span(passage, citation.quote)
                 if span is not None:
-                    citation.quote = span
-                    kept.append(citation)
+                    try:
+                        corrected = AnswerCitation.model_validate({
+                            "sourceId": citation.sourceId, "quote": span,
+                        })
+                    except ValidationError:
+                        continue
+                    kept.append(corrected)
                     break
         return kept
 
