@@ -203,7 +203,11 @@ def test_runtime_uses_capped_recovery_without_smaller_retry_or_next_provider(mon
     adapters = runtime.make_runtime_adapters(runtime.Settings(
         api_key=SecretStr("test-only"), gemini_api_key=SecretStr("next-test-only"),
     ))
-    result = asyncio.run(adapters.synthesize(verified_state()))
+    # Mixed fact/forecast answers still use synthesis; only the fact is recoverable.
+    state = verified_state()
+    state["claims"].append({"id": "c2", "kind": "prediction", "verdictCode": "not_checkable",
+                            "summary": "미래 전망은 확정하지 않았습니다.", "evidenceIds": []})
+    result = asyncio.run(adapters.synthesize(state))
     assert result["answer"]["status"] == "partial"
     assert result["answerModel"] is None
     assert calls == [4000]

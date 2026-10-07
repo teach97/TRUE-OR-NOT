@@ -237,7 +237,7 @@ def test_repeated_verified_quote_keeps_each_distinct_date_and_place_context():
     assert len(seen["sources"][0]["passages"]) == 2
 
 
-@pytest.mark.parametrize("kind,expected_calls", [("fact", 3), ("prediction", 2)])
+@pytest.mark.parametrize("kind,expected_calls", [("fact", 2), ("prediction", 2)])
 def test_real_runtime_stream_finishes_with_late_grounded_passages(monkeypatch, kind, expected_calls):
     quote = SUPPORT if kind == "fact" else "In 2025 Demis forecast AGI around 2030."
     state = state_for("DO-NOT-SEND-LEAD " + FILLER * 180 + quote + " This is not a guaranteed schedule.", kind)
@@ -285,7 +285,8 @@ def test_real_runtime_stream_finishes_with_late_grounded_passages(monkeypatch, k
     result = FactCheckResponse.model_validate({"result": events[-1]["result"]}).result
     assert result.answer.status == "grounded"
     assert result.answer.overview.citations[0].quote == quote
-    assert result.answer.model == "deepseek-v4.1-flash" and result.answer.reasoning == "max"
+    assert result.answer.model == (None if kind == "fact" else "deepseek-v4.1-flash")
+    assert result.answer.reasoning == (None if kind == "fact" else "max")
     assert result.sources[0].url == "https://example.org/record"
     assert result.claims[0].verdictCode == ("mostly_supported" if kind == "fact" else "not_checkable")
     assert all("DO-NOT-SEND" not in json.dumps(json.loads(r["messages"][1]["content"]), ensure_ascii=False)

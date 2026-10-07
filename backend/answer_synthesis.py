@@ -109,79 +109,110 @@ def insufficient_answer(status: str = "insufficient_evidence") -> dict[str, obje
 
 
 def direct_fact_answer(state: FactCheckState) -> dict[str, object] | None:
-    """Compose a short fact question from grounded judgments, not another model."""
-    question = _string_value(state.get("text")).strip()
+    """Present final grounded fact judgments without asking a model to rewrite them."""
     claims = state.get("claims", [])
     if (
-        not question.endswith(("?", "？"))
-        or question.count("?") + question.count("？") != 1
-        or len(question.encode("utf-16-le")) > 240
-        or state.get("linkUrl")
-        or state.get("image") is not None
-        or state.get("jevMode")
-        or state.get("recoveryRequested")
-        or not isinstance(claims, list) or len(claims) != 1
+        state.get("jevMode") or not isinstance(claims, list) or not 1 <= len(claims) <= 3
+        or any(not isinstance(claim, dict) or claim.get("kind") not in {"fact", "unclear"}
+               for claim in claims)
     ):
         return None
-    claim = claims[0]
-    if not isinstance(claim, dict) or claim.get("kind") != "fact" or claim.get("warnings"):
-        return None
-    relation = {"mostly_supported": "supports", "contradicted": "contradicts"}.get(claim.get("verdictCode"))
-    if relation is None:
-        return None
-
-    summary = _string_value(claim.get("summary"))
-    confirmed, unresolved = claim.get("confirmed", []), claim.get("unresolved", [])
-    if (
-        not isinstance(confirmed, list) or not isinstance(unresolved, list)
-        or len(confirmed) > 3 or len(unresolved) > 3
-        or any(not isinstance(text, str) or not text.strip() or len(text.encode("utf-16-le")) > 2400
-               for text in [summary, *confirmed, *unresolved])
-        or any("CONDITION_UNKNOWN" in text for text in unresolved)
-    ):
+    if all(claim.get("verdictCode") == "insufficient_evidence" for claim in claims):
+        return insufficient_answer()
+    relations = {
+        "mostly_supported": ("supports",), "partially_supported": ("supports",),
+        "contradicted": ("contradicts",), "conflicting_sources": ("supports", "contradicts"),
+        "missing_context": (),
+    }
+    if any(claim.get("verdictCode") not in relations for claim in claims):
         return None
 
     sources = eligible_sources(state)
     source_texts = {source["id"]: source["text"] for source in sources}
     evidence = {item["id"]: item for item in state.get("evidence", [])
                 if isinstance(item, dict) and isinstance(item.get("id"), str)}
-    citations, seen = [], set()
-    for evidence_id in claim.get("evidenceIds", []):
-        item = evidence.get(evidence_id, {})
-        source_id, quote = item.get("sourceId"), item.get("quote")
-        if (
-            item.get("claimId") != claim.get("id")
-            or item.get("quoteVerified") is not True
-            or source_id not in source_texts
-            or not isinstance(quote, str) or len(quote) < 10 or len(quote.encode("utf-16-le")) > 4000
-            or quote not in source_texts[source_id]
-        ):
+    summaries, confirmations, uncertainties = [], [], []
+    for index, claim in enumerate(claims):
+        texts = {key: claim.get(key, []) for key in ("confirmed", "unresolved", "warnings")}
+        if any(not isinstance(value, list) or len(value) > 5
+               or any(not isinstance(text, str) or not text.strip() for text in value)
+               for value in texts.values()):
             return None
-        identity = (source_id, quote)
-        if item.get("relation") == relation and identity not in seen:
-            seen.add(identity)
-            citations.append({"sourceId": source_id, "quote": quote})
-    if not citations:
-        return None
-    citations = citations[:3]
+        linked_ids = claim.get("evidenceIds", [])
+        if not isinstance(linked_ids, list) or not linked_ids:
+            return None
+        valid, seen = [], set()
+        for evidence_id in linked_ids:
+            item = evidence.get(evidence_id, {})
+            source_id, quote = item.get("sourceId"), item.get("quote")
+            if (
+                item.get("claimId") != claim.get("id") or item.get("quoteVerified") is not True
+                or not isinstance(source_id, str) or source_id not in source_texts
+                or item.get("relation") not in {"supports", "contradicts", "context"}
+                or not isinstance(quote, str) or len(quote) < 10 or len(quote.encode("utf-16-le")) > 4000
+                or quote not in source_texts[source_id]
+            ):
+                return None
+            identity = (source_id, quote)
+            if identity not in seen:
+                seen.add(identity)
+                valid.append(item)
+        required = relations[claim["verdictCode"]]
+        selected = []
+        if claim["verdictCode"] == "conflicting_sources":
+            selected = next(([support, counter] for support in valid if support["relation"] == "supports"
+                             for counter in valid if counter["relation"] == "contradicts"
+                             and support["sourceId"] != counter["sourceId"]), None)
+            if selected is None:
+                return None
+        else:
+            for relation in required:
+                item = next((item for item in valid if item["relation"] == relation), None)
+                if item is None:
+                    return None
+                selected.append(item)
+        selected.extend(item for item in valid if item not in selected
+                        and (not required or item["relation"] in required))
+        citations = [{"sourceId": item["sourceId"], "quote": item["quote"]} for item in selected[:3]]
+        if not citations:
+            return None
+        summaries.append({"text": claim.get("summary"), "citations": citations})
+        prefix = f"주장 {index + 1}:\n" if len(claims) > 1 else ""
+        if texts["confirmed"]:
+            confirmations.append({"text": prefix + "\n".join(texts["confirmed"]), "citations": citations})
+        conditions = [*texts["unresolved"], *texts["warnings"]]
+        if conditions:
+            uncertainties.append({"text": prefix + "\n".join(conditions), "citations": citations})
 
     sections = []
-    for kind, title, texts in (
-        ("supporting" if relation == "supports" else "counter", "확인된 내용", confirmed),
-        ("uncertainty", "자료의 범위와 남은 사항", unresolved),
+    confirmed_kind = "context" if len(claims) > 1 else {
+        "mostly_supported": "supporting", "partially_supported": "supporting", "contradicted": "counter",
+    }.get(claims[0]["verdictCode"], "context")
+    for kind, title, items in (
+        ("context", "그 밖의 주장 판정", summaries[1:]),
+        (confirmed_kind, "확인된 내용", confirmations),
+        ("uncertainty", "자료의 범위와 남은 사항", uncertainties),
     ):
-        if texts:
-            sections.append({"kind": kind, "title": title,
-                             "items": [{"text": text, "citations": citations} for text in texts]})
-    conclusion = ("제공된 직접 인용은 해당 주장을 뒷받침합니다." if relation == "supports"
-                  else "제공된 직접 인용은 해당 주장을 반박합니다.")
-    if len({citation["sourceId"] for citation in citations}) == 1:
+        if items:
+            sections.append({"kind": kind, "title": title, "items": items})
+    conclusion = "위 판정은 제공된 직접 인용에 근거하며, 확인되지 않은 조건은 확정하지 않았습니다."
+    if len({citation["sourceId"] for summary in summaries for citation in summary["citations"]}) == 1:
         conclusion += " 이 답변은 하나의 출처에 근거합니다."
-    draft = SynthesisDraft.model_validate({
-        "status": "grounded", "overview": {"text": summary, "citations": citations},
-        "sections": sections, "conclusion": {"text": conclusion, "citations": citations},
-    })
-    _validate_answer_grounding(draft, sources)
+    blocks = [*summaries, *confirmations, *uncertainties]
+    if any(not isinstance(block["text"], str) or not block["text"].strip()
+           or len(block["text"].encode("utf-16-le")) > 2400 for block in blocks):
+        return None
+    try:
+        draft = SynthesisDraft.model_validate({
+            "status": "grounded", "overview": summaries[0], "sections": sections,
+            "conclusion": {"text": conclusion, "citations": summaries[0]["citations"]},
+        })
+        packet = _synthesis_input(state, sources)
+        passages = {source["id"]: [passage["text"] for passage in source["passages"]]
+                    for source in packet["sources"]}
+        _validate_answer_grounding(draft, sources, passages)
+    except (ValidationError, ProviderCallError):
+        return None
     return FactCheckAnswer.model_validate({
         **draft.model_dump(mode="json"), "model": None, "reasoning": None,
     }).model_dump(mode="json")

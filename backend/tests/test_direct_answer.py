@@ -95,27 +95,12 @@ def test_simple_grounded_fact_reuses_text_citations_and_skips_provider(monkeypat
 
 
 @pytest.mark.parametrize("path,value", [
-    (("text",), "상세 설명 요청입니다. " * 15 + QUESTION),
-    (("text",), "🌕" * 60 + "?"),
-    (("text",), "인류는 달에 갔습니다."),
-    (("text",), "인류는 달에 갔나? 화성에도 갔나?"),
     (("claims", 0, "kind"), "prediction"),
     (("claims", 0, "kind"), "opinion"),
-    (("claims", 0, "kind"), "unclear"),
-    (("claims", 0, "verdictCode"), "partially_supported"),
     (("claims", 0, "verdictCode"), "conflicting_sources"),
-    (("claims", 0, "verdictCode"), "missing_context"),
-    (("claims", 0, "verdictCode"), "insufficient_evidence"),
-    (("claims", 0, "warnings"), ["확인하지 못한 조건이 있습니다."]),
-    (("claims", 0, "unresolved"), ["CONDITION_UNKNOWN"]),
     (("claims", 0, "summary"), "가" * 1201),
     (("claims", 0, "summary"), "🌕" * 601),
-    (("claims", 0, "confirmed"), ["확인 내용"] * 4),
-    (("claims", 0, "unresolved"), ["미해결 내용"] * 4),
     (("claims", 0, "confirmed"), ["가" * 1201]),
-    (("linkUrl",), "https://example.org/input"),
-    (("image",), {"mime": "image/png", "data": "test-only"}),
-    (("recoveryRequested",), True),
     (("evidence", 0, "quoteVerified"), False),
     (("evidence", 0, "quote"), "원문에는 없는 인용 문장입니다."),
     (("evidence", 0, "sourceId"), "unknown"),
@@ -123,7 +108,7 @@ def test_simple_grounded_fact_reuses_text_citations_and_skips_provider(monkeypat
     (("evidence", 0, "id"), "other-evidence"),
     (("evidence", 0, "relation"), "context"),
 ], ids=lambda value: str(value)[:30])
-def test_complex_or_unusable_fact_keeps_existing_provider_path(monkeypatch, path, value):
+def test_unusable_fact_keeps_existing_provider_path(monkeypatch, path, value):
     state = checked_state()
     target = state
     for part in path[:-1]:
@@ -143,6 +128,164 @@ def test_complex_or_unusable_fact_keeps_existing_provider_path(monkeypatch, path
     assert requests[0]["reasoning_effort"] == "max"
     assert result["answer"]["overview"]["text"] == "기존 합성 경로 응답입니다."
     assert result["answer"]["model"] == "deepseek-v4.1-flash"
+
+
+@pytest.mark.parametrize("path,value", [
+    (("text",), "상세 설명 요청입니다. " * 15 + QUESTION),
+    (("text",), "🌕" * 60 + "?"),
+    (("text",), "인류는 달에 갔습니다."),
+    (("text",), "인류는 달에 갔나? 화성에도 갔나?"),
+    (("claims", 0, "kind"), "unclear"),
+    (("claims", 0, "verdictCode"), "partially_supported"),
+    (("claims", 0, "verdictCode"), "missing_context"),
+    (("claims", 0, "warnings"), ["확인하지 못한 조건이 있습니다."]),
+    (("claims", 0, "unresolved"), ["CONDITION_UNKNOWN"]),
+    (("claims", 0, "confirmed"), ["확인 내용"] * 4),
+    (("claims", 0, "unresolved"), ["미해결 내용"] * 4),
+    (("linkUrl",), "https://example.org/input"),
+    (("image",), {"mime": "image/png", "data": "test-only"}),
+    (("recoveryRequested",), True),
+], ids=lambda value: str(value)[:30])
+def test_verified_general_fact_finishes_without_rewriting_or_losing_conditions(monkeypatch, path, value):
+    state = checked_state()
+    target = state
+    for part in path[:-1]:
+        target = target[part]
+    target[path[-1]] = value
+    before = deepcopy(state)
+    requests = []
+
+    def handler(request):
+        requests.append(request)
+        return completion(generated_answer())
+
+    result = asyncio.run(provider_adapters(monkeypatch, handler).synthesize(state))
+    assert requests == []
+    answer = result["answer"]
+    assert answer["status"] == "grounded"
+    assert answer["overview"]["text"] == SUMMARY
+    assert answer["model"] is None and answer["reasoning"] is None
+    rendered = json.dumps(answer, ensure_ascii=False)
+    for text in [*state["claims"][0]["confirmed"], *state["claims"][0]["unresolved"], *state["claims"][0]["warnings"]]:
+        assert text in rendered
+    assert state == before
+
+
+def test_verified_multiple_claims_all_appear_without_provider_synthesis(monkeypatch):
+    state = checked_state()
+    state["sources"].append({**state["sources"][0], "id": "s2", "url": "https://example.net/apollo12"})
+    state["sourceTexts"]["s2"] = "Apollo 12 landed humans on the Moon in November 1969."
+    state["claims"].append({**state["claims"][0], "id": "c2", "summary": "아폴로 12호도 달에 착륙했습니다.",
+                            "confirmed": ["1969년 11월 임무입니다."], "unresolved": ["다른 탐사선의 기록은 별도입니다."],
+                            "warnings": ["이번 확인 범위는 두 임무입니다."], "evidenceIds": ["e2"]})
+    state["evidence"].append({**state["evidence"][0], "id": "e2", "claimId": "c2", "sourceId": "s2",
+                              "quote": "Apollo 12 landed humans on the Moon in November 1969."})
+    requests = []
+
+    def handler(request):
+        requests.append(request)
+        return completion(generated_answer())
+
+    answer = asyncio.run(provider_adapters(monkeypatch, handler).synthesize(state))["answer"]
+    assert requests == []
+    assert answer["status"] == "grounded"
+    assert answer["overview"]["text"] == SUMMARY
+    blocks = [answer["overview"], answer["conclusion"], *[item for section in answer["sections"] for item in section["items"]]]
+    rendered = json.dumps(answer, ensure_ascii=False)
+    for text in ["아폴로 12호도 달에 착륙했습니다.", "1969년 11월 임무입니다.", "다른 탐사선의 기록은 별도입니다.", "이번 확인 범위는 두 임무입니다."]:
+        assert text in rendered
+    assert {citation["sourceId"] for block in blocks for citation in block["citations"]} == {"s1", "s2"}
+
+
+@pytest.mark.parametrize("same_source_counter_first", [False, True])
+def test_conflicting_judgment_preserves_both_directions_without_new_generation(monkeypatch, same_source_counter_first):
+    state = checked_state()
+    state["claims"][0].update(verdictCode="conflicting_sources", summary="같은 조건에서 자료들이 서로 다른 내용을 전합니다.")
+    state["sources"].append({**state["sources"][0], "id": "s2", "url": "https://example.net/counter"})
+    state["sourceTexts"]["s2"] = "This source contradicts the supplied claim under the same conditions."
+    state["evidence"].append({**state["evidence"][0], "id": "e2", "sourceId": "s2", "relation": "contradicts",
+                              "quote": state["sourceTexts"]["s2"]})
+    state["claims"][0]["evidenceIds"].append("e2")
+    if same_source_counter_first:
+        quote = "This article also reports an opposing view under the same conditions."
+        state["sourceTexts"]["s1"] += " " + quote
+        state["evidence"].insert(1, {**state["evidence"][0], "id": "e0", "quote": quote, "relation": "contradicts"})
+        state["claims"][0]["evidenceIds"].insert(1, "e0")
+    requests = []
+
+    def handler(request):
+        requests.append(request)
+        return completion(generated_answer())
+
+    answer = asyncio.run(provider_adapters(monkeypatch, handler).synthesize(state))["answer"]
+    assert requests == []
+    assert answer["overview"]["text"] == "같은 조건에서 자료들이 서로 다른 내용을 전합니다."
+    assert {citation["sourceId"] for citation in answer["overview"]["citations"]} == {"s1", "s2"}
+
+
+def test_fact_judgments_with_no_evidence_finish_as_insufficient_without_another_call(monkeypatch):
+    state = checked_state()
+    state["claims"][0].update(verdictCode="insufficient_evidence", summary="직접 근거가 없어 확인하지 못했습니다.", evidenceIds=[])
+    state["evidence"] = []
+    requests = []
+
+    def handler(request):
+        requests.append(request)
+        return completion(generated_answer())
+
+    result = asyncio.run(provider_adapters(monkeypatch, handler).synthesize(state))
+    assert requests == []
+    assert result["answer"]["status"] == "insufficient_evidence"
+    assert state["claims"][0]["summary"] == "직접 근거가 없어 확인하지 못했습니다."
+
+
+def test_research_finishes_before_composing_only_the_latest_verified_judgment(monkeypatch):
+    state = checked_state()
+    requests, searches = [], []
+    final_source = {**state["sources"][0], "id": "s2", "url": "https://example.net/verified-apollo"}
+
+    def handler(request):
+        requests.append(json.loads(request.content))
+        if len(requests) == 1:
+            return completion({"claims": [{"quote": QUESTION, "kind": "fact", "searchQuery": "달 착륙 기록"}]})
+        retry = len(requests) == 3
+        return completion({"claims": [{
+            "claimId": "c1", "verdictCode": "partially_supported", "factScore": 65,
+            "summary": SUMMARY if retry else "검증 전 임시 요약입니다.",
+            "confirmed": [CONFIRMED], "unresolved": [UNRESOLVED],
+            "evidence": [{"sourceId": "s2" if retry else "s1", "quote": QUOTE if retry else "Fabricated quotation that is not in this source.",
+                          "quoteTranslation": "달 착륙 기록입니다.", "relation": "supports", "comparison": "same"}],
+        }]})
+
+    adapters = provider_adapters(monkeypatch, handler)
+
+    async def search(current):
+        searches.append(current.get("recoveryCount", 0))
+        return {"sources": [deepcopy(final_source if len(searches) == 2 else state["sources"][0])]}
+
+    async def read(current):
+        return {"sources": current["sources"], "sourceTexts": {current["sources"][0]["id"]: QUOTE}}
+
+    graph = build_runtime_workflow(Settings(api_key=SecretStr(""), explabs_api_key=SecretStr("test-only")), adapters=RuntimeAdapters(
+        extract=adapters.extract, search=search, read=read, verify=adapters.verify, synthesize=adapters.synthesize,
+    ))
+
+    async def run():
+        return [json.loads(event) async for event in stream_events(graph, {
+            "text": QUESTION, "focus": "", "consent": True, "modelPreference": "deepseek-v4.1-flash",
+        })]
+
+    events = asyncio.run(run())
+    result = FactCheckResponse.model_validate({"result": events[-1]["result"]}).result
+    assert searches == [0, 1]
+    assert len(requests) == 3  # Extraction plus two verifications, no synthesis request.
+    assert result.answer.status == "grounded"
+    assert result.answer.overview.text == SUMMARY
+    assert result.answer.overview.citations[0].sourceId == "s2"
+    assert result.claims[0].factScore == 65
+    assert "검증 전 임시 요약" not in json.dumps(result.model_dump(mode="json"), ensure_ascii=False)
+    assert [event["type"] for event in events].count("preview") == 1
+    assert any("재탐색" in warning for warning in result.warnings)
 
 
 @pytest.mark.parametrize("changes", [
@@ -206,7 +349,8 @@ def test_direct_answer_keeps_multiple_supporting_sources(monkeypatch):
     assert "하나의 출처" not in result["answer"]["conclusion"]["text"]
 
 
-def test_runtime_stream_finishes_with_two_llm_requests_and_preserves_verification(monkeypatch):
+@pytest.mark.parametrize("code,score", [("mostly_supported", 90), ("partially_supported", 65)])
+def test_runtime_stream_finishes_with_two_llm_requests_and_preserves_verification(monkeypatch, code, score):
     state = checked_state()
     requests = []
 
@@ -217,7 +361,7 @@ def test_runtime_stream_finishes_with_two_llm_requests_and_preserves_verificatio
             return completion({"claims": [{"quote": QUESTION, "kind": "fact", "searchQuery": "아폴로 11 달 착륙"}]})
         if len(requests) == 2:
             return completion({"claims": [{
-                "claimId": "c1", "verdictCode": "mostly_supported", "factScore": 90,
+                "claimId": "c1", "verdictCode": code, "factScore": score,
                 "summary": SUMMARY, "confirmed": [CONFIRMED], "unresolved": [UNRESOLVED],
                 "evidence": [{"sourceId": "s1", "quote": QUOTE, "quoteTranslation": state["evidence"][0]["quoteTranslation"],
                               "relation": "supports", "comparison": "same"}],
@@ -253,7 +397,8 @@ def test_runtime_stream_finishes_with_two_llm_requests_and_preserves_verificatio
     assert result.answer.overview.text == SUMMARY
     assert result.answer.model is None and result.answer.reasoning is None
     assert result.model == "deepseek-v4.1-flash" and result.reasoning == "max"
-    assert result.claims[0].verdictCode == "mostly_supported"
+    assert result.claims[0].verdictCode == code
+    assert result.claims[0].factScore == score
     assert result.evidence[0].quote == QUOTE and result.evidence[0].quoteVerified is True
     assert result.evidence[0].quoteTranslation == "아폴로 11호는 1969년 7월 인간을 달에 착륙시켰습니다."
     assert result.sources[0].url == "https://example.org/apollo"

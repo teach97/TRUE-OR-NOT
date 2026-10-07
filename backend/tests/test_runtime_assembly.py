@@ -1,5 +1,6 @@
 """Runtime assembly tests; explicit adapters keep the five-node graph offline."""
 import asyncio
+import pytest
 
 from contracts import FactCheckResponse
 from providers import ProviderCallError
@@ -362,7 +363,8 @@ def test_runtime_synthesis_skips_provider_without_verified_source_text(monkeypat
     assert result["answerReasoning"] is None
 
 
-def test_all_synthesis_providers_failing_preserves_verified_result(monkeypatch):
+@pytest.mark.parametrize("mixed_forecast", [False, True])
+def test_verified_result_skips_synthesis_or_survives_provider_failure_for_mixed_forecast(monkeypatch, mixed_forecast):
     import json
     import httpx
     import runtime
@@ -403,7 +405,7 @@ def test_all_synthesis_providers_failing_preserves_verified_result(monkeypatch):
         return {"sources": [source], "sourceTexts": {"s1": "The source supports this claim."}}
 
     async def verify(state):
-        return {
+        update = {
             "claims": [{
                 "id": "c1", "quote": "Claim", "start": 0, "end": 5, "kind": "fact",
                 "verdictCode": "mostly_supported", "verdict": "대체로 확인됨",
@@ -418,6 +420,14 @@ def test_all_synthesis_providers_failing_preserves_verified_result(monkeypatch):
             }],
             "llmModel": "gpt-6-luna", "llmReasoning": "max",
         }
+        if mixed_forecast:
+            update["claims"].append({
+                "id": "c2", "quote": "Forecast", "start": 6, "end": 14, "kind": "prediction",
+                "verdictCode": "not_checkable", "verdict": "검증 대상 아님", "tone": "neutral",
+                "summary": "미래 예측은 확정하지 않았습니다.", "confirmed": [],
+                "unresolved": ["실현 시기는 미확정입니다."], "warnings": [], "evidenceIds": [],
+            })
+        return update
 
     graph = build_runtime_workflow(
         settings,
@@ -426,15 +436,15 @@ def test_all_synthesis_providers_failing_preserves_verified_result(monkeypatch):
             synthesize=provider_adapters.synthesize,
         ),
     )
-    state = asyncio.run(graph.ainvoke({"text": "Claim", "focus": "", "consent": True}))
+    state = asyncio.run(graph.ainvoke({"text": "Claim Forecast" if mixed_forecast else "Claim", "focus": "", "consent": True}))
     result = FactCheckResponse.model_validate({"result": state["result"]}).result
 
-    assert attempted_models == ["gpt-6-luna", "gemini-3.8-flash", "gemini-3.7-flash"]
-    assert [claim.id for claim in result.claims] == ["c1"]
+    assert attempted_models == (["gpt-6-luna", "gemini-3.8-flash", "gemini-3.7-flash"] if mixed_forecast else [])
+    assert [claim.id for claim in result.claims] == (["c1", "c2"] if mixed_forecast else ["c1"])
     assert [evidence.id for evidence in result.evidence] == ["e1"]
     assert result.model == "gpt-6-luna"
     assert result.reasoning == "max"
-    assert result.answer.status == "synthesis_failed"
+    assert result.answer.status == ("synthesis_failed" if mixed_forecast else "grounded")
     assert result.answer.model is None
     assert result.answer.reasoning is None
 
