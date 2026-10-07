@@ -393,6 +393,7 @@ export default function FactCheckDashboard() {
   const request = useRef<AbortController | null>(null);
   const generation = useRef(0);
   const messageCounter = useRef(0);
+  const cancelNoticed = useRef(false);
   const [image, setImage] = useState<{mime: AttachedImage['mime']; data: string; preview: string} | null>(null);
   const fileInput = useRef<HTMLInputElement>(null);
   const [configured, setConfigured] = useState<boolean | null>(null);
@@ -522,6 +523,7 @@ export default function FactCheckDashboard() {
   }
 
   function cancelVerification() {
+    if (request.current) cancelNoticed.current = true;
     stop();
     dispatch({type: 'cancel'});
     setMessages(messages => messages.filter(message => !message.thinking));
@@ -848,7 +850,11 @@ export default function FactCheckDashboard() {
         setMessages(messages => [...messages, finalMessage]);
       }
     } catch (error) {
-      if (generation.current !== current || controller.signal.aborted) return;
+      if (cancelNoticed.current) { cancelNoticed.current = false; return; }
+      if (generation.current !== current || controller.signal.aborted) {
+        saveChat({role:'assistant', text: controller.signal.aborted ? '검증이 중단되어 결과를 저장하지 못했습니다. 다시 시도해 주세요.' : '검증이 다른 요청으로 대체되어 결과를 저장하지 못했습니다. 다시 시도해 주세요.', tone:'error'}, storageEpoch);
+        return;
+      }
       dispatch({type: 'cancel'});
       setDraft(sentDraft);
       const message = error instanceof FactCheckError && /CONFIG|KEY_MISSING/i.test(error.code) ? configurationHelp : error instanceof Error ? `검증 실패: ${error.message} 다시 시도하실 수 있습니다.` : '검증 요청에 실패했습니다. 네트워크를 확인하고 다시 시도해 주세요.';
