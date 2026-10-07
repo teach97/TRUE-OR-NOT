@@ -282,6 +282,92 @@ def _limit_sections_to_source_breadth(
     del draft.sections[allowed:]
 
 
+_QUOTE_FOLD = {
+    "‘": "'", "’": "'", "‚": "'", "‛": "'",
+    "“": '"', "”": '"', "„": '"', "‟": '"',
+    "「": '"', "」": '"', "『": '"', "』": '"',
+    "…": "...", "⋯": "...",
+}
+
+
+def _find_citation_span(text: str, quote: str) -> str | None:
+    """Return the exact source span for a quote, tolerating whitespace/quote drift.
+
+    Models often normalize spacing or swap quotation marks, which would fail a
+    byte-exact check even though the words match. The returned span is always
+    sliced from the supplied text, so rescued citations stay exact substrings.
+    """
+    if quote and quote in text:
+        return quote
+    folded_quote = " ".join("".join(_QUOTE_FOLD.get(ch, ch) for ch in quote).split())
+    folded_quote = folded_quote.strip("'\"“”‘’「」『』")
+    if not folded_quote:
+        return None
+    folded_chars: list[str] = []
+    index_map: list[int] = []
+    for pos, char in enumerate(text):
+        folded = _QUOTE_FOLD.get(char, char)
+        if folded.isspace():
+            if folded_chars and folded_chars[-1] != " ":
+                folded_chars.append(" ")
+                index_map.append(pos)
+        else:
+            folded_chars.append(folded)
+            index_map.append(pos)
+    position = "".join(folded_chars).find(folded_quote)
+    if position < 0:
+        return None
+    start = index_map[position]
+    end = index_map[position + len(folded_quote) - 1] + 1
+    return text[start:end]
+
+
+def _rescue_citations(
+    draft: SynthesisDraft,
+    sources: list[dict[str, str]],
+    source_passages: dict[str, list[str]] | None = None,
+) -> None:
+    """Drop ungroundable citations and correct near-miss quotes in place.
+
+    Only citations that resolve to an exact source span survive; blocks left
+    without citations are pruned. Overview and conclusion must keep at least
+    one citation each, otherwise the draft cannot stay grounded.
+    """
+    source_texts = {source["id"]: source["text"] for source in sources}
+
+    def keep(citations: list) -> list:
+        kept = []
+        for citation in citations:
+            if source_passages is not None:
+                candidates = source_passages.get(citation.sourceId)
+                if not isinstance(candidates, list):
+                    continue
+            else:
+                text = source_texts.get(citation.sourceId)
+                if not isinstance(text, str):
+                    continue
+                candidates = [text]
+            for passage in candidates:
+                if not isinstance(passage, str):
+                    continue
+                span = _find_citation_span(passage, citation.quote)
+                if span is not None:
+                    citation.quote = span
+                    kept.append(citation)
+                    break
+        return kept
+
+    draft.overview.citations = keep(draft.overview.citations)
+    draft.conclusion.citations = keep(draft.conclusion.citations)
+    for section in draft.sections:
+        for item in section.items:
+            item.citations = keep(item.citations)
+        section.items = [item for item in section.items if item.citations]
+    draft.sections = [section for section in draft.sections if section.items]
+    if not draft.overview.citations or not draft.conclusion.citations:
+        raise ProviderCallError("Answer citation is not grounded")
+
+
 def _validate_answer_grounding(
     draft: SynthesisDraft,
     sources: list[dict[str, str]],
@@ -332,10 +418,12 @@ async def synthesize_answer(
         raise ProviderCallError("Invalid synthesis output") from None
 
     _limit_sections_to_source_breadth(parsed, sources)
-    _validate_answer_grounding(parsed, sources, {
+    passages = {
         source["id"]: [passage["text"] for passage in source["passages"]]
         for source in packet["sources"]
-    })
+    }
+    _rescue_citations(parsed, sources, passages)
+    _validate_answer_grounding(parsed, sources, passages)
     answer = FactCheckAnswer.model_validate({
         **parsed.model_dump(mode="json"),
         "model": provider.model,
