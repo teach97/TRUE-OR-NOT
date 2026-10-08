@@ -116,6 +116,7 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
         *,
         first_attempt_timeout_seconds: float | None = None,
     ):
+        # 지정 모델은 한 공급자만 호출하고, 자동 선택은 실패 시 다음 공급자를 시도합니다.
         preference = state.get("modelPreference", "auto")
         try:
             providers = providers_for_preference(settings, preference, search=failure_code == "SEARCH_FAILED")
@@ -173,6 +174,7 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
             "llmReasoning": provider.reasoning,
         }
 
+    # 입력에서 검증할 주장을 추출하며, 링크 입력은 자막이나 페이지 원문도 활용합니다.
     async def extract(state: FactCheckState):
         image = state.get("image")
         if isinstance(image, dict) and image.get("data"):
@@ -280,6 +282,7 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
                 break
         return {**update, "sources": sources}
 
+    # 출처 후보를 검색하고, 설정된 경우 KOSIS·시장 정보를 결과에 보탭니다.
     async def search(state: FactCheckState):
         from stocks import detect_stock_symbols
 
@@ -308,6 +311,7 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
         market = state.get("market") if state.get("recoveryCount") else await _fetch_market(symbols, settings)
         return {**update, "stockSymbols": symbols, "market": market}
 
+    # 출처 원문을 읽어 판정에 쓸 텍스트를 모읍니다. YouTube와 KOSIS는 전용 reader를 사용합니다.
     async def read(state: FactCheckState):
         sources = state.get("sources", [])
         link_url = state.get("linkUrl")
@@ -420,6 +424,7 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
         )
         return read_result
 
+    # 읽은 원문을 근거로 판정합니다. JEV 실패 시 LLM으로 전환하며, 일반 경로의 첫 LLM 요청은 60초 제한입니다.
     async def verify(state: FactCheckState):
         if state.get("jevMode"):
             try:
@@ -450,6 +455,7 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
             first_attempt_timeout_seconds=60.0,
         )
 
+    # 최종 답변을 만듭니다. JEV·직접 답변·출처 없음은 생략하고, 나머지는 별도 구조화 LLM 요청을 보냅니다.
     async def synthesize(state: FactCheckState):
         if state.get("jevMode"):
             return {
