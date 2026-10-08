@@ -270,6 +270,7 @@ button, p, h3, dd { overflow-wrap: anywhere; }
 .trust-index { padding: 23px 24px 20px; }
 .trust-index-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
 .trust-index-head h3 { margin-top: 7px; font-size: 18px; }
+.trust-index-head h3.fact-score-title { font-size: 20.67px; }
 .score-label, .badge { display: inline-flex; align-items: center; gap: 6px; border: 1px solid rgb(255 255 255 / .14); border-radius: 999px; font-size: 10px; font-weight: 550; white-space: nowrap; }
 .score-label { min-height: 27px; padding: 0 10px; }
 .score-label.score-verified, .badge.score-verified { color: var(--accent); border-color: rgb(155 221 212 / .28); background: rgb(155 221 212 / .08); }
@@ -304,6 +305,7 @@ button, p, h3, dd { overflow-wrap: anywhere; }
 .dashboard-stats strong { color: #d6dcdf; font-size: 18px; font-weight: 550; font-variant-numeric: tabular-nums; }
 .panel-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 57px; padding: 0 20px; border-bottom: 1px solid var(--line); }
 .panel-top h3 { display: flex; align-items: center; gap: 9px; font-size: 13px; font-weight: 550; }
+.panel-top h3.scramble-panel-title { font-size: 15.67px; }
 .panel-top h3 svg { color: var(--accent); }
 .panel-top > span { color: var(--subtle); font-size: 10px; }
 .market-panel { margin-top: 16px; }
