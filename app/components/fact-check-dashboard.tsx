@@ -6,7 +6,7 @@ import type { CSSProperties, FormEvent, ReactNode } from 'react';
 import { initialState, transition } from './demo-state';
 import type { Claim } from './demo-state';
 import { MODEL_OPTIONS } from '../lib/fact-check-contract';
-import type { AgentStage, AnswerBlock, AttachedImage, ContentSummary, FactCheckAnswer, FactCheckRequest, FactCheckResult, FactSource, ModelOption, ModelPreference, ProgressClaim, ProgressSource } from '../lib/fact-check-contract';
+import type { AgentStage, AnswerBlock, AttachedImage, ContentSummary, FactCheckAnswer, FactClaim, FactEvidence, FactCheckRequest, FactCheckResult, FactSource, ModelOption, ModelPreference, ProgressClaim, ProgressSource } from '../lib/fact-check-contract';
 import { sourceDiscoveryLabel } from '../lib/source-discovery';
 import { scoreBand, scoreLabel } from '../lib/fact-score';
 import { formatYoutubePublishedAt, formatYoutubeViewCount, stripYoutubeApiDataForExport, youtubeThumbnailUrl } from '../lib/youtube-context';
@@ -180,7 +180,7 @@ type ChatProgress = {
   sourcesRead?: ProgressSource[]; sourcesReadElapsedSeconds?: number;
   claims?: ProgressClaim[]; claimsElapsedSeconds?: number; completed?: boolean; error?: string;
 };
-type ChatMessage = {id: string; role: 'assistant' | 'user'; text?: string; answer?: FactCheckAnswer; factScore?: number | null; verdict?: string | null; search?: string | null; scoreMode?: 'jev' | 'claims'; scoreEngine?: string | null; sources?: FactSource[]; progress?: ChatProgress; summary?: ContentSummary; meta?: string; tone?: 'normal' | 'error'; imagePreview?: string; thinking?: boolean; storageStatus?: 'cancelled'};
+type ChatMessage = {id: string; role: 'assistant' | 'user'; text?: string; answer?: FactCheckAnswer; judgments?: FactClaim[]; evidence?: FactEvidence[]; factScore?: number | null; verdict?: string | null; search?: string | null; scoreMode?: 'jev' | 'claims'; scoreEngine?: string | null; sources?: FactSource[]; progress?: ChatProgress; summary?: ContentSummary; meta?: string; tone?: 'normal' | 'error'; imagePreview?: string; thinking?: boolean; storageStatus?: 'cancelled'};
 type ModelSelection = ModelPreference;
 
 function ThinkingLoader({label}: {label: string}) {
@@ -225,8 +225,8 @@ function Panel({as = 'div', className = '', children, 'aria-labelledby': labelle
   return <Element className={`panel-host ${className}`} aria-labelledby={labelledBy}>{children}</Element>;
 }
 
-function AnswerBlockView({block, sources, citationState}: {block: AnswerBlock; sources: FactSource[]; citationState: ReturnType<typeof createAnswerCitationDisplayState>}) {
-  const citations = presentAnswerCitations(block.citations, sources, citationState);
+function AnswerBlockView({block, sources, citationState, verifiedEvidence = false}: {block: AnswerBlock; sources: FactSource[]; citationState: ReturnType<typeof createAnswerCitationDisplayState>; verifiedEvidence?: boolean}) {
+  const citations = presentAnswerCitations(block.citations, sources, citationState, verifiedEvidence);
   return <div className="answer-block">
     <p className="answer-block-text">{block.text}</p>
     {citations.length > 0 && <ul className="answer-citations" aria-label="답변 근거 출처">
@@ -262,6 +262,20 @@ function AnswerOverview({answer, sources}: {answer: FactCheckAnswer; sources: Fa
   </section>;
 }
 
+function JudgmentReply({claims, evidence, sources}: {claims: FactClaim[]; evidence: FactEvidence[]; sources: FactSource[]}) {
+  return <section className="ai-answer" aria-label="판정 결과">
+    <div className="ai-answer-heading"><span className="answer-spark" aria-hidden="true">✦</span><h3>판정 결과</h3></div>
+    {!claims.length && <p>검증 가능한 주장을 찾지 못했습니다. 확인할 원문·링크·이미지를 보내주세요.</p>}
+    {claims.map(claim => <section className="answer-section" key={claim.id}>
+      <h4>{claim.quote}</h4><p>{claim.verdict}</p>
+      <AnswerBlockView block={{text: claim.summary, citations: evidence.filter(item => claim.evidenceIds.includes(item.id) && item.claimId === claim.id && item.quoteVerified).map(item => ({sourceId: item.sourceId, quote: item.quote}))}} sources={sources} citationState={createAnswerCitationDisplayState(sources)} verifiedEvidence/>
+      {claim.confirmed.length > 0 && <><h4>확인된 내용</h4><ul>{claim.confirmed.map((text, index) => <li key={index}>{text}</li>)}</ul></>}
+      {claim.unresolved.length > 0 && <><h4>남은 불확실성</h4><ul>{claim.unresolved.map((text, index) => <li key={index}>{text}</li>)}</ul></>}
+      {claim.warnings.length > 0 && <><h4>주의사항</h4><ul>{claim.warnings.map((text, index) => <li key={index}>{text}</li>)}</ul></>}
+    </section>)}
+  </section>;
+}
+
 function JevFactScore({score, verdict, search, engine}: {score: number | null; verdict?: string | null; search?: string | null; engine?: string | null}) {
   const label = engine ?? (search ? `JEV+${search.replace(' 검색', '')}` : 'JEV');
   return <section className="jev-score-reply" aria-label={score === null ? '팩트 점수 없음' : `팩트 점수 ${score}점${verdict ? `, ${verdict}` : ''}`}>
@@ -292,7 +306,7 @@ const VERIFY_STAGES: Array<{id: AgentStage; label: string}> = [
   {id: 'searching', label: '검색'},
   {id: 'reading', label: '읽기'},
   {id: 'verifying', label: '검증'},
-  {id: 'synthesizing', label: '합성'},
+  {id: 'synthesizing', label: '정리'},
 ];
 
 function VerifyTimeline({progress}: {progress: ChatProgress}) {
@@ -998,7 +1012,7 @@ export default function FactCheckDashboard() {
               <div className={`chat-bubble ${message.answer ? 'chat-bubble--answer' : ''} ${message.scoreMode === 'jev' ? 'chat-bubble--fact-score' : ''}`}>
                 {message.answer ? (message.scoreMode === 'jev' && message.factScore !== undefined
                   ? <><JevFactScore score={message.factScore} verdict={message.verdict} search={message.search}/><JevSourceList sources={message.sources ?? []}/></>
-                  : <>{message.factScore !== undefined && <JevFactScore score={message.factScore} verdict={message.verdict} engine={message.scoreEngine ?? '종합'}/>}<AnswerOverview answer={message.answer} sources={message.sources ?? []} messageId={message.id}/></>) : message.progress ? <ProgressReply progress={message.progress}/> : message.thinking ? <ThinkingLoader label={notice || '근거를 모으고 사실 여부를 대조하고 있습니다.'}/> : message.summary ? <SummaryReply summary={message.summary}/> : <>{message.imagePreview && <img className="chat-image-preview" src={message.imagePreview} alt="사용자가 보낸 이미지"/>}{message.text ? <p>{message.text}</p> : null}</>}
+                  : <>{message.factScore !== undefined && <JevFactScore score={message.factScore} verdict={message.verdict} engine={message.scoreEngine ?? '종합'}/>} {message.answer.status === 'judgment_only' ? <JudgmentReply claims={message.judgments ?? []} evidence={message.evidence ?? []} sources={message.sources ?? []}/> : <AnswerOverview answer={message.answer} sources={message.sources ?? []} messageId={message.id}/>}</>) : message.progress ? <ProgressReply progress={message.progress}/> : message.thinking ? <ThinkingLoader label={notice || '근거를 모으고 사실 여부를 대조하고 있습니다.'}/> : message.summary ? <SummaryReply summary={message.summary}/> : <>{message.imagePreview && <img className="chat-image-preview" src={message.imagePreview} alt="사용자가 보낸 이미지"/>}{message.text ? <p>{message.text}</p> : null}</>}
                 {message.meta && <small>{message.meta}</small>}
               </div>
             </motion.div>)}

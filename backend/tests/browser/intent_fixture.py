@@ -6,6 +6,9 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 import json
 import asyncio
+from pydantic import SecretStr
+from runtime import RuntimeAdapters, Settings, build_runtime_workflow, make_runtime_adapters
+from streaming import stream_events
 
 app = FastAPI()
 counts = Counter()
@@ -87,6 +90,43 @@ async def verify(request: Request):
                      'hasImage': bool(body.get('image')), 'linkUrl': body.get('linkUrl')})
     if '실패 재현' in body['text']:
         return JSONResponse({'code': 'AGENT_FAILED', 'message': '합성 검증 실패입니다.'}, status_code=502)
+    if '합성 제거 회귀' in body['text']:
+        quote = '합성 제거 회귀'
+        source = {'id': 's1', 'url': 'https://example.org/report', 'title': '회귀 시험 원문',
+                  'publisher': 'Example', 'accessStatus': 'verified', 'sourceType': '기사'}
+        source_text = 'This synthetic source supports the test claim under the stated conditions.'
+        if '자막' in body['text']:
+            source = {**source, 'url': 'https://www.youtube.com/watch?v=abcdefghijk',
+                      'title': '검증 자막 원문', 'sourceType': '유튜브',
+                      'youtubeTranscript': True, 'youtubeDataStatus': 'collected'}
+        settings = Settings(api_key=SecretStr('test-only'))
+
+        async def extract(state):
+            start = state['text'].index(quote)
+            return {'claims': [{'id': 'c1', 'quote': quote, 'start': start,
+                                'end': start + len(quote), 'kind': 'fact'}]}
+
+        async def search(state):
+            return {'sources': [source]}
+
+        async def read(state):
+            return {'sources': [source], 'sourceTexts': {'s1': source_text}}
+
+        async def judge(state):
+            return {'claims': [{**state['claims'][0], 'factScore': 90, 'verdictCode': 'mostly_supported',
+                                'verdict': '대체로 확인됨', 'tone': 'positive',
+                                'summary': '시험 원문에서 해당 조건의 주장을 확인했습니다.',
+                                'confirmed': ['원문과 인용이 일치합니다.'],
+                                'unresolved': ['다른 시점에는 추가 확인이 필요합니다.'],
+                                'warnings': [], 'evidenceIds': ['e1']}],
+                    'evidence': [{'id': 'e1', 'claimId': 'c1', 'sourceId': 's1', 'quote': source_text,
+                                  'quoteVerified': True, 'relation': 'supports'}],
+                    'llmModel': 'gpt-6-luna', 'llmReasoning': 'max'}
+
+        graph = build_runtime_workflow(settings, adapters=RuntimeAdapters(
+            extract=extract, search=search, read=read, verify=judge,
+            synthesize=make_runtime_adapters(settings).synthesize))
+        return StreamingResponse(stream_events(graph, body), media_type='application/x-ndjson')
     result = {'text': body['text'], 'focus': body['focus'], 'demo': False,
               'checkedAt': datetime.now(timezone.utc).isoformat(), 'model': 'gpt-6-luna', 'reasoning': 'max',
               'claims': [], 'sources': [], 'evidence': [], 'warnings': ['합성 UI 시험 결과입니다.'],
