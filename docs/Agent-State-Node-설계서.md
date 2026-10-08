@@ -282,4 +282,6 @@ LLM 판정은 `fact`·`unclear`를 대상으로 합니다. 의견·예측은 `no
 
 State 필드 변경은 작성 Node와 읽는 Node, 공개 계약, 스트림 투영, 대화 스냅샷에 영향을 확인해야 합니다. 새로운 Node를 등록할 때는 그래프 Edge와 `streaming.STAGES`·프런트 `AgentStage`의 단계 순서도 함께 맞춰야 합니다.
 
-관련 자동 회귀의 위치는 [test_workflow.py](../backend/tests/test_workflow.py), [test_runtime.py](../backend/tests/test_runtime.py), [test_verification.py](../backend/tests/test_verification.py), [test_evidence_context.py](../backend/tests/test_evidence_context.py), [test_answer_synthesis.py](../backend/tests/test_answer_synthesis.py), [test_streaming.py](../backend/tests/test_streaming.py), [test_execution.py](../backend/tests/test_execution.py), [fact-check-client.test.mjs](../app/components/fact-check-client.test.mjs)입니다. 문서 대조 결과는 [작성 기록](qa/실행기록/2026-10-08-Agent-State-Node.md)에 있습니다.
+관련 자동 회귀의 위치는 [test_workflow.py](../backend/tests/test_workflow.py), [test_runtime.py](../backend/tests/test_runtime.py), [test_verification.py](../backend/tests/test_verification.py), [test_evidence_context.py](../backend/tests/test_evidence_context.py), [test_answer_synthesis.py](../backend/tests/test_answer_synthesis.py), [test_streaming.py](../backend/tests/test_streaming.py), [test_execution.py](../backend/tests/test_execution.py), [fact-check-client.test.mjs](../app/components/fact-check-client.test.mjs)입니다.
+
+작성 시 코드 정의와 대조하여 State 28개 필드와 Node 5개를 모두 포함하는 것을 확인했습니다. 문서의 로컬 링크와 코드 블록, diff 공백을 검사했습니다. 애플리케이션 테스트·빌드·외부 서비스 호출은 실행하지 않았습니다.
