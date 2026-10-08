@@ -14,6 +14,7 @@ from pydantic import SecretStr
 import runtime
 from runtime import RuntimeAdapters, Settings, build_runtime_workflow, make_runtime_adapters
 from streaming import stream_events
+import runtime_adapters
 
 
 PROVIDER = LLMProvider("openai", "gpt-6-luna", "max", "test-only")
@@ -260,7 +261,7 @@ def test_real_runtime_stream_finishes_with_late_grounded_passages(monkeypatch, k
             "message": {"content": json.dumps(value, ensure_ascii=False)}}]})
 
     real_client = httpx.AsyncClient
-    monkeypatch.setattr(runtime.httpx, "AsyncClient", lambda *a, **kw:
+    monkeypatch.setattr(runtime_adapters.httpx, "AsyncClient", lambda *a, **kw:
                         real_client(*a, transport=httpx.MockTransport(handler), **kw))
     settings = Settings(api_key=SecretStr(""), explabs_api_key=SecretStr("test-only"))
     adapters = make_runtime_adapters(settings)

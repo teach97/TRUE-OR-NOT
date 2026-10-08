@@ -4,6 +4,7 @@ import asyncio
 
 import pytest
 from pydantic import SecretStr
+import runtime_adapters
 
 
 def test_configured_provider_chain_is_ordered_and_skips_missing_keys():
@@ -154,7 +155,7 @@ def test_runtime_stage_retries_next_provider_after_adapter_failure(monkeypatch):
             raise ValueError("EXTRACTION_FAILED")
         return {"claims": [], "llmModel": provider.model}
 
-    monkeypatch.setattr(runtime, "extract_claims", fake_extract)
+    monkeypatch.setattr(runtime_adapters, "extract_claims", fake_extract)
     adapters = make_runtime_adapters(
         Settings(
             api_key=SecretStr("openai-test-only"),
@@ -181,7 +182,7 @@ def test_runtime_stage_keeps_explicit_provider_selection_pinned_after_failure(mo
         attempts.append(provider.model)
         raise ValueError("EXTRACTION_FAILED")
 
-    monkeypatch.setattr(runtime, "extract_claims", fake_extract)
+    monkeypatch.setattr(runtime_adapters, "extract_claims", fake_extract)
     adapters = make_runtime_adapters(
         Settings(
             api_key=SecretStr("openai-test-only"),
@@ -202,13 +203,13 @@ def test_runtime_reports_reasoning_used_by_answer_synthesis(monkeypatch):
     import runtime
     from runtime import Settings, make_runtime_adapters
 
-    monkeypatch.setattr(runtime, "eligible_sources", lambda state: [{"id": "s1"}])
+    monkeypatch.setattr(runtime_adapters, "eligible_sources", lambda state: [{"id": "s1"}])
 
     async def fake_synthesize(state, *, client, provider):
         assert provider.model == "gpt-6-luna"
         return {"status": "grounded", "model": provider.model, "reasoning": "high"}
 
-    monkeypatch.setattr(runtime, "synthesize_answer", fake_synthesize)
+    monkeypatch.setattr(runtime_adapters, "synthesize_answer", fake_synthesize)
     adapters = make_runtime_adapters(
         Settings(api_key=SecretStr("openai-test-only"), gemini_api_key=SecretStr(""))
     )

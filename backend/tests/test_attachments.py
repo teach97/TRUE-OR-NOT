@@ -6,6 +6,7 @@ import json
 import httpx
 import pytest
 from pydantic import SecretStr, ValidationError
+import runtime_adapters
 
 
 def test_request_accepts_blank_text_only_with_image():
@@ -122,7 +123,7 @@ def test_read_prepends_link_seed_without_network(monkeypatch):
     async def fake_read(state, reader=None, youtube_reader=None):
         return {"sources": state["sources"], "sourceTexts": {}, "sourceSections": {}}
 
-    monkeypatch.setattr(runtime, "read_sources", fake_read)
+    monkeypatch.setattr(runtime_adapters, "read_sources", fake_read)
     settings = Settings(api_key=SecretStr(""))
     adapters = make_runtime_adapters(settings)
     state = {"sources": [{"id": "s1", "url": "https://example.org/a"}],
@@ -163,9 +164,9 @@ def test_read_searches_related_coverage_from_the_linked_page_title(monkeypatch):
             texts[source["id"]] = text
         return {"sources": state["sources"], "sourceTexts": texts, "sourceSections": {}}
 
-    monkeypatch.setattr(runtime, "fetch_public_text", fake_fetch)
-    monkeypatch.setattr(runtime, "read_sources", fake_read)
-    monkeypatch.setattr(runtime.httpx, "AsyncClient", mock_async_client)
+    monkeypatch.setattr(runtime_adapters, "fetch_public_text", fake_fetch)
+    monkeypatch.setattr(runtime_adapters, "read_sources", fake_read)
+    monkeypatch.setattr(runtime_adapters.httpx, "AsyncClient", mock_async_client)
     settings = Settings(
         api_key=SecretStr(""),
         tavily_api_key=SecretStr("tvly-test"),
@@ -215,8 +216,8 @@ def test_extract_url_only_fetches_page(monkeypatch):
         return {"claims": [{"id": "c1", "quote": "Fetched page", "kind": "fact",
                             "start": 0, "end": 12}], "text": page_text}
 
-    monkeypatch.setattr(runtime, "fetch_public_text", fake_fetch)
-    monkeypatch.setattr(runtime, "extract_page_claims", fake_page)
+    monkeypatch.setattr(runtime_adapters, "fetch_public_text", fake_fetch)
+    monkeypatch.setattr(runtime_adapters, "extract_page_claims", fake_page)
     settings = Settings(api_key=SecretStr("test-only"))
     adapters = make_runtime_adapters(settings)
     state = {"text": "https://example.com/page", "focus": "", "consent": True,
@@ -239,8 +240,8 @@ def test_extract_url_only_truncates_long_pages_to_the_contract_limit(monkeypatch
         assert len(page_text.encode('utf-16-le')) // 2 <= 12000
         return {'claims': [], 'text': page_text}
 
-    monkeypatch.setattr(runtime, 'fetch_public_text', fake_fetch)
-    monkeypatch.setattr(runtime, 'extract_page_claims', fake_page)
+    monkeypatch.setattr(runtime_adapters, 'fetch_public_text', fake_fetch)
+    monkeypatch.setattr(runtime_adapters, 'extract_page_claims', fake_page)
     settings = Settings(api_key=SecretStr('test-only'))
     adapters = make_runtime_adapters(settings)
     state = {'text': 'https://example.com/page', 'focus': '', 'consent': True,
@@ -265,9 +266,9 @@ def test_extract_link_with_extra_words_falls_back_to_page(monkeypatch):
         return {"claims": [{"id": "c1", "quote": "Fetched page", "kind": "fact",
                             "start": 0, "end": 12}], "text": page_text}
 
-    monkeypatch.setattr(runtime, "fetch_public_text", fake_fetch)
-    monkeypatch.setattr(runtime, "extract_claims", fake_claims)
-    monkeypatch.setattr(runtime, "extract_page_claims", fake_page)
+    monkeypatch.setattr(runtime_adapters, "fetch_public_text", fake_fetch)
+    monkeypatch.setattr(runtime_adapters, "extract_claims", fake_claims)
+    monkeypatch.setattr(runtime_adapters, "extract_page_claims", fake_page)
     settings = Settings(api_key=SecretStr("test-only"))
     adapters = make_runtime_adapters(settings)
     state = {"text": "https://example.com/page 팩트체크해줘", "focus": "", "consent": True,
@@ -288,8 +289,8 @@ def test_extract_link_with_real_claims_keeps_draft_text(monkeypatch):
         return {"claims": [{"id": "c1", "quote": "Draft claim", "kind": "fact",
                             "start": 0, "end": 11}]}
 
-    monkeypatch.setattr(runtime, "fetch_public_text", no_fetch)
-    monkeypatch.setattr(runtime, "extract_claims", fake_claims)
+    monkeypatch.setattr(runtime_adapters, "fetch_public_text", no_fetch)
+    monkeypatch.setattr(runtime_adapters, "extract_claims", fake_claims)
     settings = Settings(api_key=SecretStr("test-only"))
     adapters = make_runtime_adapters(settings)
     state = {"text": "Draft claim https://example.com/page", "focus": "", "consent": True,
@@ -320,9 +321,9 @@ def test_extract_youtube_link_with_words_falls_back_to_transcript(monkeypatch):
                             "start": 0, "end": 8}], "text": page_text}
 
     monkeypatch.setattr(youtube, "fetch_transcript_text", fake_transcript)
-    monkeypatch.setattr(runtime, "fetch_public_text", no_page_fetch)
-    monkeypatch.setattr(runtime, "extract_claims", fake_claims)
-    monkeypatch.setattr(runtime, "extract_page_claims", fake_page)
+    monkeypatch.setattr(runtime_adapters, "fetch_public_text", no_page_fetch)
+    monkeypatch.setattr(runtime_adapters, "extract_claims", fake_claims)
+    monkeypatch.setattr(runtime_adapters, "extract_page_claims", fake_page)
     settings = Settings(api_key=SecretStr("test-only"))
     adapters = make_runtime_adapters(settings)
     state = {"text": "https://www.youtube.com/watch?v=aB_12345678 파악해줘", "focus": "",
@@ -347,8 +348,8 @@ def test_extract_youtube_link_without_transcript_keeps_old_behavior(monkeypatch)
         return {"claims": []}
 
     monkeypatch.setattr(youtube, "fetch_transcript_text", no_transcript)
-    monkeypatch.setattr(runtime, "fetch_public_text", fake_page_fetch)
-    monkeypatch.setattr(runtime, "extract_claims", fake_claims)
+    monkeypatch.setattr(runtime_adapters, "fetch_public_text", fake_page_fetch)
+    monkeypatch.setattr(runtime_adapters, "extract_claims", fake_claims)
     settings = Settings(api_key=SecretStr("test-only"))
     adapters = make_runtime_adapters(settings)
     state = {"text": "https://www.youtube.com/watch?v=aB_12345678 파악해줘", "focus": "",

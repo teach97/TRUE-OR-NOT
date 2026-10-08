@@ -18,8 +18,10 @@ from intent import classify_intent
 from jev import JevError
 from summarize import summarize_content
 from providers import ProviderCallError, configured_model_options, configured_providers, providers_for_preference, run_with_fallback
-from runtime import build_runtime_workflow, load_settings, run_jev_fast_check
+from jev_runtime import run_jev_fast_check
+from runtime import build_runtime_workflow
 from schemas import FactCheckRequest, ModelPreference
+from settings import load_settings
 from conversation_api import router as conversation_router, storage_error
 from conversation_store import ConversationStore, StorageError
 from dotenv import dotenv_values

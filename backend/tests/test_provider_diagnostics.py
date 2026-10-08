@@ -8,6 +8,7 @@ from pydantic import SecretStr
 
 import runtime
 from providers import ProviderCallError
+import runtime_adapters
 
 
 def test_provider_fallback_logs_model_stage_and_status_without_secrets(monkeypatch, caplog):
@@ -20,7 +21,7 @@ def test_provider_fallback_logs_model_stage_and_status_without_secrets(monkeypat
         cause = httpx.HTTPStatusError("rate limited", request=request, response=response)
         raise ProviderCallError("Provider request failed") from cause
 
-    monkeypatch.setattr(runtime, "extract_claims", fail_extraction)
+    monkeypatch.setattr(runtime_adapters, "extract_claims", fail_extraction)
     settings = runtime.Settings(
         api_key=SecretStr("openai-secret-must-not-be-logged"),
         gemini_api_key=SecretStr("gemini-secret-must-not-be-logged"),

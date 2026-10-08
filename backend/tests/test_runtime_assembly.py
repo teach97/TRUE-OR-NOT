@@ -4,6 +4,7 @@ import asyncio
 from contracts import FactCheckResponse
 from runtime import RuntimeAdapters, Settings, build_fact_check_result, build_runtime_workflow
 from pydantic import SecretStr
+import runtime_adapters
 
 
 def test_final_result_warns_when_llm_search_was_unavailable():
@@ -235,7 +236,7 @@ def test_forecast_synthesis_preserves_prediction_and_citations(monkeypatch):
     def mock_client(*args, **kwargs):
         return real_async_client(*args, transport=httpx.MockTransport(provider_response), **kwargs)
 
-    monkeypatch.setattr(runtime.httpx, "AsyncClient", mock_client)
+    monkeypatch.setattr(runtime_adapters.httpx, "AsyncClient", mock_client)
     settings = Settings(
         api_key=SecretStr("openai-test-only"),
         gemini_api_key=SecretStr("gemini-test-only"),
@@ -342,7 +343,7 @@ def test_runtime_synthesis_skips_provider_without_verified_source_text(monkeypat
     def unexpected_client(*args, **kwargs):
         raise AssertionError("No readable source text must not open a provider client")
 
-    monkeypatch.setattr(runtime.httpx, "AsyncClient", unexpected_client)
+    monkeypatch.setattr(runtime_adapters.httpx, "AsyncClient", unexpected_client)
     adapters = make_runtime_adapters(Settings(
         api_key=SecretStr("openai-test-only"),
         gemini_api_key=SecretStr("gemini-test-only"),
@@ -379,7 +380,7 @@ def test_all_synthesis_providers_failing_preserves_verified_result(monkeypatch):
             *args, transport=httpx.MockTransport(failing_provider), **kwargs,
         )
 
-    monkeypatch.setattr(runtime.httpx, "AsyncClient", mock_client)
+    monkeypatch.setattr(runtime_adapters.httpx, "AsyncClient", mock_client)
     settings = Settings(
         api_key=SecretStr("openai-test-only"),
         gemini_api_key=SecretStr("gemini-test-only"),

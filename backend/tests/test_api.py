@@ -5,6 +5,8 @@ import json
 import httpx
 import pytest
 from pydantic import ValidationError
+import runtime_adapters
+import jev_runtime
 
 
 def test_health_and_status_do_not_claim_provider_readiness(monkeypatch):
@@ -147,7 +149,7 @@ def test_jev_endpoint_returns_scored_result(monkeypatch):
         return "Water boils at 100 degrees Celsius at sea level.", url
 
     monkeypatch.setattr(main.httpx, "AsyncClient", mock_client)
-    monkeypatch.setattr(runtime, "fetch_public_text", fake_fetch)
+    monkeypatch.setattr(jev_runtime, "fetch_public_text", fake_fetch)
     monkeypatch.setattr(
         main, "load_settings",
         lambda: Settings(
@@ -200,7 +202,7 @@ def test_jev_endpoint_maps_gateway_failure_to_502(monkeypatch):
         return "Relevant source text.", url
 
     monkeypatch.setattr(main.httpx, "AsyncClient", mock_client)
-    monkeypatch.setattr(runtime, "fetch_public_text", fake_fetch)
+    monkeypatch.setattr(jev_runtime, "fetch_public_text", fake_fetch)
     monkeypatch.setattr(
         main, "load_settings",
         lambda: Settings(
@@ -252,7 +254,7 @@ def test_jev_endpoint_concludes_insufficient_evidence_on_low_confidence(monkeypa
         return "Relevant source text.", url
 
     monkeypatch.setattr(main.httpx, "AsyncClient", mock_client)
-    monkeypatch.setattr(runtime, "fetch_public_text", fake_fetch)
+    monkeypatch.setattr(jev_runtime, "fetch_public_text", fake_fetch)
     monkeypatch.setattr(
         main, "load_settings",
         lambda: Settings(

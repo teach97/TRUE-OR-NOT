@@ -3,7 +3,7 @@ import asyncio
 from contextlib import aclosing
 import json
 from contracts import FactCheckResponse
-from runtime import build_progress_preview, build_progress_sources
+from result_projection import build_progress_preview, build_progress_sources
 
 STAGES = ('extracting', 'searching', 'reading', 'verifying', 'synthesizing')
 MESSAGES = ('주장을 추출하고 있습니다.', '근거 출처를 검색하고 있습니다.', '출처 원문을 읽고 있습니다.', '인용과 판정을 검증하고 있습니다.', '확인된 원문 근거로 답변을 구성하고 있습니다.')

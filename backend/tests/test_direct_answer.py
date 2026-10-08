@@ -11,6 +11,7 @@ from contracts import FactCheckResponse
 import runtime
 from runtime import RuntimeAdapters, Settings, build_runtime_workflow, make_runtime_adapters
 from streaming import stream_events
+import runtime_adapters
 
 
 QUESTION = "인류는 달에 갔나?"
@@ -65,7 +66,7 @@ def provider_adapters(monkeypatch, handler):
     def client(*args, **kwargs):
         return real_client(*args, transport=httpx.MockTransport(handler), **kwargs)
 
-    monkeypatch.setattr(runtime.httpx, "AsyncClient", client)
+    monkeypatch.setattr(runtime_adapters.httpx, "AsyncClient", client)
     return make_runtime_adapters(Settings(api_key=SecretStr(""), explabs_api_key=SecretStr("test-only")))
 
 
@@ -178,7 +179,7 @@ def test_direct_answer_uses_grounded_result_even_without_another_provider_key(mo
     def unexpected_client(*args, **kwargs):
         raise AssertionError("Composing an already grounded answer must not open another provider client")
 
-    monkeypatch.setattr(runtime.httpx, "AsyncClient", unexpected_client)
+    monkeypatch.setattr(runtime_adapters.httpx, "AsyncClient", unexpected_client)
     result = asyncio.run(make_runtime_adapters(Settings(api_key=SecretStr(""))).synthesize(checked_state()))
     assert result["answer"]["overview"]["text"] == SUMMARY
     assert result["answer"]["model"] is None

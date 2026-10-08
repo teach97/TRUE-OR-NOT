@@ -5,6 +5,7 @@ from pathlib import Path
 
 import httpx
 from pydantic import SecretStr
+import runtime_adapters
 
 
 def test_settings_load_file_without_exposing_key(tmp_path, monkeypatch):
@@ -85,7 +86,7 @@ def test_llm_search_is_used_directly_without_a_search_notice(monkeypatch):
     def mock_async_client(**kwargs):
         return real_async_client(transport=httpx.MockTransport(handler), **kwargs)
 
-    monkeypatch.setattr(runtime.httpx, "AsyncClient", mock_async_client)
+    monkeypatch.setattr(runtime_adapters.httpx, "AsyncClient", mock_async_client)
     adapters = make_runtime_adapters(Settings(
         api_key=SecretStr("test-openai-key"),
     ))
@@ -118,7 +119,7 @@ def test_llm_runtime_ignores_environment_proxy_for_provider_connection(monkeypat
         assert kwargs.get("trust_env") is False
         return real_async_client(transport=httpx.MockTransport(handler), **kwargs)
 
-    monkeypatch.setattr(runtime.httpx, "AsyncClient", mock_async_client)
+    monkeypatch.setattr(runtime_adapters.httpx, "AsyncClient", mock_async_client)
     adapters = make_runtime_adapters(Settings(api_key=SecretStr("test-openai-key")))
     update = asyncio.run(adapters.extract({
         "text": "AGI는 2030년 안에 오나?", "focus": "", "consent": True,
@@ -142,7 +143,7 @@ def test_verification_fallback_uses_60_seconds_for_first_provider_only(monkeypat
             raise ProviderCallError("test primary timeout")
         return {"claims": [], "evidence": [], "diagnostics": []}
 
-    monkeypatch.setattr(runtime, "verify_claims", fake_verify_claims)
+    monkeypatch.setattr(runtime_adapters, "verify_claims", fake_verify_claims)
     adapters = make_runtime_adapters(Settings(
         api_key=SecretStr("test-openai-key"),
         explabs_api_key=SecretStr("test-explabs-key"),
@@ -182,7 +183,7 @@ def test_tavily_search_is_preferred_and_llm_search_is_the_fallback(monkeypatch):
     def mock_async_client(**kwargs):
         return real_async_client(transport=httpx.MockTransport(handler), **kwargs)
 
-    monkeypatch.setattr(runtime.httpx, "AsyncClient", mock_async_client)
+    monkeypatch.setattr(runtime_adapters.httpx, "AsyncClient", mock_async_client)
     state = {
         "consent": True,
         "modelPreference": "gpt-6-luna",
@@ -222,7 +223,7 @@ def test_tavily_outage_falls_back_to_llm_search(monkeypatch):
     def mock_async_client(**kwargs):
         return real_async_client(transport=httpx.MockTransport(handler), **kwargs)
 
-    monkeypatch.setattr(runtime.httpx, "AsyncClient", mock_async_client)
+    monkeypatch.setattr(runtime_adapters.httpx, "AsyncClient", mock_async_client)
     adapters = make_runtime_adapters(Settings(
         api_key=SecretStr("test-openai-key"),
         tavily_api_key=SecretStr("tvly-test"),
@@ -258,7 +259,7 @@ def test_runtime_read_stage_uses_youtube_adapter_without_adding_comments_to_sour
         assert kwargs == {"timeout": 8.0, "trust_env": False}
         return real_async_client(transport=httpx.MockTransport(handler), **kwargs)
 
-    monkeypatch.setattr(runtime.httpx, "AsyncClient", mock_async_client)
+    monkeypatch.setattr(runtime_adapters.httpx, "AsyncClient", mock_async_client)
     settings = runtime.Settings(
         api_key=SecretStr("llm-test-key"),
         youtube_api_key=SecretStr("youtube-test-key"),

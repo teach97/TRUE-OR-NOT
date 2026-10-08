@@ -7,6 +7,8 @@ import pytest
 from pydantic import SecretStr
 
 from jev import JevError, evaluate_claims_jev
+import runtime_adapters
+import jev_runtime
 
 
 JEV_URL = "https://api.typesafe.ai/v1/systemone"
@@ -210,7 +212,7 @@ def test_fast_check_searches_with_llm_and_sends_read_source_text_to_jev(monkeypa
             url,
         )
 
-    monkeypatch.setattr(runtime, "fetch_public_text", fake_fetch)
+    monkeypatch.setattr(jev_runtime, "fetch_public_text", fake_fetch)
 
     async def run():
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
@@ -256,7 +258,7 @@ def test_fast_check_llm_search_honors_the_selected_model(monkeypatch):
     async def fake_fetch(url):
         return ("Searched page body text here.", url)
 
-    monkeypatch.setattr(runtime, "fetch_public_text", fake_fetch)
+    monkeypatch.setattr(jev_runtime, "fetch_public_text", fake_fetch)
 
     async def run():
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
@@ -291,7 +293,7 @@ def test_fast_check_skips_search_when_the_link_reads_cleanly(monkeypatch):
             return jev_handler(request)
         return handler(request)
 
-    monkeypatch.setattr(runtime, "fetch_public_text", fake_fetch)
+    monkeypatch.setattr(jev_runtime, "fetch_public_text", fake_fetch)
 
     async def run():
         async with httpx.AsyncClient(transport=httpx.MockTransport(router)) as client:
@@ -333,8 +335,8 @@ def test_fast_check_collects_youtube_context_when_the_key_is_configured(monkeypa
     def handler(request):
         return jev_response(verdict="mostly_supported", score=3.0, confidence=0.9)
 
-    monkeypatch.setattr(runtime, "fetch_public_text", fake_fetch)
-    monkeypatch.setattr(runtime, "fetch_youtube_data", fake_youtube)
+    monkeypatch.setattr(jev_runtime, "fetch_public_text", fake_fetch)
+    monkeypatch.setattr(jev_runtime, "fetch_youtube_data", fake_youtube)
 
     async def run():
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
@@ -363,7 +365,7 @@ def test_fast_check_uses_linked_source_as_evidence_without_replacing_claim(monke
         assert "Fetched page body text here." in json.loads(request.content)["state"]["evidence"]
         return jev_response(verdict="partially_supported", score=2.0, confidence=0.8)
 
-    monkeypatch.setattr(runtime, "fetch_public_text", fake_fetch)
+    monkeypatch.setattr(jev_runtime, "fetch_public_text", fake_fetch)
 
     async def run():
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
@@ -415,7 +417,7 @@ def test_fast_check_propagates_jev_failure_without_llm_fallback(monkeypatch):
     async def handler(request):
         return httpx.Response(500, json={"error": "busy"})
 
-    monkeypatch.setattr(runtime, "fetch_public_text", fake_fetch)
+    monkeypatch.setattr(jev_runtime, "fetch_public_text", fake_fetch)
 
     async def run():
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
@@ -437,7 +439,7 @@ def test_fast_check_preserves_input_whitespace_for_result_echo(monkeypatch):
     async def fake_fetch(url):
         return ("Relevant source text.", url)
 
-    monkeypatch.setattr(runtime, "fetch_public_text", fake_fetch)
+    monkeypatch.setattr(jev_runtime, "fetch_public_text", fake_fetch)
 
     async def run():
         async with httpx.AsyncClient(transport=httpx.MockTransport(
@@ -462,7 +464,7 @@ def test_fast_check_low_confidence_concludes_insufficient_evidence(monkeypatch):
     async def fake_fetch(url):
         return ("Relevant source text.", url)
 
-    monkeypatch.setattr(runtime, "fetch_public_text", fake_fetch)
+    monkeypatch.setattr(jev_runtime, "fetch_public_text", fake_fetch)
 
     async def run():
         async with httpx.AsyncClient(transport=httpx.MockTransport(
@@ -506,7 +508,7 @@ def test_runtime_verify_uses_jev_when_mode_on(monkeypatch):
     def mock_client(*args, **kwargs):
         return real_async_client(*args, transport=httpx.MockTransport(handler), **kwargs)
 
-    monkeypatch.setattr(runtime.httpx, "AsyncClient", mock_client)
+    monkeypatch.setattr(runtime_adapters.httpx, "AsyncClient", mock_client)
     settings = Settings(
         api_key=SecretStr(""),
         gemini_api_key=SecretStr(""),
@@ -558,7 +560,7 @@ def test_runtime_verify_escales_to_llm_when_jev_fails(monkeypatch):
     def mock_client(*args, **kwargs):
         return real_async_client(*args, transport=httpx.MockTransport(handler), **kwargs)
 
-    monkeypatch.setattr(runtime.httpx, "AsyncClient", mock_client)
+    monkeypatch.setattr(runtime_adapters.httpx, "AsyncClient", mock_client)
     settings = Settings(
         api_key=SecretStr(""),
         gemini_api_key=SecretStr("gemini-test-only"),
