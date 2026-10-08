@@ -20,6 +20,7 @@ from contracts import (
     FactCheckResult,
 )
 from extraction import extract_claims, extract_image_claims, extract_page_claims
+from kosis import KosisUnavailable, read_kosis_source, search_kosis_sources
 from jev import JevError
 from schemas import ModelPreference
 from tavily_search import TavilyUnavailable, search_tavily
@@ -64,6 +65,7 @@ class Settings(BaseModel):
     tavily_api_key: SecretStr = SecretStr("")
     typesafe_api_key: SecretStr = SecretStr("")
     finnhub_api_key: SecretStr = SecretStr("")
+    kosis_api_key: SecretStr = SecretStr("")
 
 
 def load_settings(env_path: Path | None = None) -> Settings:
@@ -77,6 +79,7 @@ def load_settings(env_path: Path | None = None) -> Settings:
     tavily_key = os.environ.get("TAVILY_API_KEY", values.get("TAVILY_API_KEY") or "")
     gateway_key = os.environ.get("TYPESAFE_API_KEY", values.get("TYPESAFE_API_KEY") or "")
     finnhub_key = os.environ.get("FINNHUB_API_KEY", values.get("FINNHUB_API_KEY") or "")
+    kosis_key = os.environ.get("KOSIS_API_KEY", values.get("KOSIS_API_KEY") or "")
     return Settings(
         api_key=SecretStr(key.strip()),
         explabs_api_key=SecretStr(explabs_key.strip()),
@@ -85,6 +88,7 @@ def load_settings(env_path: Path | None = None) -> Settings:
         tavily_api_key=SecretStr(tavily_key.strip()),
         typesafe_api_key=SecretStr(gateway_key.strip()),
         finnhub_api_key=SecretStr(finnhub_key.strip()),
+        kosis_api_key=SecretStr(kosis_key.strip()),
     )
 
 
@@ -237,6 +241,35 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
                     pass
         return update
 
+    async def include_kosis_sources(update: dict, state: FactCheckState) -> dict:
+        kosis_key = settings.kosis_api_key.get_secret_value()
+        if not kosis_key.strip() or state.get("stockSymbols"):
+            return update
+        try:
+            async with httpx.AsyncClient(timeout=14.0, trust_env=False) as client:
+                kosis_sources = await search_kosis_sources(
+                    state, api_key=kosis_key, client=client,
+                )
+        except (KosisUnavailable, httpx.HTTPError, TimeoutError) as exc:
+            _logger.warning("KOSIS search unavailable reason=%s", type(exc).__name__)
+            return update
+        if not kosis_sources:
+            return update
+
+        sources = []
+        seen = set()
+        for source in [*kosis_sources[:2], *update.get("sources", [])]:
+            if not isinstance(source, dict) or not isinstance(source.get("url"), str):
+                continue
+            identity = _source_identity(source["url"])
+            if identity in seen:
+                continue
+            seen.add(identity)
+            sources.append({**source, "id": f"s{len(sources) + 1}"})
+            if len(sources) == 6:
+                break
+        return {**update, "sources": sources}
+
     async def search(state: FactCheckState):
         from stocks import detect_stock_symbols
 
@@ -251,6 +284,7 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
                 _logger.warning("tavily search unavailable reason=%s", type(exc).__name__)
                 update = None
             if update is not None:
+                update = await include_kosis_sources(update, search_state)
                 market = state.get("market") if state.get("recoveryCount") else await _fetch_market(symbols, settings)
                 return {**update, "stockSymbols": symbols, "market": market}
         update = await with_fallback(
@@ -260,12 +294,20 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
             ),
             "SEARCH_FAILED",
         )
+        update = await include_kosis_sources(update, search_state)
         market = state.get("market") if state.get("recoveryCount") else await _fetch_market(symbols, settings)
         return {**update, "stockSymbols": symbols, "market": market}
 
     async def read(state: FactCheckState):
         sources = state.get("sources", [])
         link_url = state.get("linkUrl")
+        kosis_sources = {
+            source.get("url"): source for source in sources
+            if isinstance(source, dict)
+            and source.get("searchProvider") == "kosis_api"
+            and isinstance(source.get("url"), str)
+        }
+        kosis_key = settings.kosis_api_key.get_secret_value()
         if (
             isinstance(link_url, str)
             and link_url
@@ -298,7 +340,18 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
 
         async def cached_reader(url):
             if url not in link_cache:
-                link_cache[url] = await fetch_public_text(url)
+                kosis_source = kosis_sources.get(url)
+                if kosis_source and kosis_key.strip():
+                    try:
+                        async with httpx.AsyncClient(timeout=14.0, trust_env=False) as client:
+                            link_cache[url] = await read_kosis_source(
+                                kosis_source, api_key=kosis_key, client=client,
+                            )
+                    except KosisUnavailable as exc:
+                        _logger.warning("KOSIS read unavailable reason=%s", type(exc).__name__)
+                        link_cache[url] = SourceReadResult("", url, kosis_source.get("title", ""))
+                else:
+                    link_cache[url] = await fetch_public_text(url)
             return link_cache[url]
 
         if (

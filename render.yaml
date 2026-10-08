@@ -23,6 +23,8 @@ services:
         sync: false
       - key: FINNHUB_API_KEY
         sync: false
+      - key: KOSIS_API_KEY
+        sync: false
       - key: BACKEND_SHARED_SECRET
         sync: false
 

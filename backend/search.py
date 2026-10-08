@@ -145,6 +145,8 @@ def is_preferred_finance_host(raw_url: str) -> bool:
 def source_type_for_url(raw_url: str) -> str:
     """Classify a URL for display and diversity selection, not truth scoring."""
     host = _normalized_host(raw_url)
+    if host == "kosis.kr" or host.endswith(".kosis.kr"):
+        return "국가 통계"
     if host == "youtu.be" or host == "youtube.com" or host.endswith(".youtube.com"):
         return "유튜브"
     if host == "reddit.com" or host.endswith(".reddit.com"):

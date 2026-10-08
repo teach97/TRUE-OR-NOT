@@ -24,12 +24,15 @@ export function modelLabel(model: string | null): string {
 
 export function searchBackendLabel(sources: FactSource[]): string | null {
   const providers = new Set(sources.map(source => source.searchProvider));
+  const kosis = providers.has('kosis_api');
   const tavily = providers.has('tavily_search');
   const llm = providers.has('openai_web_search') || providers.has('gemini_google_search');
-  if (tavily && llm) return 'Tavily+LLM 검색';
-  if (tavily) return 'Tavily 검색';
-  if (llm) return 'LLM 검색';
-  return null;
+  const labels = [
+    ...(kosis ? ['KOSIS'] : []),
+    ...(tavily ? ['Tavily'] : []),
+    ...(llm ? ['LLM'] : []),
+  ];
+  return labels.length ? `${labels.join('+')} 검색` : null;
 }
 
 export type ResolvedAnswerCitation = {source: FactSource; href: string};
