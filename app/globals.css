@@ -131,6 +131,7 @@ button, p, h3, dd { overflow-wrap: anywhere; }
 .ai-answer { min-width: 0; }
 .ai-answer-heading { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
 .ai-answer-heading h3 { color: #e3eeed; font-size: 13px; font-weight: 650; letter-spacing: -.01em; }
+.ai-answer-heading h3.ai-overview-title { font-size: 15.67px; }
 .answer-spark { color: var(--accent); font-size: 15px; }
 .answer-overview-block { padding-bottom: 13px; }
 .answer-block-text { color: #d0d8da; font-size: 13px; line-height: 1.8; overflow-wrap: anywhere; }

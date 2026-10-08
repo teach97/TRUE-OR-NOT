@@ -244,7 +244,7 @@ function AnswerBlockView({block, sources, citationState}: {block: AnswerBlock; s
 function AnswerOverview({answer, sources}: {answer: FactCheckAnswer; sources: FactSource[]; messageId: string}) {
   const citationState = createAnswerCitationDisplayState(sources);
   return <section className="ai-answer" aria-label="AI 개요">
-    <div className="ai-answer-heading"><span className="answer-spark" aria-hidden="true">✦</span><h3><BlurText text="AI 개요"/></h3></div>
+    <div className="ai-answer-heading"><span className="answer-spark" aria-hidden="true">✦</span><h3 className="ai-overview-title"><ScrambleText>AI 개요</ScrambleText></h3></div>
     {answer.status === 'insufficient_evidence'
       ? <p className="answer-insufficient" role="note">확인된 원문 근거가 부족해 AI 개요를 만들지 않았습니다. 아래 출처 목록과 주장별 판정에서 확인 가능한 내용을 살펴보세요.</p>
       : <>
