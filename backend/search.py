@@ -429,7 +429,7 @@ async def search_sources(
                 "Expand only when the exact query lacks useful results, preserving named entities and dates. "
                 "For prediction claims, find attributed expert forecasts, interviews and competing outlooks; "
                 "do not skip searching because the future outcome cannot yet be established. "
-                "Use up to four search passes guided by searchPlan only when they improve relevance. "
+                "Use at most two search passes total: search the supplied primaryQueries first, then make at most one searchPlan-guided refinement if the first pass lacks useful results. "
                 "For Korean questions prefer relevant Korean news and blogs, then international primary sources and reporting. "
                 "Do not add a foreign-language page solely for diversity or return copies from one publisher. "
                 "Avoid excludedUrls and find alternative relevant pages for the supplied queries. "
