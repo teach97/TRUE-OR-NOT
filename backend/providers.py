@@ -257,7 +257,7 @@ def _search_payload(
             "tool_choice": "required",
             # Run several targeted search passes so one publisher cannot fill
             # the entire candidate set before the diversity selector sees it.
-            "max_tool_calls": 4,
+            "max_tool_calls": 6,
             "include": ["web_search_call.action.sources"],
         }
     return {

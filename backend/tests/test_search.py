@@ -127,7 +127,7 @@ def test_search_collects_deduplicated_candidates_without_evidence():
         assert body["tools"][0]["search_context_size"] == "medium"
         assert "user_location" not in body["tools"][0]
         assert body["include"] == ["web_search_call.action.sources"]
-        assert body["max_tool_calls"] == 4
+        assert body["max_tool_calls"] == 6
         assert len(body["input"]) > 0
         assert body["store"] is False
         return httpx.Response(200, json={"status": "completed", "output": [
