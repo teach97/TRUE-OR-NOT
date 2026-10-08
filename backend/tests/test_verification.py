@@ -522,6 +522,7 @@ def test_verify_claims_sends_only_verified_source_text():
     def handler(request):
         body = json.loads(request.content)
         input_data = json.loads(body["input"])
+        assert request.extensions["timeout"]["read"] == 60.0
         assert body["model"] == "gpt-6-luna"
         assert body["reasoning"] == {"effort": "max"}
         assert body["store"] is False
@@ -573,7 +574,12 @@ def test_verify_claims_sends_only_verified_source_text():
 
     async def run():
         async with httpx.AsyncClient(transport=httpx.MockTransport(handler)) as client:
-            return await verify_claims(state, api_key="test-only", client=client)
+            return await verify_claims(
+                state,
+                api_key="test-only",
+                client=client,
+                request_timeout_seconds=60.0,
+            )
 
     result = asyncio.run(run())
     assert result["claims"][0]["verdictCode"] == "mostly_supported"

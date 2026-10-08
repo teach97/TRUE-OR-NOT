@@ -127,6 +127,36 @@ def test_llm_runtime_ignores_environment_proxy_for_provider_connection(monkeypat
     assert update["claims"][0]["kind"] == "prediction"
 
 
+def test_verification_fallback_uses_60_seconds_for_first_provider_only(monkeypatch):
+    import runtime
+    from providers import ProviderCallError
+    from runtime import Settings, make_runtime_adapters
+
+    calls = []
+
+    async def fake_verify_claims(
+        state, *, client, provider, request_timeout_seconds=90.0
+    ):
+        calls.append((provider.model, request_timeout_seconds))
+        if len(calls) == 1:
+            raise ProviderCallError("test primary timeout")
+        return {"claims": [], "evidence": [], "diagnostics": []}
+
+    monkeypatch.setattr(runtime, "verify_claims", fake_verify_claims)
+    adapters = make_runtime_adapters(Settings(
+        api_key=SecretStr("test-openai-key"),
+        explabs_api_key=SecretStr("test-explabs-key"),
+    ))
+
+    update = asyncio.run(adapters.verify({"modelPreference": "auto"}))
+
+    assert calls == [
+        ("deepseek-v4.1-flash", 60.0),
+        ("gpt-6-luna", 90.0),
+    ]
+    assert update["llmModel"] == "gpt-6-luna"
+
+
 def test_tavily_search_is_preferred_and_llm_search_is_the_fallback(monkeypatch):
     import runtime
     from runtime import Settings, make_runtime_adapters

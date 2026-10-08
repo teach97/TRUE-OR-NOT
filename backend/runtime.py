@@ -109,7 +109,13 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
         async with httpx.AsyncClient(timeout=90, trust_env=False) as client:
             return await operation(client)
 
-    async def with_fallback(state: FactCheckState, operation, failure_code: str):
+    async def with_fallback(
+        state: FactCheckState,
+        operation,
+        failure_code: str,
+        *,
+        first_attempt_timeout_seconds: float | None = None,
+    ):
         preference = state.get("modelPreference", "auto")
         try:
             providers = providers_for_preference(settings, preference, search=failure_code == "SEARCH_FAILED")
@@ -120,6 +126,10 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
 
         async def attempt(provider, client):
             try:
+                if first_attempt_timeout_seconds is not None and provider is providers[0]:
+                    return await operation(
+                        provider, client, first_attempt_timeout_seconds
+                    )
                 return await operation(provider, client)
             except ProviderCallError as exc:
                 _logger.warning(
@@ -422,12 +432,22 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
                 return {**update, "llmModel": "jev-latest"}
             except JevError as exc:
                 _logger.warning("jev verify failed, escalating to llm: %s", type(exc).__name__)
+
+        async def verify_with_provider(
+            provider, client, request_timeout_seconds=90.0
+        ):
+            return await verify_claims(
+                state,
+                client=client,
+                provider=provider,
+                request_timeout_seconds=request_timeout_seconds,
+            )
+
         return await with_fallback(
             state,
-            lambda provider, client: verify_claims(
-                state, client=client, provider=provider
-            ),
+            verify_with_provider,
             "VERIFICATION_FAILED",
+            first_attempt_timeout_seconds=60.0,
         )
 
     async def synthesize(state: FactCheckState):

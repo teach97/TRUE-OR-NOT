@@ -545,6 +545,7 @@ async def verify_claims(
     api_key: str | None = None,
     client: httpx.AsyncClient,
     provider: LLMProvider | None = None,
+    request_timeout_seconds: float = 90.0,
 ) -> dict[str, list[dict[str, Any]]]:
     """Request a source-only judgment and ground it before returning state."""
     claims, sources, source_texts, checkable_claims, verified_sources = _verifiable_inputs(state)
@@ -635,6 +636,7 @@ async def verify_claims(
             },
             schema=JudgmentResponse.model_json_schema(),
             max_output_tokens=12000,
+            timeout_seconds=request_timeout_seconds,
         )
         parsed = JudgmentResponse.model_validate_json(text)
     except (ProviderCallError, httpx.HTTPError, ValueError, TypeError, KeyError, ValidationError):
