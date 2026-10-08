@@ -104,8 +104,13 @@ class RuntimeAdapters:
 
 
 def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
-    """Create provider-backed stages without exposing credentials to graph state."""
+    """그래프 노드 처리기를 만들고 비밀 키가 그래프 State에 들어가지 않게 합니다.
+
+    각 처리기는 State 변경분만 반환합니다. 공급자 선택·실패 대체와
+    ``llmModel``·``llmReasoning`` 기록은 아래 공통 처리 함수에서 맡습니다.
+    """
     async def with_client(operation):
+        """공급자 재시도 사이에 HTTP 클라이언트를 재사용합니다(기본 요청 제한 90초)."""
         async with httpx.AsyncClient(timeout=90, trust_env=False) as client:
             return await operation(client)
 
@@ -116,7 +121,13 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
         *,
         first_attempt_timeout_seconds: float | None = None,
     ):
-        # 지정 모델은 한 공급자만 호출하고, 자동 선택은 실패 시 다음 공급자를 시도합니다.
+        """설정된 공급자를 호출하고 성공한 모델 정보를 결과에 기록합니다.
+
+        모델을 명시하면 해당 공급자만 사용합니다. ``auto``는 호출이
+        ProviderCallError로 실패할 때 설정 순서대로 다음 공급자를 시도합니다.
+        짧은 제한 시간은 지정된 경우 첫 시도에만 전달합니다. 성공하면 선택된
+        모델과 추론 수준을 ``llmModel``·``llmReasoning``으로 State에 남깁니다.
+        """
         preference = state.get("modelPreference", "auto")
         try:
             providers = providers_for_preference(settings, preference, search=failure_code == "SEARCH_FAILED")
@@ -174,8 +185,14 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
             "llmReasoning": provider.reasoning,
         }
 
-    # 입력에서 검증할 주장을 추출하며, 링크 입력은 자막이나 페이지 원문도 활용합니다.
     async def extract(state: FactCheckState):
+        """텍스트·이미지·링크에서 검증할 주장을 추출합니다.
+
+        이미지는 이미지 추출기로 전달합니다. URL만 입력한 경우 자막이나 페이지를
+        먼저 읽습니다. 문장과 URL을 함께 입력한 경우 문장부터 분석하고, 주장을
+        찾지 못했을 때만 링크 본문을 가져옵니다. 추출한 ``claims``를 다음 단계에
+        전달하며, 페이지 본문을 분석한 경로에서는 State의 ``text``도 그 본문으로 갱신합니다.
+        """
         image = state.get("image")
         if isinstance(image, dict) and image.get("data"):
             return await with_fallback(
@@ -193,8 +210,8 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
         )
 
         async def extract_from_page(page_text):
-            # Keep the stored text inside the 12,000-unit contract so the
-            # final assembly revalidation cannot fail after paid calls.
+            # 모델 요청과 State에 저장하는 원문을 맞춥니다. 최종 조립의 입력 상한 검사에
+            # 실패하지 않도록 원문을 12,000단위까지 줄입니다.
             page_text = _truncate_units(page_text.strip(), 12_000)
             async def page_operation(provider, client):
                 return await extract_page_claims(
@@ -208,6 +225,7 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
             return {**update, "text": page_text}
 
         async def fetch_page():
+            """페이지를 읽지 못하면 빈 문자열을 반환해 기본 추출 경로를 계속합니다."""
             try:
                 page_text, _ = await fetch_public_text(link_url)
             except Exception:
@@ -215,6 +233,7 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
             return page_text if isinstance(page_text, str) else ""
 
         async def fetch_youtube_transcript():
+            """링크에서 YouTube 영상 ID를 찾을 수 있을 때 자막을 가져옵니다."""
             from youtube import fetch_transcript_text, youtube_video_id
 
             video_id = youtube_video_id(link_url) if has_link else None
@@ -228,6 +247,7 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
             return text if isinstance(text, str) and text.strip() else ""
 
         async def fetch_link_text():
+            """YouTube 자막을 우선 사용하고, 없으면 링크 페이지 본문을 읽습니다."""
             transcript = await fetch_youtube_transcript()
             if transcript.strip():
                 return transcript
@@ -245,15 +265,23 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
             "EXTRACTION_FAILED",
         )
         if has_link and not link_only and not update.get("claims"):
+            # 사용자 문장에서 주장을 찾지 못했을 때만 링크 본문을 추가로 가져옵니다.
             page_text = await fetch_link_text()
             if page_text.strip():
                 try:
                     return await extract_from_page(page_text)
                 except ValueError:
+                    # 페이지 본문으로 재추출하지 못하면 첫 추출 결과를 유지합니다.
                     pass
         return update
 
     async def include_kosis_sources(update: dict, state: FactCheckState) -> dict:
+        """조건에 맞는 일반 검색 결과에 KOSIS 보조 출처를 추가합니다.
+
+        주식 종목 검색이 아니고 KOSIS 키가 설정된 경우에만 동작합니다. KOSIS 출처는
+        최대 두 개를 앞에 배치하고 URL 중복을 제거하며, 전체 후보는 여섯 개로 제한합니다.
+        KOSIS 장애는 기본 출처 검색 실패로 처리하지 않습니다.
+        """
         kosis_key = settings.kosis_api_key.get_secret_value()
         if not kosis_key.strip() or state.get("stockSymbols"):
             return update
@@ -282,8 +310,14 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
                 break
         return {**update, "sources": sources}
 
-    # 출처 후보를 검색하고, 설정된 경우 KOSIS·시장 정보를 결과에 보탭니다.
     async def search(state: FactCheckState):
+        """판정에 사용할 출처 후보를 찾고 필요한 통계·시장 정보를 덧붙입니다.
+
+        먼저 주식 종목을 찾습니다. Tavily 키가 있으면 Tavily 검색을 우선 사용하고,
+        사용할 수 없을 때 모델 검색으로 전환합니다. KOSIS는 보조 출처로 추가합니다.
+        복구 검색에서는 첫 검색의 시장 데이터를 재사용해 API를 다시 부르지 않습니다.
+        결과 State에는 출처 후보 ``sources``, 종목 ``stockSymbols``, 시장 정보 ``market``을 기록합니다.
+        """
         from stocks import detect_stock_symbols
 
         symbols = detect_stock_symbols(state.get("text", ""), state.get("focus", ""))
@@ -311,8 +345,15 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
         market = state.get("market") if state.get("recoveryCount") else await _fetch_market(symbols, settings)
         return {**update, "stockSymbols": symbols, "market": market}
 
-    # 출처 원문을 읽어 판정에 쓸 텍스트를 모읍니다. YouTube와 KOSIS는 전용 reader를 사용합니다.
     async def read(state: FactCheckState):
+        """출처 후보의 원문을 읽어 근거 기반 판정에 사용할 텍스트를 저장합니다.
+
+        직접 입력 URL이 검색 후보에 없고 제외 목록에도 없으면 첫 후보(s0)로 추가합니다.
+        최대 여섯 후보를 병렬로 읽고 리다이렉트가 같은 페이지를 가리키면 중복을 제거합니다.
+        YouTube와 KOSIS는 전용 reader를 사용합니다. 첫 처리에서는 동의가 있고
+        링크 제목을 읽을 수 있을 때 관련 출처 검색을 한 번 보탭니다. 원문은
+        ``sourceTexts``, 제목별 본문 구간은 ``sourceSections``에 저장합니다.
+        """
         sources = state.get("sources", [])
         link_url = state.get("linkUrl")
         kosis_sources = {
@@ -334,6 +375,7 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
                 for source in sources
             )
         ):
+            # 직접 입력 URL을 첫 후보로 두고, 나머지 검색 후보는 최대 다섯 개로 제한합니다.
             host = urlsplit(link_url).hostname or link_url
             seed = {
                 "id": "s0",
@@ -354,6 +396,7 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
 
         async def cached_reader(url):
             if url not in link_cache:
+                # 제목 조회와 후보 일괄 읽기에서 URL이 겹칠 수 있으므로 읽은 결과를 캐시합니다.
                 kosis_source = kosis_sources.get(url)
                 if kosis_source and kosis_key.strip():
                     try:
@@ -378,6 +421,7 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
             except Exception:
                 link_title = ""
             tavily_key = settings.tavily_api_key.get_secret_value()
+            # 제목 기반 보충 검색은 최초 실행에서만 수행하고 복구 단계에서는 반복하지 않습니다.
             if link_title.strip() and tavily_key.strip() and not state.get("recoveryCount"):
                 try:
                     async with httpx.AsyncClient(timeout=30.0, trust_env=False) as search_client:
@@ -424,8 +468,13 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
         )
         return read_result
 
-    # 읽은 원문을 근거로 판정합니다. JEV 실패 시 LLM으로 전환하며, 일반 경로의 첫 LLM 요청은 60초 제한입니다.
     async def verify(state: FactCheckState):
+        """읽은 원문으로 주장을 판정하고 검증된 인용 근거를 반환합니다.
+
+        JEV 모드에서는 JEV를 먼저 호출하고 JevError가 발생한 경우에만 LLM 판정으로
+        전환합니다. 일반 LLM 경로의 첫 공급자 요청은 60초로 제한하고, 자동 대체 공급자는
+        공통 90초 제한을 사용합니다. 판정 결과와 검증된 인용을 ``claims``·``evidence``로 반환합니다.
+        """
         if state.get("jevMode"):
             try:
                 async with httpx.AsyncClient(timeout=90, trust_env=False) as client:
@@ -455,8 +504,14 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
             first_attempt_timeout_seconds=60.0,
         )
 
-    # 최종 답변을 만듭니다. JEV·직접 답변·출처 없음은 생략하고, 나머지는 별도 구조화 LLM 요청을 보냅니다.
     async def synthesize(state: FactCheckState):
+        """판정 결과를 사용자가 읽을 최종 답변으로 정리합니다.
+
+        JEV 모드·직접 생성 가능한 답·사용할 출처 없음은 모델 호출을 건너뜁니다.
+        그 외에는 ``synthesize_answer``가 판정과 별도의 구조화 응답을 요청하고,
+        생성 답변의 인용을 출처 원문과 대조합니다. 이 단계는 공통 90초 제한을 사용합니다.
+        최종 ``answer``와 사용 모델·추론 수준을 ``answerModel``·``answerReasoning``으로 반환합니다.
+        """
         if state.get("jevMode"):
             return {
                 "answer": insufficient_answer(),
