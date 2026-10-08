@@ -983,7 +983,6 @@ export default function FactCheckDashboard() {
     <a className="skip-link" href="#workspace-main">본문으로 건너뛰기</a>
     <aside className="sidebar">
       <a className="brand" href="#top" aria-label="True or Not 홈"><span className="brand-symbol"><img src="/true-or-not-logo-04.png" alt="" width={36} height={20}/></span><span><ScrambleText>True or Not</ScrambleText><small>팩트체크 에이전트</small></span></a>
-      <div className="workspace-label"><span className="workspace-avatar">F</span><div>나의 워크스페이스<small>프로필</small></div></div>
       <p className="nav-caption">워크스페이스</p>
       <LineSidebar
         className="workspace-nav"
