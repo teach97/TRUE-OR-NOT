@@ -1,5 +1,6 @@
 """Small KOSIS adapter for discovering and reading official statistics."""
 import asyncio
+import json
 import re
 from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
@@ -14,6 +15,7 @@ _DATA_URL = "https://kosis.kr/openapi/Param/statisticsParameterData.do"
 _META_URL = "https://kosis.kr/openapi/statisticsData.do"
 _MAX_SOURCE_TEXT = 12_000
 _MAX_ROWS = 36
+_UNQUOTED_JSON_KEY = re.compile(r"([\{\[,]\s*)([A-Za-z][A-Za-z0-9_]*)\s*:")
 _STOP_WORDS = {
     "그", "것", "대한", "에서", "으로", "이다", "있는", "있다", "한다", "합니다",
     "그리고", "또는", "관련", "자료", "통계", "얼마", "어떻게", "무엇",
@@ -29,13 +31,20 @@ async def _get_json(client: httpx.AsyncClient, url: str, params: dict) -> list[d
         response = await client.get(url, params=params, timeout=12.0)
         if response.status_code != 200:
             raise KosisUnavailable("upstream_status")
-        payload = response.json()
+        try:
+            payload = response.json()
+        except ValueError:
+            normalized = _UNQUOTED_JSON_KEY.sub(r'\1"\2":', response.text.lstrip("\ufeff \r\n\t"))
+            payload = json.loads(normalized)
     except KosisUnavailable:
         raise
     except (httpx.HTTPError, TimeoutError, ValueError):
         raise KosisUnavailable("upstream_unavailable") from None
 
     if isinstance(payload, dict):
+        error_code = payload.get("err") or payload.get("ERR") or payload.get("errCode")
+        if error_code is not None:
+            raise KosisUnavailable(f"api_error_{str(error_code)[:8]}")
         raise KosisUnavailable("invalid_or_error_response")
     if not isinstance(payload, list) or not all(isinstance(item, dict) for item in payload):
         raise KosisUnavailable("invalid_response")
@@ -104,6 +113,7 @@ async def search_kosis_sources(
                 "startCount": "1",
                 "resultCount": "5",
                 "format": "json",
+                "content": "json",
             })
         except KosisUnavailable:
             return []
@@ -176,7 +186,7 @@ def _frequency(rows: list[dict], query: str) -> str:
 def _period_params(query: str, frequency: str) -> dict[str, str]:
     year = _query_year(query)
     if not year:
-        return {"newEstPrdCnt": "3"}
+        return {"newEstPrdCnt": "1"}
 
     if frequency == "M":
         month = re.search(r"(?:19|20)\d{2}\s*년?\s*(0?[1-9]|1[0-2])\s*월", query)
@@ -187,13 +197,13 @@ def _period_params(query: str, frequency: str) -> dict[str, str]:
     elif frequency == "D":
         date = re.search(r"((?:19|20)\d{2})[-/.](\d{1,2})[-/.](\d{1,2})", query)
         if not date:
-            return {"newEstPrdCnt": "3"}
+            return {"newEstPrdCnt": "1"}
         day = f"{date.group(1)}{int(date.group(2)):02d}{int(date.group(3)):02d}"
         start, end = day, day
     elif frequency in {"Y", "F", "IR"}:
         start, end = year, year
     else:
-        return {"newEstPrdCnt": "3"}
+        return {"newEstPrdCnt": "1"}
     return {"startPrdDe": start, "endPrdDe": end}
 
 
@@ -279,6 +289,7 @@ async def read_kosis_source(
         "orgId": org_id,
         "tblId": table_id,
         "format": "json",
+        "content": "json",
     })
     frequency = _frequency(metadata, query)
     params = {
@@ -290,10 +301,19 @@ async def read_kosis_source(
         "itmId": "ALL",
         "prdSe": frequency,
         "format": "json",
+        "content": "json",
         "jsonVD": "Y",
         **_period_params(query, frequency),
     }
-    rows = await _get_json(client, _DATA_URL, params)
+    params.update({f"objL{level}": "" for level in range(2, 9)})
+    for level in range(2, 9):
+        try:
+            rows = await _get_json(client, _DATA_URL, params)
+            break
+        except KosisUnavailable as exc:
+            if str(exc) != "api_error_20" or level == 8:
+                raise
+            params[f"objL{level}"] = "ALL"
     if not rows or not any(_field(row, "DT") for row in rows):
         raise KosisUnavailable("no_values")
     text = _format_rows(source, query, rows)
