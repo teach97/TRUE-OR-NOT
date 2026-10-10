@@ -36,6 +36,7 @@ import type {MessagePage,StoredMessage} from '../lib/conversation-contract';
 import BellToggle from './bell-toggle';
 import GlideSelect from './glide-select';
 import type { GlideSelectOption } from './glide-select';
+import SourceAnnotatedText from './source-annotated-text';
 
 type IconName = 'lens' | 'grid' | 'book' | 'arrow' | 'file' | 'link' | 'close' | 'download' | 'plus' | 'shield' | 'check' | 'reset';
 
@@ -228,7 +229,7 @@ function Panel({as = 'div', className = '', children, 'aria-labelledby': labelle
 function AnswerBlockView({block, sources, citationState, verifiedEvidence = false}: {block: AnswerBlock; sources: FactSource[]; citationState: ReturnType<typeof createAnswerCitationDisplayState>; verifiedEvidence?: boolean}) {
   const citations = presentAnswerCitations(block.citations, sources, citationState, verifiedEvidence);
   return <div className="answer-block">
-    <p className="answer-block-text">{block.text}</p>
+    <p className="answer-block-text"><SourceAnnotatedText text={block.text} sources={sources}/></p>
     {citations.length > 0 && <ul className="answer-citations" aria-label="답변 근거 출처">
       {citations.map(({number, source, href, linkTarget}, index) => <li key={`${number}-${index}`}>
           {linkTarget === 'external' && source && href
@@ -269,9 +270,9 @@ function JudgmentReply({claims, evidence, sources}: {claims: FactClaim[]; eviden
     {claims.map(claim => <section className="answer-section" key={claim.id}>
       <h4>{claim.quote}</h4><p>{claim.verdict}</p>
       <AnswerBlockView block={{text: claim.summary, citations: evidence.filter(item => claim.evidenceIds.includes(item.id) && item.claimId === claim.id && item.quoteVerified).map(item => ({sourceId: item.sourceId, quote: item.quote}))}} sources={sources} citationState={createAnswerCitationDisplayState(sources)} verifiedEvidence/>
-      {claim.confirmed.length > 0 && <><h4>확인된 내용</h4><ul>{claim.confirmed.map((text, index) => <li key={index}>{text}</li>)}</ul></>}
-      {claim.unresolved.length > 0 && <><h4>남은 불확실성</h4><ul>{claim.unresolved.map((text, index) => <li key={index}>{text}</li>)}</ul></>}
-      {claim.warnings.length > 0 && <><h4>주의사항</h4><ul>{claim.warnings.map((text, index) => <li key={index}>{text}</li>)}</ul></>}
+      {claim.confirmed.length > 0 && <><h4>확인된 내용</h4><ul>{claim.confirmed.map((text, index) => <li key={index}><SourceAnnotatedText text={text} sources={sources}/></li>)}</ul></>}
+      {claim.unresolved.length > 0 && <><h4>남은 불확실성</h4><ul>{claim.unresolved.map((text, index) => <li key={index}><SourceAnnotatedText text={text} sources={sources}/></li>)}</ul></>}
+      {claim.warnings.length > 0 && <><h4>주의사항</h4><ul>{claim.warnings.map((text, index) => <li key={index}><SourceAnnotatedText text={text} sources={sources}/></li>)}</ul></>}
     </section>)}
   </section>;
 }
@@ -349,7 +350,7 @@ function ProgressReply({progress}: {progress: ChatProgress}) {
     {claims !== undefined && (claims.length
       ? <ol className="progress-claim-list">{claims.map(claim => <li className="progress-claim" key={claim.id}>
           <div className="progress-claim-heading"><strong>{claim.quote}</strong><span>{claim.verdict}</span></div>
-          <p>{claim.summary}</p>
+          <p><SourceAnnotatedText text={claim.summary} sources={sources}/></p>
           {claim.citations.length > 0 && <ul className="progress-citations" aria-label="1차 요약의 확인된 인용">{claim.citations.map((citation, index) => {
             const source = sources.find(item => item.id === citation.sourceId);
             const href = source ? safeSourceUrl(source.url) : null;
@@ -1067,7 +1068,7 @@ export default function FactCheckDashboard() {
             <div className={`dashboard-detail-layout mobile-${mobileTab}`}>
               <Panel as="article" className="original-panel"><div className="panel-top"><h3><Icon name="file" size={17}/><BlurText text="원문"/></h3><span>{snapshot.demo ? '합성 문서' : '제출한 원문'}</span></div><div className="original-content"><span className="article-kicker">{snapshot.demo ? '문화 행사 · 가상의 사례' : '검증 요청 시점의 원문'}</span><h3>{snapshot.demo ? '달빛시 가을빛 축제, 알아두면 좋은 내용' : '검증한 원문'}</h3><p className="article-byline">{snapshot.demo ? 'True or Not 예시 편집실 · 실제 기사 아님' : '원문을 보존한 상태로 주장을 추출했습니다.'}</p><div className="original-text">{original}</div><div className="highlight-legend"><span/>강조된 문장을 선택하면 오른쪽 근거가 바뀝니다.</div>{snapshot.focus && <div className="focus-note"><Icon name="lens" size={17}/><div><strong>확인하고 싶은 내용</strong><p>{snapshot.focus}</p><small>{snapshot.demo ? '예시의 비교 범위를 보여드립니다.' : '검증의 참고 범위로 전달했습니다.'}</small></div></div>}</div><div className="original-footer"><Icon name="shield" size={15}/>{snapshot.demo ? '실제 인물·지역·사건과 무관한 합성 예시입니다.' : '원문에서 추출한 최대 3개의 주장을 검증합니다.'}</div></Panel>
               <Panel className="evidence-panel"><div className="panel-top"><h3><Icon name="lens" size={18}/><BlurText text="선택한 주장과 근거"/></h3><span>{snapshot.demo ? '예시 비교' : '수집된 원문 비교'}</span></div><AnimatePresence mode="wait" initial={false}><motion.div className="detail-content" key={selected?.id || 'empty'} initial={reduce ? false : {opacity: 0, y: 5}} animate={{opacity: 1, y: 0}} exit={{opacity: 0}} transition={{duration: reduce ? 0 : 0.18}}>{selected ? <>
-                <div className="result-overview"><span className="article-kicker">선택한 주장</span><h3>{selected.quote}</h3><Badge claim={selected}/><p>{selected.summary}</p></div>
+                <div className="result-overview"><span className="article-kicker">선택한 주장</span><h3>{selected.quote}</h3><Badge claim={selected}/><p><SourceAnnotatedText text={selected.summary} sources={liveResult?.sources ?? []}/></p></div>
                 <div className="source-content"><div className="source-heading"><h4>근거 출처</h4><span>{snapshot.demo ? `${sourceDocs.length}개 연결` : `${selectedEvidence.length}개 인용 · ${liveResult?.sources.length ?? 0}개 검색`}</span></div>
                   {snapshot.demo
                     ? sourceDocs.length
