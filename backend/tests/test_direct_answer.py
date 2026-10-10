@@ -57,7 +57,7 @@ def provider_adapters(monkeypatch, handler):
         return real_client(*args, transport=httpx.MockTransport(handler), **kwargs)
 
     monkeypatch.setattr(runtime.httpx, "AsyncClient", client)
-    return make_runtime_adapters(Settings(api_key=SecretStr(""), explabs_api_key=SecretStr("test-only")))
+    return make_runtime_adapters(Settings(api_key=SecretStr(""), hive_api_key=SecretStr("test-only")))
 
 
 def test_runtime_stream_finishes_with_two_llm_requests_and_preserves_verification(monkeypatch):
@@ -87,7 +87,7 @@ def test_runtime_stream_finishes_with_two_llm_requests_and_preserves_verificatio
         return {"sources": deepcopy(state["sources"]), "sourceTexts": dict(state["sourceTexts"])}
 
     graph = build_runtime_workflow(
-        Settings(api_key=SecretStr(""), explabs_api_key=SecretStr("test-only")),
+        Settings(api_key=SecretStr(""), hive_api_key=SecretStr("test-only")),
         adapters=RuntimeAdapters(extract=adapters.extract, search=search, read=read,
                                  verify=adapters.verify, synthesize=adapters.synthesize),
     )
@@ -100,7 +100,7 @@ def test_runtime_stream_finishes_with_two_llm_requests_and_preserves_verificatio
 
     events = asyncio.run(run())
     assert len(requests) == 2
-    assert all(request["model"] == "deepseek-v4.1-flash" and request["reasoning_effort"] == "max" for request in requests)
+    assert all(request["model"] == "deepseek-ai/deepseek-v4.1-flash" and request["reasoning_effort"] == "max" for request in requests)
     assert events[-1]["type"] == "result"
     assert [event["type"] for event in events].count("preview") == 1
     result = FactCheckResponse.model_validate({"result": events[-1]["result"]}).result

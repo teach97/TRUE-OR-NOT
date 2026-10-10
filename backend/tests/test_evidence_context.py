@@ -108,7 +108,7 @@ def test_real_runtime_stream_finishes_with_late_grounded_passages(monkeypatch, k
     def handler(request):
         body = json.loads(request.content)
         requests.append(body)
-        assert body["model"] == "deepseek-v4.1-flash" and body["reasoning_effort"] == "max"
+        assert body["model"] == "deepseek-ai/deepseek-v4.1-flash" and body["reasoning_effort"] == "max"
         if len(requests) == 1:
             value = {"claims": [{"quote": extracted_quote, "kind": kind, "searchQuery": query}]}
         elif kind == "fact" and len(requests) == 2:
@@ -121,7 +121,7 @@ def test_real_runtime_stream_finishes_with_late_grounded_passages(monkeypatch, k
     real_client = httpx.AsyncClient
     monkeypatch.setattr(runtime.httpx, "AsyncClient", lambda *a, **kw:
                         real_client(*a, transport=httpx.MockTransport(handler), **kw))
-    settings = Settings(api_key=SecretStr(""), explabs_api_key=SecretStr("test-only"))
+    settings = Settings(api_key=SecretStr(""), hive_api_key=SecretStr("test-only"))
     adapters = make_runtime_adapters(settings)
 
     async def search(current):

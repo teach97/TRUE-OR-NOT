@@ -1,5 +1,24 @@
 # 팩트체크 에이전트 UI MVP 작업 인계서
 
+## 2026-10-10 DeepSeek MAX·하이브(Hive) API 전환 및 Experiential 제거
+
+- **완료:** 기존 Experiential 게이트웨이 연결을 완전히 제거하고, `https://docs.thehive.ai/docs/chat-completions-openai-compatible-llms` 가이드에 따라 DeepSeek-V4.1-Flash MAX를 하이브(Hive) API로 전환했습니다.
+- **호출 규격:**
+  - Base URL: `https://api-cdn.thehive.ai/api/v3` (엔드포인트: `/chat/completions`)
+  - Model Key: `deepseek-ai/deepseek-v4.1-flash`
+  - 인증: `Authorization: Bearer <HIVE_API_KEY>` (환경변수 `HIVE_API_KEY`)
+  - 추론 설정: `reasoning_effort="max"`
+  - 출력 토큰: `max_completion_tokens=max(16_000, max_output_tokens)`
+  - 구조화 응답: OpenAI 호환 JSON 모드 (`response_format={"type": "json_object"}`)
+  - 멀티모달: `messages` 내 `image_url` data URL 전송 지원
+- **UI 및 안내:**
+  - 모델 선택 드롭다운에서 DeepSeek V4.1 Flash Max 항목의 태그를 `Experiential`에서 `Hive`로 갱신하였으며, 해당 항목 클릭 시 DeepSeek 모델이 선택되어 Hive API로 라우팅됩니다.
+  - 외부 전송 동의 모달, 설정 안내 문구(`configurationHelp`), 개인정보 처리방침(`/privacy`)의 게이트웨이 안내를 하이브(Hive) API로 갱신했습니다.
+- **검증:**
+  - 백엔드 pytest 440개 전원 통과 (`tests/test_hive.py` 24개 테스트 신규 작성).
+  - 프론트엔드 Node.js 테스트 121개 전원 통과.
+  - TypeScript 타입 체크(`npm run typecheck`) 통과.
+
 ## 2026-10-06 1번: 관련 원문 구간·검증 근거 패킷
 
 - **완료 범위:** 판정에는 기존 추출 검색어/주장과 관련된 원문 구간, 최종 생성에는 검증된 인용과 주변 구간·번역·관계·판정 결과를 전달합니다. 원문 전체를 다시 검색하거나 새 구간 선택 LLM을 호출하지 않습니다. 대화에서 승인한 1번이며 2번 근거 ID 출력·3번 생성 전 출력 범위 제한은 미구현입니다.
