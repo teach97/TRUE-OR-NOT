@@ -17,7 +17,7 @@ from contracts import AgentStatus, ContentSummary, FactCheckResponse
 from intent import classify_intent
 from jev import JevError
 from summarize import summarize_content
-from providers import ProviderCallError, configured_model_options, configured_providers, providers_for_preference, run_with_fallback
+from providers import ProviderAuthenticationError, ProviderCallError, configured_model_options, configured_providers, providers_for_preference, run_with_fallback
 from runtime import build_runtime_workflow, load_settings, run_jev_fast_check
 from schemas import FactCheckRequest
 from conversation_api import router as conversation_router, storage_error
@@ -127,7 +127,7 @@ async def agent_status(response: Response):
         engine="langgraph",
         model=primary.model if primary else None,
         reasoning=primary.reasoning if primary else None,
-        webSearch=bool(settings.tavily_api_key.get_secret_value().strip()) or any(provider.kind != "experiential" for provider in providers),
+        webSearch=bool(settings.tavily_api_key.get_secret_value().strip()) or any(provider.kind != "hive" for provider in providers),
         modelOptions=configured_model_options(settings),
         phase="workflow-ready" if configured else "api-foundation",
     )
@@ -332,9 +332,12 @@ async def intent(payload: IntentRequest):
                     link_url=payload.linkUrl,
                 ),
             )
-    except ProviderCallError:
+    except ProviderCallError as exc:
+        authentication_failed = isinstance(exc, ProviderAuthenticationError)
         return JSONResponse(
-            {"code": "AGENT_FAILED", "message": "의도 파악에 실패했습니다."},
+            {"code": "PROVIDER_AUTH_FAILED" if authentication_failed else "AGENT_FAILED",
+             "message": "선택한 모델의 인증에 실패했습니다. 서버 API 키와 접근 권한을 확인해 주세요."
+             if authentication_failed else "의도 파악에 실패했습니다."},
             status_code=502,
             headers={"Cache-Control": "no-store"},
         )

@@ -1,5 +1,6 @@
 """Server settings and the five-stage workflow with one bounded re-search."""
-from dataclasses import dataclass
+import asyncio
+from dataclasses import dataclass, replace
 from datetime import datetime, timezone
 import logging
 import os
@@ -23,11 +24,12 @@ from extraction import extract_claims, extract_image_claims, extract_page_claims
 from jev import JevError
 from schemas import ModelPreference
 from tavily_search import TavilyUnavailable, search_tavily
-from providers import ProviderCallError, providers_for_preference, run_with_fallback
+from providers import ProviderCallError, Reasoning, providers_for_preference, run_with_fallback
 from recovery import review_recovery
 from schemas import FactCheckRequest
 from search import _source_identity, apply_shared_origin_groups, build_search_query, origin_group_for_url, search_sources, source_type_for_url
 from sources import SourceReadResult, fetch_public_text, read_sources
+from kosis import fetch_nationwide_monthly_cpi, is_cpi_claim
 from verification import (
     _empty_judgments,
     ground_judgments,
@@ -56,14 +58,26 @@ def _http_status_from_exception(error: BaseException) -> int | None:
     return None
 
 
+def _is_timeout_exception(error: BaseException) -> bool:
+    seen: set[int] = set()
+    current: BaseException | None = error
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        if isinstance(current, (httpx.TimeoutException, TimeoutError)):
+            return True
+        current = current.__cause__ or current.__context__
+    return False
+
+
 class Settings(BaseModel):
     api_key: SecretStr
-    explabs_api_key: SecretStr = SecretStr("")
+    hive_api_key: SecretStr = SecretStr("")
     gemini_api_key: SecretStr = SecretStr("")
     youtube_api_key: SecretStr = SecretStr("")
     tavily_api_key: SecretStr = SecretStr("")
     typesafe_api_key: SecretStr = SecretStr("")
     finnhub_api_key: SecretStr = SecretStr("")
+    kosis_api_key: SecretStr = SecretStr("")
 
 
 def load_settings(env_path: Path | None = None) -> Settings:
@@ -71,20 +85,22 @@ def load_settings(env_path: Path | None = None) -> Settings:
     path = env_path if env_path is not None else Path(__file__).with_name(".env")
     values = dotenv_values(path, encoding="utf-8-sig", interpolate=False)
     key = os.environ.get("OPENAI_API_KEY", values.get("OPENAI_API_KEY") or "")
-    explabs_key = os.environ.get("EXPLABS_API_KEY", values.get("EXPLABS_API_KEY") or "")
+    hive_key = os.environ.get("HIVE_API_KEY", values.get("HIVE_API_KEY") or "")
     gemini_key = os.environ.get("GEMINI_API_KEY", values.get("GEMINI_API_KEY") or "")
     youtube_key = os.environ.get("YOUTUBE_API_KEY", values.get("YOUTUBE_API_KEY") or "")
     tavily_key = os.environ.get("TAVILY_API_KEY", values.get("TAVILY_API_KEY") or "")
     gateway_key = os.environ.get("TYPESAFE_API_KEY", values.get("TYPESAFE_API_KEY") or "")
     finnhub_key = os.environ.get("FINNHUB_API_KEY", values.get("FINNHUB_API_KEY") or "")
+    kosis_key = os.environ.get("KOSIS_API_KEY", values.get("KOSIS_API_KEY") or "")
     return Settings(
         api_key=SecretStr(key.strip()),
-        explabs_api_key=SecretStr(explabs_key.strip()),
+        hive_api_key=SecretStr(hive_key.strip()),
         gemini_api_key=SecretStr(gemini_key.strip()),
         youtube_api_key=SecretStr(youtube_key.strip()),
         tavily_api_key=SecretStr(tavily_key.strip()),
         typesafe_api_key=SecretStr(gateway_key.strip()),
         finnhub_api_key=SecretStr(finnhub_key.strip()),
+        kosis_api_key=SecretStr(kosis_key.strip()),
     )
 
 
@@ -105,10 +121,18 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
         async with httpx.AsyncClient(timeout=90, trust_env=False) as client:
             return await operation(client)
 
-    async def with_fallback(state: FactCheckState, operation, failure_code: str):
+    async def with_fallback(
+        state: FactCheckState,
+        operation,
+        failure_code: str,
+        *,
+        reasoning_override: Reasoning | None = None,
+    ):
         preference = state.get("modelPreference", "auto")
         try:
             providers = providers_for_preference(settings, preference, search=failure_code == "SEARCH_FAILED")
+            if reasoning_override is not None:
+                providers = tuple(replace(provider, reasoning=reasoning_override) for provider in providers)
         except ValueError as exc:
             if str(exc) == "MODEL_UNAVAILABLE":
                 raise
@@ -134,7 +158,7 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
                     type(exc).__name__,
                     _http_status_from_exception(exc),
                 )
-                if str(exc) in {"INVALID_REQUEST", "NOT_CONFIGURED", "MODEL_UNAVAILABLE"}:
+                if str(exc) in {"INVALID_REQUEST", "NOT_CONFIGURED", "MODEL_UNAVAILABLE", "MODEL_OUTPUT_INVALID"}:
                     raise
                 raise ProviderCallError("Provider stage failed") from None
 
@@ -145,12 +169,16 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
                     lambda provider: attempt(provider, client),
                 )
             )
-        except ProviderCallError:
+        except ProviderCallError as exc:
+            if _http_status_from_exception(exc) in {401, 403}:
+                raise ValueError("PROVIDER_AUTH_FAILED") from None
+            if _is_timeout_exception(exc):
+                raise ValueError("PROVIDER_TIMEOUT") from None
             if preference != "auto":
                 raise ValueError("MODEL_FAILED") from None
             raise ValueError(failure_code) from None
         except ValueError as exc:
-            if str(exc) == "NOT_CONFIGURED":
+            if str(exc) in {"NOT_CONFIGURED", "MODEL_OUTPUT_INVALID", "PROVIDER_AUTH_FAILED", "PROVIDER_TIMEOUT"}:
                 raise
             raise ValueError(failure_code) from None
         return {
@@ -242,6 +270,26 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
 
         symbols = detect_stock_symbols(state.get("text", ""), state.get("focus", ""))
         search_state = {**state, "stockSymbols": symbols} if symbols else state
+
+        async def with_kosis(update):
+            kosis_key = settings.kosis_api_key.get_secret_value()
+            if not kosis_key.strip() or not is_cpi_claim(
+                state.get("claims", []), state.get("focus", "")
+            ):
+                return update
+            try:
+                async with httpx.AsyncClient(timeout=15.0, trust_env=False) as client:
+                    kosis_source = await fetch_nationwide_monthly_cpi(
+                        api_key=kosis_key, client=client
+                    )
+            except (httpx.HTTPError, ValueError, TypeError):
+                kosis_source = None
+            if kosis_source is None:
+                return update
+            source, _ = kosis_source
+            source["id"] = "skosis"
+            return {**update, "sources": [source, *update.get("sources", [])][:6]}
+
         tavily_key = settings.tavily_api_key.get_secret_value()
         if tavily_key.strip():
             try:
@@ -252,6 +300,7 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
                 update = None
             if update is not None:
                 market = state.get("market") if state.get("recoveryCount") else await _fetch_market(symbols, settings)
+                update = await with_kosis(update)
                 return {**update, "stockSymbols": symbols, "market": market}
         update = await with_fallback(
             search_state,
@@ -260,6 +309,7 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
             ),
             "SEARCH_FAILED",
         )
+        update = await with_kosis(update)
         market = state.get("market") if state.get("recoveryCount") else await _fetch_market(symbols, settings)
         return {**update, "stockSymbols": symbols, "market": market}
 
@@ -369,13 +419,18 @@ def make_runtime_adapters(settings: Settings) -> RuntimeAdapters:
                 return {**update, "llmModel": "jev-latest"}
             except JevError as exc:
                 _logger.warning("jev verify failed, escalating to llm: %s", type(exc).__name__)
-        return await with_fallback(
-            state,
-            lambda provider, client: verify_claims(
-                state, client=client, provider=provider
-            ),
-            "VERIFICATION_FAILED",
-        )
+        try:
+            async with asyncio.timeout(90):
+                return await with_fallback(
+                    state,
+                    lambda provider, client: verify_claims(
+                        state, client=client, provider=provider, timeout_seconds=45
+                    ),
+                    "VERIFICATION_FAILED",
+                    reasoning_override="high",
+                )
+        except TimeoutError:
+            raise ValueError("PROVIDER_TIMEOUT") from None
 
     async def synthesize(state: FactCheckState):
         # 기존 스트림 단계 이름을 유지하며 판정은 별도 생성 없이 반환합니다.
@@ -649,6 +704,18 @@ async def run_jev_fast_check(
 
     if read_result is None:
         state["sources"] = sources[:6]
+        kosis_key = settings.kosis_api_key.get_secret_value()
+        if consent and kosis_key.strip() and is_cpi_claim(state["claims"], focus):
+            try:
+                kosis_source = await fetch_nationwide_monthly_cpi(
+                    api_key=kosis_key, client=client
+                )
+            except (httpx.HTTPError, ValueError, TypeError):
+                kosis_source = None
+            if kosis_source is not None:
+                kosis_item, _ = kosis_source
+                kosis_item["id"] = "skosis"
+                state["sources"] = [kosis_item, *state["sources"]][:6]
         youtube_key = settings.youtube_api_key.get_secret_value()
         if youtube_key.strip() and any(
             isinstance(source, dict) and source.get("sourceType") == "유튜브"

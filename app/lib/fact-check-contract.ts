@@ -35,12 +35,18 @@ export type FactEvidence = {
   quoteVerified: boolean; relation: 'supports' | 'contradicts' | 'context';
   sectionTitle?: string | null; sectionText?: string | null; sectionTruncated?: boolean;
 };
+export type FactClaimPart = {
+  statement: string; verdictCode: VerdictCode; verdict: string; factScore: number;
+  summary: string; confirmed?: string[]; evidenceIds: string[];
+};
 export type FactClaim = {
   id: string; quote: string; start: number; end: number;
+  statement?: string;
   kind: 'fact' | 'opinion' | 'prediction' | 'unclear';
   factScore: number; scoreBand: FactScoreBand; scoreLabel: string;
   verdictCode: VerdictCode; verdict: string; tone: string; summary: string;
   confirmed: string[]; unresolved: string[]; warnings: string[]; evidenceIds: string[];
+  refuted?: string[]; parts?: FactClaimPart[];
 };
 export type AnswerCitation = {sourceId: string; quote: string};
 export type AnswerBlock = {text: string; citations: AnswerCitation[]};
@@ -50,7 +56,7 @@ export type AnswerSection = {
   items: AnswerBlock[];
 };
 export type FactCheckAnswer = {
-  status: 'grounded' | 'insufficient_evidence' | 'synthesis_failed' | 'judgment_only';
+  status: 'grounded' | 'partial' | 'insufficient_evidence' | 'synthesis_failed' | 'judgment_only';
   overview: AnswerBlock | null;
   sections: AnswerSection[];
   conclusion: AnswerBlock | null;
