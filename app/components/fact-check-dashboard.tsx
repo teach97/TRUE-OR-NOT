@@ -794,6 +794,10 @@ export default function FactCheckDashboard() {
     if (draft.length > 12000 || focus.length > 500) {setNotice('원문은 12,000자, 확인 요청은 500자 이내로 입력해 주세요.'); return;}
     if (sample) {dispatch({type: 'load', snapshot: {...demoPreview, focus}}); setNotice('합성 예시입니다. 실제 검증 요청은 전송하지 않았습니다.'); return;}
     const identityOnly = !image && !detectedLink && !focus.trim() && isIdentityQuestion(draft);
+    const identityPrompt = `${draft} ${focus}`;
+    const directImageIdentity = !!(image || pendingMaterial?.image)
+      && /(?:사람|인물|얼굴|남자|여자|누구|누군|유명인|연예인|방송인|스트리머|유튜버|크리에이터|동일인|본인)/.test(identityPrompt)
+      && /(?:누구|누군|인지|인가|맞|아닌지|동일인|본인|닮았|처럼\s*보)/.test(identityPrompt);
     if (configured === false && !identityOnly) {setNotice(configurationHelp); return;}
     const consent = hasExternalConsent();
     if (!consent && !identityOnly) {
@@ -873,6 +877,15 @@ export default function FactCheckDashboard() {
       return;
     }
     if (!gate) {
+      if (directImageIdentity) {
+        removeThinking();
+        const failureMessage = gateFailure instanceof FactCheckError && gateFailure.code === 'PROVIDER_AUTH_FAILED'
+          ? gateFailure.message : '이미지 답변 모델에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.';
+        appendReply({role: 'assistant', text: failureMessage, tone: 'error'});
+        setNotice(`${failureMessage} 검증을 시작하지 않았습니다.`);
+        clarificationInput.current = pendingMaterial ?? {epoch: storageEpoch, text: draft, focus, linkUrl: detectedLink, image: image ? {mime: image.mime, data: image.data} : null};
+        release(); return;
+      }
       const fallback = classifyChatInput(draft, {hasAttachment: !!(image || detectedLink), providerAuthFailed: gateFailure instanceof FactCheckError && gateFailure.code === 'PROVIDER_AUTH_FAILED'});
       if (fallback.kind === 'meta') {
         removeThinking();
